@@ -20,7 +20,7 @@ elevate_current_step <- function(new_status) {
 }
 
 verbosity_rank      <- c(debug = 0L, info = 1L, warn = 2L, error = 3L)
-leaf_verbosity_rank <- c(info = 1L, success = 1L, warning = 2L, error = 3L)
+leaf_verbosity_rank <- c(debug = 0L, info = 1L, success = 1L, warning = 2L, error = 3L)
 
 should_emit_leaf <- function(status) {
   leaf_verbosity_rank[[status]] >= verbosity_rank[[the$verbosity]]
@@ -40,6 +40,26 @@ emit_leaf <- function(status, msg) {
             depth = current_depth(), id = id, parent_id = current_parent_id()))
 }
 
+#' Log a debug leaf line
+#'
+#' The most verbose leaf level, for fine-grained diagnostic detail that
+#' would be noisy at the default verbosity. Shown only when verbosity is
+#' `"debug"` (see [logtree_set_verbosity()]). Like [log_info()] and
+#' [log_success()], it does not elevate the enclosing step's status --
+#' unlike [log_warn()]/[log_error()].
+#'
+#' @param msg Character scalar.
+#' @return `NULL`, invisibly.
+#' @export
+#' @examples
+#' logtree_reset()
+#' logtree_set_verbosity("debug")
+#' log_debug("Cache miss for key user:42")
+#' logtree_set_verbosity("info")
+log_debug <- function(msg) {
+  emit_leaf("debug", msg)
+  invisible(NULL)
+}
 #' Log an informational leaf line
 #'
 #' @param msg Character scalar.

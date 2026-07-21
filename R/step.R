@@ -119,22 +119,30 @@ set_stack_entry_status <- function(id, status) {
   invisible(NULL)
 }
 
+resolved_status <- function(status) {
+  if (identical(status, "running")) "success" else status
+}
+
 close_step <- function(id) {
   idx <- Find(function(i) the$stack[[i]]$id == id, seq_along(the$stack))
   if (is.null(idx)) return(invisible(NULL))
   # Cascade-close deepest-first down to (and including) idx. This keeps the
   # stack correct even if closing arrives out of the expected order (e.g. the
   # same-frame-sibling pattern in log_step("A"); log_step("B")).
+  result <- NULL
   for (i in rev(seq(idx, length(the$stack)))) {
     entry <- the$stack[[i]]
     # Groups are header-only synthetic parents: pop silently, no close line.
     if (!identical(entry$kind, "group")) {
       entry$elapsed <- now() - entry$start
       emit(list(kind = "close", entry = entry))
+      if (i == idx) {
+        result <- list(status = resolved_status(entry$status), elapsed = entry$elapsed)
+      }
     }
     the$stack[[i]] <- NULL
   }
-  invisible(NULL)
+  invisible(result)
 }
 
 finalize_step <- function(id, sentinel) {
@@ -219,9 +227,24 @@ log_open <- function(msg, glyph = NULL, parent = NULL, group_by = NULL) {
 #' any of its still-open descendants (deepest-first). With no `id`, closes the
 #' nearest open step, so simple last-in-first-out use needs no handle at all.
 #'
+#' A step's status only ever escalates via [log_warn()]/[log_error()] (see
+#' status elevation); it never comes back down on its own, so a step that
+#' logged an error and then recovered still closes with the error glyph. Pass
+#' `status` to override that explicitly -- this force-assigns the step's
+#' final status regardless of what it escalated to. Because `id = NULL`
+#' resolves to the nearest open step for both [log_open()]-managed and
+#' [log_step()]-managed steps alike, this also lets you close (and override)
+#' a `log_step()` step early, before its automatic close-on-frame-exit fires.
+#'
 #' @param id Step handle from [log_open()]. If omitted, the nearest open step
 #'   is closed.
-#' @return `NULL`, invisibly.
+#' @param status Optional character scalar overriding the step's final
+#'   status: one of `"success"`, `"warning"`, or `"error"`. Bypasses the
+#'   usual elevation rule instead of comparing against it.
+#' @return A list with `status` and `elapsed` (seconds) for the step just
+#'   closed, invisibly -- the same values rendered on its `Done` line
+#'   (`"running"` resolves to `"success"`, as it does for display). `NULL`,
+#'   invisibly, if there was no open step to close.
 #' @seealso [log_open()]
 #' @export
 #' @examples
@@ -229,14 +252,28 @@ log_open <- function(msg, glyph = NULL, parent = NULL, group_by = NULL) {
 #' log_open("Step 1")
 #' log_info("a child line")
 #' log_close()
-log_close <- function(id = NULL) {
+#'
+#' logtree_reset()
+#' log_open("Step 2")
+#' log_error("failed once")
+#' log_close(status = "success")  # recovered: override the elevated glyph
+#'
+#' logtree_reset()
+#' log_open("Step 3")
+#' result <- log_close()  # result$status, result$elapsed
+log_close <- function(id = NULL, status = NULL) {
   if (is.null(id)) {
     cur <- nearest_open_step()
     if (is.null(cur)) return(invisible(NULL))
     id <- cur$id
   }
+  if (!is.null(status)) {
+    if (!status %in% c("success", "warning", "error")) {
+      stop('`status` must be one of "success", "warning", "error".', call. = FALSE)
+    }
+    set_stack_entry_status(id, status)
+  }
   close_step(id)
-  invisible(NULL)
 }
 
 # -- Formatting: corner-on-close, zero-buffer (design doc section 3.5) --
@@ -286,7 +323,7 @@ format_open <- function(entry, theme = the$theme, color = TRUE) {
 format_close <- function(entry, theme = the$theme, color = TRUE) {
   d <- entry$depth
   prefix <- paste0(strrep(rail_unit(theme, color), max(d - 1L, 0L)), connector_str("corner", theme, color))
-  status <- if (identical(entry$status, "running")) "success" else entry$status
+  status <- resolved_status(entry$status)
   paste0(prefix, theme_glyph(status, theme, color), " Done  ", format_elapsed(entry$elapsed))
 }
 

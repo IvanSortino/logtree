@@ -10,10 +10,12 @@
 # U+2500 = BOX DRAWINGS LIGHT HORIZONTAL
 # U+2502 = BOX DRAWINGS LIGHT VERTICAL (rail)
 # U+2514 = BOX DRAWINGS LIGHT UP AND RIGHT (tree corner)
+# U+2699 = GEAR (unicode debug glyph)
 
 glyphs_unicode <- list(
   step       = list(glyph = "\u25b6", width = 1L, color = "cyan"),
   info       = list(glyph = "\u2139", width = 1L, color = "blue"),
+  debug      = list(glyph = "⚙", width = 1L, color = "silver"),
   success    = list(glyph = "\u2714", width = 1L, color = "green"),
   warning    = list(glyph = "\u26a0", width = 1L, color = "yellow"),
   error      = list(glyph = "\u2716", width = 1L, color = "red"),
@@ -27,6 +29,7 @@ glyphs_unicode <- list(
 glyphs_ascii <- list(
   step       = list(glyph = ">", width = 1L, color = NULL),
   info       = list(glyph = "i", width = 1L, color = NULL),
+  debug      = list(glyph = "d", width = 1L, color = NULL),
   success    = list(glyph = "+", width = 1L, color = NULL),
   warning    = list(glyph = "!", width = 1L, color = NULL),
   error      = list(glyph = "x", width = 1L, color = NULL),
@@ -44,10 +47,12 @@ glyphs_ascii <- list(
 # U+2705  = WHITE HEAVY CHECK MARK    U+274C  = CROSS MARK
 # U+2753  = BLACK QUESTION MARK ORNAMENT
 # U+26A0 U+FE0F = WARNING SIGN + VARIATION SELECTOR-16 (emoji presentation)
+# U+1F41B = BUG (emoji debug glyph)
 
 glyphs_emoji <- list(
   step       = list(glyph = "\U0001f539", width = 2L, color = NULL),
   info       = list(glyph = "\U0001f4a1", width = 2L, color = NULL),
+  debug      = list(glyph = "\U0001f41b", width = 2L, color = NULL),
   success    = list(glyph = "\u2705", width = 2L, color = NULL),
   warning    = list(glyph = "\u26a0\ufe0f", width = 2L, color = NULL),
   error      = list(glyph = "\u274c", width = 2L, color = NULL),

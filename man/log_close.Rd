@@ -4,25 +4,51 @@
 \alias{log_close}
 \title{Close a manually-opened step}
 \usage{
-log_close(id = NULL)
+log_close(id = NULL, status = NULL)
 }
 \arguments{
 \item{id}{Step handle from \code{\link[=log_open]{log_open()}}. If omitted, the nearest open step
 is closed.}
+
+\item{status}{Optional character scalar overriding the step's final
+status: one of \code{"success"}, \code{"warning"}, or \code{"error"}. Bypasses the
+usual elevation rule instead of comparing against it.}
 }
 \value{
-\code{NULL}, invisibly.
+A list with \code{status} and \code{elapsed} (seconds) for the step just
+closed, invisibly -- the same values rendered on its \code{Done} line
+(\code{"running"} resolves to \code{"success"}, as it does for display). \code{NULL},
+invisibly, if there was no open step to close.
 }
 \description{
 Closes the step opened by \code{\link[=log_open]{log_open()}} with the given \code{id}, cascading to
 any of its still-open descendants (deepest-first). With no \code{id}, closes the
 nearest open step, so simple last-in-first-out use needs no handle at all.
 }
+\details{
+A step's status only ever escalates via \code{\link[=log_warn]{log_warn()}}/\code{\link[=log_error]{log_error()}} (see
+status elevation); it never comes back down on its own, so a step that
+logged an error and then recovered still closes with the error glyph. Pass
+\code{status} to override that explicitly -- this force-assigns the step's
+final status regardless of what it escalated to. Because \code{id = NULL}
+resolves to the nearest open step for both \code{\link[=log_open]{log_open()}}-managed and
+\code{\link[=log_step]{log_step()}}-managed steps alike, this also lets you close (and override)
+a \code{log_step()} step early, before its automatic close-on-frame-exit fires.
+}
 \examples{
 logtree_reset()
 log_open("Step 1")
 log_info("a child line")
 log_close()
+
+logtree_reset()
+log_open("Step 2")
+log_error("failed once")
+log_close(status = "success")  # recovered: override the elevated glyph
+
+logtree_reset()
+log_open("Step 3")
+result <- log_close()  # result$status, result$elapsed
 }
 \seealso{
 \code{\link[=log_open]{log_open()}}

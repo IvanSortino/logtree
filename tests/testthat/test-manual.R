@@ -90,3 +90,110 @@ test_that("linking to an already-closed step errors", {
 
   expect_error(log_open("late", parent = s1), "is not open")
 })
+
+test_that("log_close(status=) overrides an elevated step's close glyph", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  capture.output({
+    log_open("Step")
+    log_error("boom")
+  })
+  out <- capture.output(log_close(status = "success"))
+  expect_match(out[1], "^\\|- \\+ Done")
+})
+
+test_that("log_close(status=) can override down to warning too", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  capture.output({
+    log_open("Step")
+    log_error("boom")
+  })
+  out <- capture.output(log_close(status = "warning"))
+  expect_match(out[1], "^\\|- ! Done")
+})
+
+test_that("log_close() returns the closed step's status and elapsed time", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  freeze_clock(c(0, 0.5))
+
+  capture.output(log_open("Step"))
+  capture.output(res <- log_close())
+
+  expect_equal(res$status, "success")
+  expect_equal(res$elapsed, 0.5)
+})
+
+test_that("log_close() resolves a step's return status to its elevated/overridden value", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  capture.output(log_open("Step"))
+  capture.output(log_error("boom"))
+  capture.output(elevated <- log_close())
+
+  expect_equal(elevated$status, "error")
+
+  capture.output(log_open("Step 2"))
+  capture.output(log_error("boom again"))
+  capture.output(overridden <- log_close(status = "warning"))
+
+  expect_equal(overridden$status, "warning")
+})
+
+test_that("log_close() returns NULL invisibly when there is nothing open", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  expect_null(log_close())
+})
+
+test_that("log_close(status=) rejects an invalid status value", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  capture.output(log_open("Step"))
+  expect_error(log_close(status = "running"), '"success", "warning", "error"')
+})
+
+test_that("log_close(status=) overrides a log_step()-managed step before its auto-close fires", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  f <- function() {
+    log_step("Connect")
+    log_error("primary unreachable")
+    log_close(status = "success")
+  }
+
+  out <- capture.output(invisible(f()))
+  expect_length(out, 3)
+  expect_match(out[3], "^\\|- \\+ Done")
+  expect_length(the$stack, 0)
+})
+
+test_that("log_close(id=, status=) overrides a step while cascading its still-open children normally", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  out <- capture.output({
+    parent <- log_open("Parent")
+    log_error("parent-level error")
+    log_open("Child")
+    log_close(parent, status = "success")
+  })
+
+  expect_false(any(grepl("x Done", out, fixed = TRUE)))
+  expect_match(out[length(out)], "^\\|- \\+ Done")
+  expect_length(the$stack, 0)
+})

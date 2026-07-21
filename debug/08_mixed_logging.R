@@ -1,53 +1,69 @@
 devtools::load_all()
 
-# Mixed logging, deep tree.
+# Mixed logging, deep tree, plus grouping and the two flavours of error.
 #
-# Three mechanisms in one run:
+# Mechanisms:
 #   * with_logging()          -- top-level wrapper: error handling + run summary
 #   * log_step()              -- auto steps inside functions, self-close on
 #                                frame exit; nesting follows the call stack
-#   * log_open() / log_close()-- manual steps for structure the call stack does
-#                                not give you (a block-level root, explicit
-#                                parent links, hand-controlled batches)
+#   * log_open() / log_close()-- manual steps for block-level structure
+#   * group_by =              -- collapse adjacent steps under a < header >
 #
-# Note: an auto log_step() written directly in the with_logging({ ... }) block
-# would bind its close to the *script's* frame (never fires here), so the
-# block-level scaffolding is built manually; the auto steps live inside the
-# functions the block calls.
+# Two error flavours:
+#   * RECOVERED: log_error() from code that then returns normally -- the leaf
+#     is logged, the enclosing step's glyph is elevated to error, and the run
+#     CONTINUES. The elevated glyph sticks (worst-status-seen, not final
+#     status) unless the caller explicitly overrides it with
+#     log_close(status = "success") once it knows recovery actually worked.
+#   * FATAL: a step's code actually stop()s -- with_logging marks the open
+#     steps failed, logs the error, prints "Run failed", and rethrows, so the
+#     run STOPS there.
+
+# --- Steps -----------------------------------------------------------------
+
+ingest <- function() {
+  log_step("Ingest")
+  # group_by collapses items that share a value under one < header >, but the
+  # group is only reused once the previous item has CLOSED -- so open/close each
+  # by hand here (an auto log_step in this same loop would stay open and nest).
+  for (name in c("prices", "stocks", "fx")) {
+    log_open(name, group_by = c(sources = "feed"))
+    log_info("rows ok")
+    log_close()   # close this item; the next one joins the same group
+  }
+}
+
+connect <- function() {
+  log_step("Connect primary")
+  log_error("primary unreachable")     # RECOVERED: logged, we keep going
+  log_info("failing over to replica")
+  log_success("connected to replica")
+  log_close(status = "success")        # override: recovered, so glyph reads success
+}
+
+migrate <- function() {
+  log_step("Apply migration")
+  log_info("adding column users.tier")
+  stop("constraint violation on users.email")   # FATAL: propagates out
+}
+
+deploy <- function() {
+  log_step("Deploy")
+  migrate()                            # throws -> run stops here
+  log_info("post-deploy checks")       # never reached
+}
+
+# --- Run 1: completes -- auto steps + grouping + recovered error + manual ---
 
 logtree_reset()
+with_logging({
+  run <- log_open("ETL run")           # manual root (block level)
 
-# --- Auto steps: depth comes from the call stack --------------------------
+  ingest()                             # auto step + grouped sub-tree
+  connect()                            # auto step + recovered error
 
-validate_file <- function(path) {
-  log_step(paste("Validate", path))   # child of whoever called us
-  log_info("checksum ok")
-  log_success("schema ok")            # leaves render one level deeper
-}
-
-read_source <- function() {
-  log_step("Read source")
-  for (f in c("a.csv", "b.csv")) validate_file(f)  # deeper still
-  log_info("2 files read")
-}
-
-transform_data <- function() {
-  log_step("Transform")
-  log_step("Normalize units")   # same frame -> nests under Transform
-  log_warn("3 rows coerced")    # elevates the enclosing step to a warning
-  log_info("units normalized")
-}
-
-# --- The run --------------------------------------------------------------
-
-
-  run <- log_open("ETL run")          # manual root (level 1)
-
-  read_source()                       # ETL run > Read source > Validate > leaf
-  transform_data()                    # ETL run > Transform > Normalize > leaf
-
-  # Manual deep branch, hand-linked and hand-closed.
-  load <- log_open("Load", parent = run)  # sibling of the two above, under run
+  # Manual deep branch: explicit parent links + hand-controlled batches.
+  load <- log_open("Load", parent = run)  # sibling of ingest/connect, under run
   tbl  <- log_open("Table: facts")        # under Load
   log_info("open connection")
   log_open("Batch 1/2")                   # under Table
@@ -57,4 +73,9 @@ transform_data <- function() {
   log_close(load)                         # cascade: Batch 2/2 + Table + Load
 
   log_close(run)                          # close the manual root
+})
 
+# --- Run 2: a fatal error stops the run ------------------------------------
+
+logtree_reset()
+with_logging(deploy())

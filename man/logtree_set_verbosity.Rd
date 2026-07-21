@@ -13,12 +13,12 @@ logtree_set_verbosity(level = c("debug", "info", "warn", "error"))
 \code{NULL}, invisibly.
 }
 \description{
-Leaf lines below this level are silently skipped: \code{log_info()} and
-\code{log_success()} count as \code{"info"}, \code{log_warn()} as \code{"warn"}, \code{log_error()}
-as \code{"error"}. Step open/close lines always render regardless of
-verbosity, since hiding them would break the tree structure. Suppressed
-\code{log_warn()}/\code{log_error()} calls still elevate the enclosing step's
-close glyph -- verbosity only hides the leaf line's own text.
+Leaf lines below this level are silently skipped: \code{log_debug()} counts as
+\code{"debug"}, \code{log_info()} and \code{log_success()} count as \code{"info"}, \code{log_warn()}
+as \code{"warn"}, \code{log_error()} as \code{"error"}. Step open/close lines always
+render regardless of verbosity, since hiding them would break the tree
+structure. Suppressed \code{log_warn()}/\code{log_error()} calls still elevate the
+enclosing step's close glyph -- verbosity only hides the leaf line's own text.
 }
 \examples{
 logtree_set_verbosity("info")

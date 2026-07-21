@@ -7,7 +7,23 @@ now <- function() {
 }
 
 format_elapsed <- function(seconds) {
-  sprintf("%.2fs", seconds)
+  if (seconds < 60) {
+    return(sprintf("%.2fs", seconds))
+  }
+
+  total_seconds <- round(seconds)
+  hours   <- total_seconds %/% 3600
+  minutes <- (total_seconds %% 3600) %/% 60
+  secs    <- total_seconds %% 60
+
+  if (hours > 0) {
+    if (minutes == 0) return(sprintf("%dh", hours))
+    return(sprintf("%dh %02dm", hours, minutes))
+  }
+  if (secs == 0) {
+    return(sprintf("%dm", minutes))
+  }
+  sprintf("%dm %02ds", minutes, secs)
 }
 
 #' Reset internal logtree state

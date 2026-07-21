@@ -85,3 +85,16 @@ test_that("group theme slot styles the header glyph, color, and brackets", {
   expect_match(colored, "\\[")
   expect_match(colored, "# < Item 1 >")
 })
+
+test_that("each theme preset defines a distinct debug glyph", {
+  withr::defer(logtree_set_theme("unicode"))
+
+  logtree_set_theme("ascii")
+  expect_equal(the$theme$debug$glyph, "d")
+
+  logtree_set_theme("unicode")
+  expect_equal(the$theme$debug$glyph, "⚙")
+
+  logtree_set_theme("emoji")
+  expect_equal(the$theme$debug$glyph, "\U0001f41b")
+})

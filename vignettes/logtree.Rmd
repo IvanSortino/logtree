@@ -148,3 +148,31 @@ logtree_set_verbosity("warn")
 fetch_articles()
 logtree_set_verbosity("info")
 ```
+
+
+`log_debug()` is the most verbose level, for fine-grained diagnostic detail.
+It's hidden by default (verbosity is `"info"`) and only shown when
+`logtree_set_verbosity("debug")` is called. Like `log_info()` and
+`log_success()`, it does not elevate the enclosing step's status.
+
+```{r}
+logtree_reset()
+
+fetch_verbose <- function() {
+  log_step("Fetching")
+  log_debug("cache miss for key user:42")
+  log_info("connecting to API")
+  log_debug("request took 84ms")
+  log_success("fetched 12 records")
+}
+
+# At default verbosity, debug lines are hidden
+fetch_verbose()
+
+# Raise verbosity to show debug lines
+logtree_set_verbosity("debug")
+logtree_reset()
+fetch_verbose()
+
+logtree_set_verbosity("info")
+```

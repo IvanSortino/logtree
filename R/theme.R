@@ -1,4 +1,4 @@
-glyph_keys <- c("step", "info", "success", "warning", "error", "incomplete")
+glyph_keys <- c("step", "debug", "info", "success", "warning", "error", "incomplete")
 
 theme_preset <- function(name) {
   switch(name,
@@ -49,12 +49,12 @@ logtree_set_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides 
 
 #' Set the minimum verbosity level to render
 #'
-#' Leaf lines below this level are silently skipped: `log_info()` and
-#' `log_success()` count as `"info"`, `log_warn()` as `"warn"`, `log_error()`
-#' as `"error"`. Step open/close lines always render regardless of
-#' verbosity, since hiding them would break the tree structure. Suppressed
-#' `log_warn()`/`log_error()` calls still elevate the enclosing step's
-#' close glyph -- verbosity only hides the leaf line's own text.
+#' Leaf lines below this level are silently skipped: `log_debug()` counts as
+#' `"debug"`, `log_info()` and `log_success()` count as `"info"`, `log_warn()`
+#' as `"warn"`, `log_error()` as `"error"`. Step open/close lines always
+#' render regardless of verbosity, since hiding them would break the tree
+#' structure. Suppressed `log_warn()`/`log_error()` calls still elevate the
+#' enclosing step's close glyph -- verbosity only hides the leaf line's own text.
 #'
 #' @param level One of `"debug"`, `"info"`, `"warn"`, `"error"`.
 #' @return `NULL`, invisibly.
