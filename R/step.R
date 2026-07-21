@@ -4,6 +4,16 @@ current_parent_id <- function() {
   the$stack[[n]]$id
 }
 
+# Visual depth of the innermost open node. In the pure auto model this equals
+# length(the$stack), but explicit parent-linking (log_open(parent=)) can place
+# a node at a shallower depth than its stack position, so depth must be read
+# from the entry itself, never inferred from stack length.
+current_depth <- function() {
+  n <- length(the$stack)
+  if (n == 0L) return(0L)
+  the$stack[[n]]$depth
+}
+
 parse_group_by <- function(group_by) {
   if (length(group_by) != 1L) {
     stop("`group_by` must be a length-1 named vector, e.g. c(name = value).", call. = FALSE)
@@ -46,20 +56,29 @@ open_or_reuse_group <- function(name, value) {
     kind      = "group",
     name      = name,
     value     = value,
-    depth     = length(the$stack) + 1L
+    depth     = current_depth() + 1L
   )
   the$stack[[length(the$stack) + 1L]] <- entry
   emit(list(kind = "group", entry = entry))
   id
 }
 
-push_step <- function(label, glyph = NULL, group_by = NULL) {
-  if (is.null(group_by)) {
+push_step <- function(label, glyph = NULL, group_by = NULL, parent = NULL) {
+  if (!is.null(parent)) {
+    p <- find_stack_entry(parent)
+    if (is.null(p)) {
+      stop(sprintf("parent step %s is not open.", parent), call. = FALSE)
+    }
+    parent_id <- parent
+    depth     <- p$depth + 1L
+  } else if (is.null(group_by)) {
     settle_groups()
     parent_id <- current_parent_id()
+    depth     <- current_depth() + 1L
   } else {
     g <- parse_group_by(group_by)
     parent_id <- open_or_reuse_group(g$name, g$value)
+    depth     <- current_depth() + 1L
   }
   id <- the$next_id
   the$next_id <- id + 1L
@@ -69,7 +88,7 @@ push_step <- function(label, glyph = NULL, group_by = NULL) {
     kind      = "step",
     label     = label,
     start     = now(),
-    depth     = length(the$stack) + 1L,
+    depth     = depth,
     status    = "running",
     glyph     = glyph
   )
@@ -149,6 +168,62 @@ log_step <- function(msg, glyph = NULL, group_by = NULL) {
   sentinel <- new.env(parent = emptyenv())
   withr::defer(finalize_step(entry$id, sentinel), envir = caller, priority = "first")
   invisible(entry$id)
+}
+
+#' Open a step under manual lifetime control
+#'
+#' Like [log_step()] but with no automatic close: the step stays open until
+#' you close it yourself with [log_close()]. This is what you want at top
+#' level (a script or the REPL), where there is no enclosing function frame
+#' for `log_step()` to hang its close on. You may also attach the step to a
+#' chosen open `parent` rather than the innermost open step, letting you build
+#' the tree by hand.
+#'
+#' @param msg Character scalar. The step's label.
+#' @param glyph Optional character scalar overriding this step's glyph.
+#' @param parent Optional step handle (an id returned by `log_open()`/
+#'   [log_step()]) of a currently-open step to nest this one under. Defaults to
+#'   the innermost open step. The target must still be open, else an error.
+#' @param group_by Optional named length-1 vector `c(name = value)`, as in
+#'   [log_step()].
+#' @return The step's id, invisibly. Capture it to pass to [log_close()] or as
+#'   another step's `parent`.
+#' @seealso [log_close()], [log_step()]
+#' @export
+#' @examples
+#' logtree_reset()
+#' s1 <- log_open("Step 1")
+#' log_info("a child line")
+#' log_close(s1)
+log_open <- function(msg, glyph = NULL, parent = NULL, group_by = NULL) {
+  entry <- push_step(msg, glyph, group_by = group_by, parent = parent)
+  invisible(entry$id)
+}
+
+#' Close a manually-opened step
+#'
+#' Closes the step opened by [log_open()] with the given `id`, cascading to
+#' any of its still-open descendants (deepest-first). With no `id`, closes the
+#' nearest open step, so simple last-in-first-out use needs no handle at all.
+#'
+#' @param id Step handle from [log_open()]. If omitted, the nearest open step
+#'   is closed.
+#' @return `NULL`, invisibly.
+#' @seealso [log_open()]
+#' @export
+#' @examples
+#' logtree_reset()
+#' log_open("Step 1")
+#' log_info("a child line")
+#' log_close()
+log_close <- function(id = NULL) {
+  if (is.null(id)) {
+    cur <- nearest_open_step()
+    if (is.null(cur)) return(invisible(NULL))
+    id <- cur$id
+  }
+  close_step(id)
+  invisible(NULL)
 }
 
 # -- Formatting: corner-on-close, zero-buffer (design doc section 3.5) --

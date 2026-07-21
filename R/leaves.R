@@ -37,7 +37,7 @@ emit_leaf <- function(status, msg) {
   id <- the$next_id
   the$next_id <- id + 1L
   emit(list(kind = "leaf", status = status, label = msg,
-            depth = length(the$stack), id = id, parent_id = current_parent_id()))
+            depth = current_depth(), id = id, parent_id = current_parent_id()))
 }
 
 #' Log an informational leaf line
