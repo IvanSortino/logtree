@@ -12,12 +12,12 @@ test_that("adjacent steps sharing a group value collapse under one header", {
   }
   out <- capture.output(run())
 
-  # One header wraps both members; the group itself emits no "Done" line, so
-  # the only close lines are the three real steps (Root, a, b).
+  # One header wraps both members. Four close lines now: the three real steps
+  # (Root, a, b) plus the group's own corner close line.
   expect_equal(sum(grepl("< g >", out, fixed = TRUE)), 1L)
   expect_equal(sum(grepl("> a$", out)), 1L)
   expect_equal(sum(grepl("> b$", out)), 1L)
-  expect_equal(sum(grepl("Done", out, fixed = TRUE)), 3L)
+  expect_equal(sum(grepl("Done", out, fixed = TRUE)), 4L)
   expect_length(the$stack, 0)
 })
 
@@ -121,6 +121,13 @@ test_that("json sink emits a group event with an id/parent_id chain", {
   # The group's parent is the root step.
   root <- Filter(function(p) p$label == "Root", opens)[[1]]
   expect_equal(grp[[1]]$parent_id, root$id)
+
+  # The group emits exactly one close event, carrying the same id and an
+  # elapsed time, so structured consumers can pair it with the open.
+  grp_close <- by_kind("group_close")
+  expect_length(grp_close, 1L)
+  expect_equal(grp_close[[1]]$id, grp[[1]]$id)
+  expect_false(is.na(grp_close[[1]]$elapsed))
 })
 
 test_that("group_by requires a length-1 vector", {

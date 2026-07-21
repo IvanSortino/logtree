@@ -35,6 +35,8 @@ settle_groups <- function(name = NULL, value = NULL) {
     top <- the$stack[[n]]
     if (!identical(top$kind, "group")) break
     if (!is.null(name) && identical(top$name, name) && identical(top$value, value)) break
+    top$elapsed <- now() - top$start
+    emit(list(kind = "group_close", entry = top))
     the$stack[[n]] <- NULL
   }
   invisible(NULL)
@@ -56,11 +58,27 @@ open_or_reuse_group <- function(name, value) {
     kind      = "group",
     name      = name,
     value     = value,
-    depth     = current_depth() + 1L
+    depth     = current_depth() + 1L,
+    start     = now(),
+    status    = "running"
   )
   the$stack[[length(the$stack) + 1L]] <- entry
   emit(list(kind = "group", entry = entry))
   id
+}
+
+# A group aggregates the status of its member steps: each member's resolved
+# status folds up into the group as it closes, so the group's own close line
+# reflects the worst thing that happened underneath it (running < success <
+# warning < error). Non-group / non-matching parents are ignored.
+elevate_group_status <- function(id, status) {
+  idx <- Find(function(i) the$stack[[i]]$id == id, seq_along(the$stack))
+  if (is.null(idx)) return(invisible(NULL))
+  if (!identical(the$stack[[idx]]$kind, "group")) return(invisible(NULL))
+  if (status_severity(status) > status_severity(the$stack[[idx]]$status)) {
+    the$stack[[idx]]$status <- status
+  }
+  invisible(NULL)
 }
 
 push_step <- function(label, glyph = NULL, group_by = NULL, parent = NULL) {
@@ -132,10 +150,16 @@ close_step <- function(id) {
   result <- NULL
   for (i in rev(seq(idx, length(the$stack)))) {
     entry <- the$stack[[i]]
-    # Groups are header-only synthetic parents: pop silently, no close line.
-    if (!identical(entry$kind, "group")) {
-      entry$elapsed <- now() - entry$start
+    entry$elapsed <- now() - entry$start
+    if (identical(entry$kind, "group")) {
+      # A group closes with its own corner line, statused from its members.
+      emit(list(kind = "group_close", entry = entry))
+    } else {
       emit(list(kind = "close", entry = entry))
+      # Fold this step's outcome up into its parent group (if any). The
+      # parent sits at a lower index and is still on the stack here, so it
+      # picks up the elevation before its own close line is emitted.
+      elevate_group_status(entry$parent_id, resolved_status(entry$status))
       if (i == idx) {
         result <- list(status = resolved_status(entry$status), elapsed = entry$elapsed)
       }

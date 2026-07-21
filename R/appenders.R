@@ -4,10 +4,11 @@ emit <- function(event) {
 
 console_sink <- function(event) {
   line <- switch(event$kind,
-    open  = format_open(event$entry),
-    close = format_close(event$entry),
-    group = format_group_header(event$entry),
-    leaf  = format_leaf(event$status, event$label, event$depth)
+    open        = format_open(event$entry),
+    close       = format_close(event$entry),
+    group       = format_group_header(event$entry),
+    group_close = format_close(event$entry),
+    leaf        = format_leaf(event$status, event$label, event$depth)
   )
   cat(line, "\n", sep = "")
 }
@@ -18,10 +19,11 @@ file_text_sink <- function(path) {
     # Always plain ASCII, no ANSI -- independent of the active console
     # theme (design doc section 6).
     line <- switch(event$kind,
-      open  = format_open(event$entry, theme = glyphs_ascii, color = FALSE),
-      close = format_close(event$entry, theme = glyphs_ascii, color = FALSE),
-      group = format_group_header(event$entry, theme = glyphs_ascii, color = FALSE),
-      leaf  = format_leaf(event$status, event$label, event$depth, theme = glyphs_ascii, color = FALSE)
+      open        = format_open(event$entry, theme = glyphs_ascii, color = FALSE),
+      close       = format_close(event$entry, theme = glyphs_ascii, color = FALSE),
+      group       = format_group_header(event$entry, theme = glyphs_ascii, color = FALSE),
+      group_close = format_close(event$entry, theme = glyphs_ascii, color = FALSE),
+      leaf        = format_leaf(event$status, event$label, event$depth, theme = glyphs_ascii, color = FALSE)
     )
     cat(line, "\n", file = path, append = TRUE, sep = "")
   }
@@ -66,7 +68,7 @@ file_json_sink <- function(path) {
     depth   <- if (is_leaf) event$depth else event$entry$depth
     label   <- if (is_leaf) {
       event$label
-    } else if (identical(event$kind, "group")) {
+    } else if (event$kind %in% c("group", "group_close")) {
       event$entry$name
     } else {
       event$entry$label
@@ -80,7 +82,7 @@ file_json_sink <- function(path) {
     } else {
       if (identical(event$entry$status, "running")) "success" else event$entry$status
     }
-    elapsed <- if (identical(event$kind, "close")) event$entry$elapsed else NA_real_
+    elapsed <- if (event$kind %in% c("close", "group_close")) event$entry$elapsed else NA_real_
 
     line <- to_json_line(list(
       ts        = as.numeric(Sys.time()),
