@@ -80,6 +80,15 @@ push_step <- function(label, glyph = NULL, group_by = NULL, parent = NULL) {
     parent_id <- open_or_reuse_group(g$name, g$value)
     depth     <- current_depth() + 1L
   }
+  # Opening a step at `depth` retires any still-open node at the same or
+  # greater depth: those are finished sibling/cousin subtrees, not ancestors
+  # of the new node. In the default path `depth` is always innermost + 1, so
+  # nothing qualifies and nesting is unchanged; this only unwinds when an
+  # explicit `parent` places the new step beside an already-open sibling.
+  while (length(the$stack) > 0L &&
+         the$stack[[length(the$stack)]]$depth >= depth) {
+    close_step(the$stack[[length(the$stack)]]$id)
+  }
   id <- the$next_id
   the$next_id <- id + 1L
   entry <- list(
@@ -178,6 +187,10 @@ log_step <- function(msg, glyph = NULL, group_by = NULL) {
 #' for `log_step()` to hang its close on. You may also attach the step to a
 #' chosen open `parent` rather than the innermost open step, letting you build
 #' the tree by hand.
+#'
+#' Opening a step at the same depth as an already-open step -- for example by
+#' linking to a shared `parent` -- first closes that sibling and its
+#' descendants, since a new sibling means the previous subtree is done.
 #'
 #' @param msg Character scalar. The step's label.
 #' @param glyph Optional character scalar overriding this step's glyph.

@@ -30,6 +30,11 @@ for \code{log_step()} to hang its close on. You may also attach the step to a
 chosen open \code{parent} rather than the innermost open step, letting you build
 the tree by hand.
 }
+\details{
+Opening a step at the same depth as an already-open step -- for example by
+linking to a shared \code{parent} -- first closes that sibling and its
+descendants, since a new sibling means the previous subtree is done.
+}
 \examples{
 logtree_reset()
 s1 <- log_open("Step 1")
