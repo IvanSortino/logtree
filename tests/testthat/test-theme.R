@@ -56,3 +56,32 @@ test_that("logtree_set_verbosity rejects an invalid level", {
   local_reset_verbosity()
   expect_error(logtree_set_verbosity("nonexistent"))
 })
+
+test_that("group theme slot styles the header glyph, color, and brackets", {
+  withr::defer(logtree_set_theme("unicode"))
+
+  # Default: folder glyph, magenta, no brackets (bracket defaults FALSE).
+  logtree_set_theme("unicode")
+  entry  <- list(depth = 1L, name = "Item 1")
+  folder <- glyphs_unicode$group$glyph
+  expect_equal(format_group_header(entry, color = FALSE), paste0(folder, " Item 1"))
+
+  # bracket = TRUE opts the < > wrapper back in, glyph still prepended.
+  logtree_set_theme(overrides = list(group = list(bracket = TRUE)))
+  expect_equal(format_group_header(entry, color = FALSE), paste0(folder, " < Item 1 >"))
+
+  # A glyph + color + bracket override merges like any other theme key. Note an
+  # overrides-only call re-resolves to the unicode preset first, so bracket must
+  # be restated here to survive the reset (see logtree_set_theme semantics).
+  logtree_set_theme(overrides = list(group = list(glyph = "#", color = "magenta", bracket = TRUE)))
+  expect_equal(the$theme$group$glyph, "#")
+
+  # No-color path prepends the glyph and keeps the brackets, no ANSI.
+  expect_equal(format_group_header(entry, color = FALSE), "# < Item 1 >")
+
+  # Color path wraps the header in ANSI while leaving the text intact.
+  withr::local_options(cli.num_colors = 256L)
+  colored <- format_group_header(entry, color = TRUE)
+  expect_match(colored, "\\[")
+  expect_match(colored, "# < Item 1 >")
+})

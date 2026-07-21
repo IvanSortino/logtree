@@ -18,6 +18,7 @@ glyphs_unicode <- list(
   warning    = list(glyph = "\u26a0", width = 1L, color = "yellow"),
   error      = list(glyph = "\u2716", width = 1L, color = "red"),
   incomplete = list(glyph = "\u25cc", width = 1L, color = "dim"),
+  group      = list(glyph = "\u25a3", color = "magenta", bracket = FALSE),
   branch     = list(glyph = "\u251c\u2500", color = "dim"),
   corner     = list(glyph = "\u2514\u2500", color = "dim"),
   pipe       = list(glyph = "\u2502", color = "dim")
@@ -30,6 +31,7 @@ glyphs_ascii <- list(
   warning    = list(glyph = "!", width = 1L, color = NULL),
   error      = list(glyph = "x", width = 1L, color = NULL),
   incomplete = list(glyph = "-", width = 1L, color = NULL),
+  group      = list(glyph = "", color = NULL, bracket = TRUE),
   # Same connector for branch and corner: ASCII has no distinct corner
   # glyph, the closing line's own status glyph + elapsed time mark the end
   # of a group instead (see design doc section 4.1).
@@ -50,6 +52,7 @@ glyphs_emoji <- list(
   warning    = list(glyph = "\u26a0\ufe0f", width = 2L, color = NULL),
   error      = list(glyph = "\u274c", width = 2L, color = NULL),
   incomplete = list(glyph = "\u2753", width = 2L, color = NULL),
+  group      = list(glyph = "\u25a3", color = "magenta", bracket = FALSE),
   # Tree connectors stay box-drawing even under the emoji preset.
   branch     = list(glyph = "\u251c\u2500", color = "dim"),
   corner     = list(glyph = "\u2514\u2500", color = "dim"),

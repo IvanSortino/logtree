@@ -17,13 +17,16 @@ theme_preset <- function(name) {
 #'   in the package documentation).
 #' @param overrides A named list of per-key overrides applied on top of
 #'   `theme` after it is resolved. Each entry may specify `glyph`, `width`,
-#'   and/or `color`; unspecified fields are kept from the existing entry.
+#'   and/or `color`; unspecified fields are kept from the existing entry. The
+#'   `group` slot also accepts `bracket` (logical, default `FALSE`): when
+#'   `TRUE` the header name is wrapped in `< >`.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_set_theme("ascii")
 #' logtree_set_theme("unicode")
 #' logtree_set_theme(overrides = list(success = list(glyph = "*")))
+#' logtree_set_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
 #' logtree_set_theme("unicode")
 logtree_set_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides = list()) {
   if (is.character(theme)) {

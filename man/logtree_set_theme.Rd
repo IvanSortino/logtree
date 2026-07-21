@@ -14,7 +14,9 @@ in the package documentation).}
 
 \item{overrides}{A named list of per-key overrides applied on top of
 \code{theme} after it is resolved. Each entry may specify \code{glyph}, \code{width},
-and/or \code{color}; unspecified fields are kept from the existing entry.}
+and/or \code{color}; unspecified fields are kept from the existing entry. The
+\code{group} slot also accepts \code{bracket} (logical, default \code{FALSE}): when
+\code{TRUE} the header name is wrapped in \verb{< >}.}
 }
 \value{
 \code{NULL}, invisibly.
@@ -26,5 +28,6 @@ Set the active glyph/color theme
 logtree_set_theme("ascii")
 logtree_set_theme("unicode")
 logtree_set_theme(overrides = list(success = list(glyph = "*")))
+logtree_set_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
 logtree_set_theme("unicode")
 }

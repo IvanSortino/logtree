@@ -218,5 +218,9 @@ format_group_header <- function(entry, theme = the$theme, color = TRUE) {
   } else {
     paste0(strrep(rail_unit(theme, color), max(d - 2L, 0L)), connector_str("branch", theme, color))
   }
-  paste0(prefix, colorize(paste0("< ", entry$name, " >"), c("bold", "cyan"), color))
+  g     <- theme$group
+  mark  <- if (!is.null(g$glyph) && nzchar(g$glyph)) paste0(g$glyph, " ") else ""
+  col   <- if (is.null(g)) "cyan" else g$color
+  label <- if (isTRUE(g$bracket)) paste0("< ", entry$name, " >") else entry$name
+  paste0(prefix, colorize(paste0(mark, label), col, color))
 }
