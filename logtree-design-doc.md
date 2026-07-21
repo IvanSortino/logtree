@@ -99,6 +99,27 @@ Without `with_logging()`, an uncaught error still unwinds depth correctly (Tier 
 guarantee) — it just won't retroactively paint the interrupted step red; it'll show
 as e.g. dimmed/incomplete instead. Worth documenting clearly so it's not a silent gap.
 
+### 3.3.1 Explicit override — `log_close(status = )`
+
+Tier 1 elevation (§3.3) is a one-way ratchet: `elevate_current_step()` only ever
+raises a step's status (`running < success < warning < error`), never lowers it, and
+`log_success()` doesn't participate in elevation at all. So a step that hits
+`log_error()` and then genuinely recovers (retries, fails over, finishes cleanly)
+still renders its close line as `✖` — the glyph reflects the *worst* status seen
+during the step's lifetime, not its final outcome. That's the right default (most
+elevated steps really did fail), but there's no escape hatch for callers who know
+better.
+
+`log_close(id = NULL, status = NULL)` adds one: an optional `status` argument
+(`"success"` / `"warning"` / `"error"`) that force-assigns the target step's status
+directly — bypassing the ratchet — immediately before the existing close. Because
+`id = NULL` already resolves to "nearest open step," and `log_open()` and
+`log_step()` push identical stack entries, this works for both manual steps and
+`log_step()`-managed (auto-closing) steps alike: calling `log_close(status =
+"success")` inside a `log_step()`-managed function closes it early, right there —
+the step's later automatic close (fired by `withr::defer` on frame exit) becomes a
+no-op, since the stack entry is already gone by the time it runs.
+
 ### 3.4 Leaf log lines
 
 ```r
