@@ -34,12 +34,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          install.packages(c("cli", "rlang", "withr", "logger"))
+          install.packages(c("cli", "rlang", "withr", "logger", "remotes"))
         shell: Rscript {0}
 
       - name: Install logtree
         run: |
-          devtools::install_local(dependencies = TRUE)
+          remotes::install_local(dependencies = TRUE)
         shell: Rscript {0}
 
       - name: Render Quarto project
