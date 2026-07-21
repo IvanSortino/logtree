@@ -1,3 +1,3 @@
-# logtree (development version)
+# logtree 0.1.0
 
 * Initial CRAN submission.
