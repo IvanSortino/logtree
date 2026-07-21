@@ -1,0 +1,7 @@
+^LICENSE\.md$
+^logtree-design-doc\.md$
+^README\.Rmd$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

@@ -1,0 +1,72 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# logtree
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+logtree renders nested process execution as a live, colored tree in the
+console -- tree connectors, status glyphs, and elapsed time per step --
+while keeping nesting depth correct even when a step errors partway
+through.
+
+```
+> Loading pipeline configuration
+  |- i Reading config.yml
+  |- + Validated 12 parameters              0.03s
+  |- + Done                                  0.15s
+> Fetching articles
+  |- i Connecting to API
+  |- ! Retry 1/3 due to timeout
+  |- + Fetched 1,204 articles                4.2s
+  |- + Done                                  4.4s
+x Classification failed
+  |- Error: model timeout after 30s
+```
+
+## Installation
+
+You can install the development version of logtree from
+[GitHub](https://github.com/) with:
+
+``` r
+# install.packages("pak")
+pak::pak("<github-user>/logtree")
+```
+
+## Example
+
+```{r example}
+library(logtree)
+
+pipeline <- function() {
+  log_step("Pipeline")
+  load_config()
+}
+
+load_config <- function() {
+  log_step("Load config")
+  log_info("Reading config.yml")
+  log_success("Validated 12 parameters")
+}
+
+pipeline()
+```
+
+Steps auto-close when the function that opened them returns -- normally,
+early, or via an uncaught error -- so nesting depth never gets stuck out of
+sync. See `vignette("logtree")` for error handling with `with_logging()`,
+themes, output sinks, and verbosity control.

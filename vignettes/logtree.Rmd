@@ -1,0 +1,150 @@
+---
+title: "logtree"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{logtree}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(logtree)
+```
+
+logtree renders nested process execution as a live, colored tree in the
+console: tree connectors, status glyphs, and elapsed time per step. Nesting
+depth is tracked via frame-exit handlers, so it never desynchronizes, even
+when a step errors partway through.
+
+## Basic nesting
+
+`log_step()` opens a step and automatically closes it when the calling
+function returns -- normally, via an early `return()`, or because an error
+propagated through it. Nesting composes for free: a step opened inside
+another step is automatically indented one level deeper, with no
+coordination needed between the two functions.
+
+```{r}
+logtree_reset()
+
+load_config <- function() {
+  log_step("Load config")
+  log_info("Reading config.yml")
+  log_success("Validated 12 parameters")
+}
+
+pipeline <- function() {
+  log_step("Pipeline")
+  load_config()
+}
+
+pipeline()
+```
+
+## Leaf lines and status elevation
+
+`log_info()` and `log_success()` are plain leaf lines. `log_warn()` and
+`log_error()` additionally elevate the *enclosing* step's status, so its
+close line renders the elevated glyph even though the function that opened
+it returns normally.
+
+```{r}
+logtree_reset()
+
+fetch_articles <- function() {
+  log_step("Fetching articles")
+  log_info("Connecting to API")
+  log_warn("Retry 1/3 due to timeout")
+  log_success("Fetched 1,204 articles")
+}
+
+fetch_articles()
+```
+
+## Handling uncaught errors with `with_logging()`
+
+If a step's code actually throws, wrap the run in `with_logging()`. Every
+step still open at the moment of the error is flagged as failed before the
+stack unwinds, the error is logged as a leaf line, a run summary prints,
+and the error is rethrown -- `with_logging()` never silently swallows it.
+
+```{r}
+logtree_reset()
+
+run_classifier <- function() {
+  with_logging({
+    log_step("Classifying")
+    stop("model timeout after 30s")
+  })
+}
+
+tryCatch(run_classifier(), error = function(e) invisible(NULL))
+```
+
+Even *without* `with_logging()`, depth tracking still unwinds correctly on
+an uncaught error -- the interrupted step just renders as dimmed/incomplete
+rather than retroactively painted red, since there was no handler installed
+to catch the condition and flag it before the stack unwound.
+
+```{r}
+logtree_reset()
+
+risky <- function() {
+  log_step("risky")
+  stop("boom")
+}
+
+tryCatch(risky(), error = function(e) invisible(NULL))
+```
+
+## Themes
+
+Three built-in presets are available: `"unicode"` (default), `"ascii"`
+(safe for log files, CI, and non-UTF-8 terminals), and `"emoji"`. Every
+glyph is overridable, and switching themes never breaks column alignment,
+since each glyph declares its own rendered width rather than having that
+width measured from the string.
+
+```{r}
+logtree_set_theme("ascii")
+pipeline()
+
+logtree_set_theme("unicode")
+```
+
+## Output sinks
+
+The console sink is always on. `logtree_sink_file()` adds a plain-text or
+NDJSON file sink; every logged event fans out to all active sinks
+simultaneously.
+
+```{r}
+log_path <- tempfile(fileext = ".log")
+logtree_sink_file(log_path, format = "text")
+
+logtree_reset()
+pipeline()
+
+writeLines(readLines(log_path))
+```
+
+## Verbosity
+
+`logtree_set_verbosity()` sets the minimum leaf-line level to render
+(`"debug"`, `"info"`, `"warn"`, `"error"`). Step open/close lines always
+render regardless of verbosity, since hiding them would break the tree
+structure; a suppressed `log_warn()`/`log_error()` still elevates the
+enclosing step's close glyph.
+
+```{r}
+logtree_set_verbosity("warn")
+fetch_articles()
+logtree_set_verbosity("info")
+```

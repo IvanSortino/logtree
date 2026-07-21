@@ -1,0 +1,21 @@
+Package: logtree
+Title: Tree-Style Process Logging for the Console
+Version: 0.0.0.9000
+Authors@R: 
+    person("Ivan", "Sortino", , "sortinus@gmail.com", role = c("aut", "cre"))
+Description: Render nested process execution as a live, colored tree in the console, with tree connectors, status glyphs, and elapsed time per step. Nesting depth is tracked via frame exit handlers so it never desynchronizes, even when a step errors. Builds on the 'cli' package for console rendering.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0
+Imports: 
+    cli,
+    rlang,
+    withr
+Suggests: 
+    jsonlite,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.1.4)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
