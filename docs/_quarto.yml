@@ -1,0 +1,28 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "logtree"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: get-started.qmd
+        text: Get Started
+      - href: api-reference.qmd
+        text: API Reference
+      - href: design.qmd
+        text: Design Philosophy
+    right:
+      - href: https://github.com/sortino/tree-logger
+        text: GitHub
+
+  footer: "Built with Quarto"
+
+format:
+  html:
+    theme: cosmo
+    code-fold: false
+    toc: true
+    number-sections: false
