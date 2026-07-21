@@ -5,6 +5,9 @@
 
 <!-- badges: start -->
 
+[Documentation](https://sortino.github.io/tree-logger/) \|
+[GitHub](https://github.com/sortino/tree-logger)
+
 <!-- badges: end -->
 
 logtree renders nested process execution as a live, colored tree in the
