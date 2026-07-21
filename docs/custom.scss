@@ -1,0 +1,10 @@
+/*-- scss:defaults --*/
+$font-family-monospace: "JetBrains Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+/*-- scss:rules --*/
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+pre, code {
+  font-variant-ligatures: normal;
+  font-feature-settings: "calt" 1, "liga" 1;
+}

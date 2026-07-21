@@ -8,3 +8,4 @@
 ^\.claude$
 ^debug$
 ^cran-comments\.md$
+^\.superpowers$

@@ -20,7 +20,7 @@ website:
 
 format:
   html:
-    theme: cosmo
+    theme: [cosmo, custom.scss]
     code-fold: false
     toc: true
     number-sections: false

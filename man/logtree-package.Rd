@@ -4,16 +4,16 @@
 \name{logtree-package}
 \alias{logtree}
 \alias{logtree-package}
-\title{logtree: Tree-Style Process Logging for the Console}
+\title{logtree: Tree-style console logger for nested processes}
 \description{
 Render nested process execution as a live, colored tree in the console, with tree connectors, status glyphs, and elapsed time per step. Nesting depth is tracked via frame exit handlers so it never desynchronizes, even when a step errors. Builds on the 'cli' package for console rendering.
 }
 \author{
-\strong{Maintainer}: Ivan Sortino \email{sortinus@gmail.com}
+\strong{Maintainer}: Ivan Sortino \email{ivan.sortino97@gmail.com}
 
 Authors:
 \itemize{
-  \item Ivan Sortino \email{sortinus@gmail.com}
+  \item Ivan Sortino \email{ivan.sortino97@gmail.com}
 }
 
 }

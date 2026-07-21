@@ -8,3 +8,7 @@ inst/doc
 
 # Quarto
 docs/_site/
+
+# Agent scratch
+.superpowers/
+docs/superpowers/
