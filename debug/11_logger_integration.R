@@ -13,7 +13,7 @@ if (!requireNamespace("logger", quietly = TRUE)) {
 section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")
 
 logtree_reset()
-logtree_set_theme("unicode")
+logtree_theme("unicode")
 logtree_threshold("debug")
 
 ns <- "logtree_demo"

@@ -9,8 +9,8 @@ section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")
 run_section <- function(title, fn) {
   section(title)
   logtree_reset()
-  logtree_set_theme("unicode")          # start each section from a clean theme
-  on.exit(logtree_set_theme("unicode"), add = TRUE)
+  logtree_theme("unicode")          # start each section from a clean theme
+  on.exit(logtree_theme("unicode"), add = TRUE)
   with_logging(fn(), summary = FALSE)
 }
 
@@ -30,21 +30,21 @@ run_section("A. default group header", function() {
 # ---------------------------------------------------------------------------
 # B. bracket = TRUE -- wrap the header name back in < >.
 run_section("B. bracket on", function() {
-  logtree_set_theme(overrides = list(group = list(bracket = TRUE)))
+  logtree_theme(overrides = list(group = list(bracket = TRUE)))
   grouped()
 })
 
 # ---------------------------------------------------------------------------
 # C. Swap the folder for another glyph -- still no brackets.
 run_section("C. glyph override (diamond)", function() {
-  logtree_set_theme(overrides = list(group = list(glyph = "◆")))
+  logtree_theme(overrides = list(group = list(glyph = "◆")))
   grouped()
 })
 
 # ---------------------------------------------------------------------------
 # D. Glyph + colour + brackets together.
 run_section("D. glyph + color + bracket", function() {
-  logtree_set_theme(overrides = list(group = list(glyph = "▶", color = "cyan", bracket = TRUE)))
+  logtree_theme(overrides = list(group = list(glyph = "▶", color = "cyan", bracket = TRUE)))
   grouped()
 })
 
@@ -52,6 +52,6 @@ run_section("D. glyph + color + bracket", function() {
 # E. Overrides ride any preset: ascii keeps brackets by default (no emoji);
 #    here we add a glyph + colour on top.
 run_section("E. ascii preset + styled group", function() {
-  logtree_set_theme("ascii", overrides = list(group = list(glyph = "#", color = "green")))
+  logtree_theme("ascii", overrides = list(group = list(glyph = "#", color = "green")))
   grouped()
 })

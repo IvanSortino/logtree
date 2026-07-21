@@ -82,7 +82,7 @@ Three built-in presets (`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji`) are pl
 named lists keyed by status/connector, each glyph entry declaring its own `width`
 explicitly rather than measured (`nchar()`/`ansi_nchar()` can't reliably size emoji
 cells) — this is what keeps message text column-aligned across themes.
-`logtree_set_theme()` either swaps the whole preset or merges a named list of
+`logtree_theme()` either swaps the whole preset or merges a named list of
 per-key overrides onto the active theme via `utils::modifyList()`. **Non-ASCII
 glyphs must be written as `\u`/`\U` escapes, never literal characters** — a hard
 CRAN portability requirement for package R source.

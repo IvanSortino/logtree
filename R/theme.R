@@ -23,17 +23,17 @@ theme_preset <- function(name) {
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
-#' logtree_set_theme("ascii")
-#' logtree_set_theme("unicode")
-#' logtree_set_theme(overrides = list(success = list(glyph = "*")))
-#' logtree_set_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
-#' logtree_set_theme("unicode")
-logtree_set_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides = list()) {
+#' logtree_theme("ascii")
+#' logtree_theme("unicode")
+#' logtree_theme(overrides = list(success = list(glyph = "*")))
+#' logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
+#' logtree_theme("unicode")
+logtree_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides = list()) {
   if (is.character(theme)) {
     theme <- match.arg(theme)
     the$theme <- theme_preset(theme)
   } else if (is.list(theme)) {
-    # Called as logtree_set_theme(list(...)) -- overrides-only, merge onto
+    # Called as logtree_theme(list(...)) -- overrides-only, merge onto
     # whatever theme is already active.
     overrides <- theme
   } else {

@@ -1,18 +1,18 @@
-test_that("logtree_set_theme(preset) fully swaps the glyph set", {
-  withr::defer(logtree_set_theme("unicode"))
+test_that("logtree_theme(preset) fully swaps the glyph set", {
+  withr::defer(logtree_theme("unicode"))
 
-  logtree_set_theme("ascii")
+  logtree_theme("ascii")
   expect_equal(the$theme$success$glyph, "+")
 
-  logtree_set_theme("unicode")
+  logtree_theme("unicode")
   expect_false(identical(the$theme$success$glyph, "+"))
 })
 
-test_that("logtree_set_theme(list(...)) merges overrides onto the active theme", {
-  withr::defer(logtree_set_theme("unicode"))
+test_that("logtree_theme(list(...)) merges overrides onto the active theme", {
+  withr::defer(logtree_theme("unicode"))
 
-  logtree_set_theme("ascii")
-  logtree_set_theme(list(success = list(glyph = "*")))
+  logtree_theme("ascii")
+  logtree_theme(list(success = list(glyph = "*")))
 
   expect_equal(the$theme$success$glyph, "*")
   # Unspecified fields (width, color) are preserved from the existing entry.
@@ -21,23 +21,23 @@ test_that("logtree_set_theme(list(...)) merges overrides onto the active theme",
   expect_equal(the$theme$error$glyph, "x")
 })
 
-test_that("logtree_set_theme(theme=, overrides=) applies overrides after a preset swap", {
-  withr::defer(logtree_set_theme("unicode"))
+test_that("logtree_theme(theme=, overrides=) applies overrides after a preset swap", {
+  withr::defer(logtree_theme("unicode"))
 
-  logtree_set_theme("unicode", overrides = list(warning = list(glyph = "W")))
+  logtree_theme("unicode", overrides = list(warning = list(glyph = "W")))
 
   expect_equal(the$theme$warning$glyph, "W")
   expect_equal(the$theme$success$glyph, glyphs_unicode$success$glyph)
 })
 
-test_that("logtree_set_theme rejects an invalid theme argument", {
-  withr::defer(logtree_set_theme("unicode"))
-  expect_error(logtree_set_theme(42))
+test_that("logtree_theme rejects an invalid theme argument", {
+  withr::defer(logtree_theme("unicode"))
+  expect_error(logtree_theme(42))
 })
 
-test_that("logtree_set_theme rejects an unknown preset name", {
-  withr::defer(logtree_set_theme("unicode"))
-  expect_error(logtree_set_theme("nonexistent"))
+test_that("logtree_theme rejects an unknown preset name", {
+  withr::defer(logtree_theme("unicode"))
+  expect_error(logtree_theme("nonexistent"))
 })
 
 test_that("a per-call glyph override in log_step() replaces only that step's glyph", {
@@ -58,22 +58,22 @@ test_that("logtree_threshold rejects an invalid level", {
 })
 
 test_that("group theme slot styles the header glyph, color, and brackets", {
-  withr::defer(logtree_set_theme("unicode"))
+  withr::defer(logtree_theme("unicode"))
 
   # Default: folder glyph, magenta, no brackets (bracket defaults FALSE).
-  logtree_set_theme("unicode")
+  logtree_theme("unicode")
   entry  <- list(depth = 1L, name = "Item 1")
   folder <- glyphs_unicode$group$glyph
   expect_equal(format_group_header(entry, color = FALSE), paste0(folder, " Item 1"))
 
   # bracket = TRUE opts the < > wrapper back in, glyph still prepended.
-  logtree_set_theme(overrides = list(group = list(bracket = TRUE)))
+  logtree_theme(overrides = list(group = list(bracket = TRUE)))
   expect_equal(format_group_header(entry, color = FALSE), paste0(folder, " < Item 1 >"))
 
   # A glyph + color + bracket override merges like any other theme key. Note an
   # overrides-only call re-resolves to the unicode preset first, so bracket must
-  # be restated here to survive the reset (see logtree_set_theme semantics).
-  logtree_set_theme(overrides = list(group = list(glyph = "#", color = "magenta", bracket = TRUE)))
+  # be restated here to survive the reset (see logtree_theme semantics).
+  logtree_theme(overrides = list(group = list(glyph = "#", color = "magenta", bracket = TRUE)))
   expect_equal(the$theme$group$glyph, "#")
 
   # No-color path prepends the glyph and keeps the brackets, no ANSI.
@@ -87,14 +87,14 @@ test_that("group theme slot styles the header glyph, color, and brackets", {
 })
 
 test_that("each theme preset defines a distinct debug glyph", {
-  withr::defer(logtree_set_theme("unicode"))
+  withr::defer(logtree_theme("unicode"))
 
-  logtree_set_theme("ascii")
+  logtree_theme("ascii")
   expect_equal(the$theme$debug$glyph, "d")
 
-  logtree_set_theme("unicode")
+  logtree_theme("unicode")
   expect_equal(the$theme$debug$glyph, "⚙")
 
-  logtree_set_theme("emoji")
+  logtree_theme("emoji")
   expect_equal(the$theme$debug$glyph, "\U0001f41b")
 })

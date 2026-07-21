@@ -13,8 +13,8 @@ render_fixture <- function() {
 
 test_that("unicode theme renders and aligns as expected", {
   withr::defer(logtree_reset())
-  logtree_set_theme("unicode")
-  withr::defer(logtree_set_theme("unicode"))
+  logtree_theme("unicode")
+  withr::defer(logtree_theme("unicode"))
   freeze_clock(c(0, 0, 0.03, 0.15))
 
   expect_snapshot(render_fixture())
@@ -30,8 +30,8 @@ test_that("ascii theme renders and aligns as expected", {
 
 test_that("emoji theme renders and aligns as expected", {
   withr::defer(logtree_reset())
-  logtree_set_theme("emoji")
-  withr::defer(logtree_set_theme("unicode"))
+  logtree_theme("emoji")
+  withr::defer(logtree_theme("unicode"))
   freeze_clock(c(0, 0, 0.03, 0.15))
 
   expect_snapshot(render_fixture())
@@ -39,15 +39,15 @@ test_that("emoji theme renders and aligns as expected", {
 
 test_that("message text starts at the same column across themes", {
   withr::defer(logtree_reset())
-  withr::defer(logtree_set_theme("unicode"))
+  withr::defer(logtree_theme("unicode"))
   freeze_clock(c(0, 0, 0.03, 0.15))
 
-  logtree_set_theme("unicode")
+  logtree_theme("unicode")
   out_unicode <- capture.output(invisible(render_fixture()))
   logtree_reset()
   freeze_clock(c(0, 0, 0.03, 0.15))
 
-  logtree_set_theme("ascii")
+  logtree_theme("ascii")
   out_ascii <- capture.output(invisible(render_fixture()))
 
   # Top-level step header: glyph + " " + label starts right after the glyph

@@ -5,8 +5,8 @@
 
 <!-- badges: start -->
 
-[Documentation](https://sortino.github.io/tree-logger/) \|
-[GitHub](https://github.com/sortino/tree-logger)
+[Documentation](https://IvanSortino.github.io/logtree/) \|
+[GitHub](https://github.com/IvanSortino/logtree)
 
 <!-- badges: end -->
 

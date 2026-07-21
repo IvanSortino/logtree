@@ -217,11 +217,11 @@ contexts (e.g. piped output, Rscript batch jobs) carries over directly.
 
 ### 4.2 Customization, including emoji
 
-Every glyph is overridable via `logtree_set_theme()`, keyed by status, each entry
+Every glyph is overridable via `logtree_theme()`, keyed by status, each entry
 taking `glyph`, `color`, and `width`:
 
 ```r
-logtree_set_theme(list(
+logtree_theme(list(
   success = list(glyph = "🎉", width = 2),
   warning = list(glyph = "⚠️",  width = 2),
   error   = list(glyph = "🔥", width = 2),
@@ -237,7 +237,7 @@ Three built-in presets cover the common cases without hand-rolling a theme:
   terminals
 - `"emoji"` — opt-in, width 2, more expressive but see the portability note below
 
-`logtree_set_theme("emoji")` swaps the whole set; passing a list on top of an active
+`logtree_theme("emoji")` swaps the whole set; passing a list on top of an active
 theme overrides individual entries only.
 
 ### 4.3 Alignment — why `width` is explicit rather than measured
@@ -267,7 +267,7 @@ padding is computed from that declared value. Consequences:
 - A custom emoji glyph is the one place a true cross-terminal guarantee isn't
   possible — the user setting a custom `glyph` is responsible for setting a matching
   `width` for their target terminal. Worth flagging prominently in
-  `logtree_set_theme()`'s docs, and worth defaulting new users to `"unicode"` rather
+  `logtree_theme()`'s docs, and worth defaulting new users to `"unicode"` rather
   than `"emoji"` for that reason.
 
 ### 4.4 Rendered preview
@@ -359,7 +359,7 @@ log_error(msg)
 log_debug(msg)
 with_logging(expr)              # top-level: error handler + end-of-run summary
 
-logtree_set_theme(theme = c("unicode", "ascii", "emoji"), overrides = list())
+logtree_theme(theme = c("unicode", "ascii", "emoji"), overrides = list())
 logtree_set_verbosity(level)    # "debug" | "info" | "warn" | "error"
 logtree_sink_file(path, format = c("text", "json"))
 layout_logtree(level, msg, ...)  # custom logger package layout

@@ -26,8 +26,8 @@ test_that("text file sink stays plain ASCII even when the console theme is unico
   logtree_reset()
   withr::defer(logtree_reset())
   local_reset_sinks()
-  withr::defer(logtree_set_theme("unicode"))
-  logtree_set_theme("unicode")
+  withr::defer(logtree_theme("unicode"))
+  logtree_theme("unicode")
 
   path <- tempfile()
   logtree_sink_file(path, format = "text")

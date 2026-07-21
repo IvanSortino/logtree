@@ -113,10 +113,10 @@ since each glyph declares its own rendered width rather than having that
 width measured from the string.
 
 ```{r}
-logtree_set_theme("ascii")
+logtree_theme("ascii")
 pipeline()
 
-logtree_set_theme("unicode")
+logtree_theme("unicode")
 ```
 
 ## Output sinks
@@ -137,22 +137,22 @@ writeLines(readLines(log_path))
 
 ## Verbosity
 
-`logtree_set_verbosity()` sets the minimum leaf-line level to render
+`logtree_threshold()` sets the minimum leaf-line level to render
 (`"debug"`, `"info"`, `"warn"`, `"error"`). Step open/close lines always
 render regardless of verbosity, since hiding them would break the tree
 structure; a suppressed `log_warn()`/`log_error()` still elevates the
 enclosing step's close glyph.
 
 ```{r}
-logtree_set_verbosity("warn")
+logtree_threshold("warn")
 fetch_articles()
-logtree_set_verbosity("info")
+logtree_threshold("info")
 ```
 
 
 `log_debug()` is the most verbose level, for fine-grained diagnostic detail.
 It's hidden by default (verbosity is `"info"`) and only shown when
-`logtree_set_verbosity("debug")` is called. Like `log_info()` and
+`logtree_threshold("debug")` is called. Like `log_info()` and
 `log_success()`, it does not elevate the enclosing step's status.
 
 ```{r}
@@ -170,11 +170,11 @@ fetch_verbose <- function() {
 fetch_verbose()
 
 # Raise verbosity to show debug lines
-logtree_set_verbosity("debug")
+logtree_threshold("debug")
 logtree_reset()
 fetch_verbose()
 
-logtree_set_verbosity("info")
+logtree_threshold("info")
 ```
 
 
@@ -212,6 +212,6 @@ logger::log_appender(logger::appender_console, namespace = ns)
 [log_error()], `WARN` becomes [log_warn()], `SUCCESS` becomes
 [log_success()], `INFO` becomes [log_info()], and `DEBUG`/`TRACE` both become
 [log_debug()] (logger has two debug-ish tiers, logtree has one). Note that
-`logger`'s own `log_threshold()` and `logtree_set_verbosity()` are two
+`logger`'s own `log_threshold()` and `logtree_threshold()` are two
 independent gates applied on top of each other -- both apply simultaneously,
 which is intentional.

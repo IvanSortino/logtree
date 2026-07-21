@@ -1,10 +1,10 @@
 test_that("logtree_reset clears the stack and id counter but not theme/sinks", {
   logtree_reset()
   withr::defer(logtree_reset())
-  withr::defer(logtree_set_theme("unicode"))
+  withr::defer(logtree_theme("unicode"))
   local_reset_sinks()
 
-  logtree_set_theme("ascii")
+  logtree_theme("ascii")
   path <- tempfile()
   logtree_sink_file(path, format = "text")
 

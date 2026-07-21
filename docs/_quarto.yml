@@ -15,10 +15,8 @@ website:
       - href: design.qmd
         text: Design Philosophy
     right:
-      - href: https://github.com/sortino/tree-logger
+      - href: https://github.com/IvanSortino/logtree
         text: GitHub
-
-  footer: "Built with Quarto"
 
 format:
   html:
