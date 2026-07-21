@@ -1,0 +1,187 @@
+---
+title: "Get Started"
+---
+
+## Installation
+
+logtree is not yet on CRAN. Install from GitHub:
+
+```{r}
+#| eval: false
+devtools::install_github("sortino/tree-logger")
+```
+
+Load it:
+
+```{r}
+#| eval: false
+library(logtree)
+```
+
+## Basic Usage
+
+`log_step()` opens a step and automatically closes it when the calling function returns — whether by normal return, early exit, or error.
+
+```{r}
+#| eval: false
+process_data <- function() {
+  log_step("Processing data")
+  # Your code here
+  log_info("Step completed successfully")
+}
+
+process_data()
+```
+
+Nesting happens automatically: a step opened inside another is indented one level deeper without any coordination between functions.
+
+```{r}
+#| eval: false
+load_config <- function() {
+  log_step("Load config")
+  log_info("Reading config.yml")
+  log_success("Validated 12 parameters")
+}
+
+pipeline <- function() {
+  log_step("Pipeline")
+  load_config()
+  log_info("All done")
+}
+
+pipeline()
+```
+
+## Leaves and Statuses
+
+Log messages at different levels as "leaves" attached to the current step:
+
+- `log_info()` — informational message (ℹ glyph)
+- `log_success()` — success message (✔ glyph)
+- `log_warn()` — warning, elevates current step to warning status (⚠ glyph)
+- `log_error()` — error message, elevates current step to error status (✖ glyph)
+- `log_debug()` — debug message (visible only at debug verbosity level)
+
+Step status is elevated by the most severe leaf: a step with a warning stays warning, but an error elevates it to error.
+
+```{r}
+#| eval: false
+validate_data <- function() {
+  log_step("Validate data")
+
+  if (has_issues) {
+    log_warn("Found 3 data anomalies")
+  } else {
+    log_success("All checks passed")
+  }
+}
+```
+
+## Grouping Steps
+
+Group adjacent steps under a synthetic header using `group_by`:
+
+```{r}
+#| eval: false
+process_file <- function(file) {
+  log_step("Process", group_by = c(dataset = file))
+  # Processing logic
+}
+
+for (file in c("data1.csv", "data2.csv")) {
+  process_file(file)
+}
+```
+
+Output groups consecutive steps with the same value under one header. When values differ or a non-grouped step appears, the group closes.
+
+## Theming
+
+Customize glyphs and tree connectors with built-in themes or custom definitions:
+
+```{r}
+#| eval: false
+library(logtree)
+
+# Switch to ASCII theme (portable, no emoji)
+logtree_theme("ascii")
+
+# Or use emoji theme
+logtree_theme("emoji")
+
+# Or define a custom theme
+logtree_theme(
+  list(
+    running = "→",
+    success = "•",
+    warning = "!",
+    error = "x"
+  )
+)
+```
+
+## Error Handling
+
+logtree works correctly even when steps error. Use `with_logging()` to automatically mark all open steps as error and log the condition before rethrowing:
+
+```{r}
+#| eval: false
+with_logging({
+  log_step("Risky operation")
+  risky_function()  # Throws error
+  log_success("Completed")
+})
+```
+
+If an error occurs:
+1. All open steps are marked with error status
+2. The error message is logged as a leaf
+3. The error is rethrown (not swallowed)
+
+Without `with_logging()`, a step whose frame exits abnormally is marked `"incomplete"` (dimmed glyph) rather than showing false success.
+
+## Logging to Files
+
+Send logs to a file in addition to the console:
+
+```{r}
+#| eval: false
+logtree_sink_file("pipeline.log", format = "text")
+# or JSON format
+logtree_sink_file("pipeline.json", format = "json")
+
+# Then log normally
+log_step("Process")
+```
+
+## Integration with logger Package
+
+Use logtree as a layout for the `logger` package:
+
+```{r}
+#| eval: false
+library(logger)
+library(logtree)
+
+log_appender(appender_console_with_logtree)
+```
+
+## Verbosity Control
+
+Control which messages appear using `logtree_threshold()`:
+
+```{r}
+#| eval: false
+# Show debug messages
+logtree_threshold("debug")
+
+# Show only warnings and errors
+logtree_threshold("warn")
+```
+
+Levels (from most to least verbose):
+- `debug`
+- `info`
+- `success`
+- `warn`
+- `error`
