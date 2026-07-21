@@ -15,17 +15,20 @@ console – tree connectors, status glyphs, and elapsed time per step –
 while keeping nesting depth correct even when a step errors partway
 through.
 
-    > Loading pipeline configuration
-      |- i Reading config.yml
-      |- + Validated 12 parameters              0.03s
-      |- + Done                                  0.15s
-    > Fetching articles
-      |- i Connecting to API
-      |- ! Retry 1/3 due to timeout
-      |- + Fetched 1,204 articles                4.2s
-      |- + Done                                  4.4s
-    x Classification failed
-      |- Error: model timeout after 30s
+``` ansi
+[36m▶[0m Loading pipeline configuration
+[2m├─[0m [34mℹ[0m Reading config.yml
+[2m├─[0m [32m✔[0m Validated 12 parameters              0.03s
+[2m└─[0m [32m✔[0m Done                                  0.15s
+[36m▶[0m Fetching articles
+[2m├─[0m [34mℹ[0m Connecting to API
+[2m├─[0m [33m⚠[0m Retry 1/3 due to timeout
+[2m├─[0m [32m✔[0m Fetched 1,204 articles                4.2s
+[2m└─[0m [32m✔[0m Done                                  4.4s
+[36m▶[0m Classifying articles
+[2m├─[0m [31m✖[0m Error: model timeout after 30s
+[2m└─[0m [31m✖[0m Done                                  30.10s
+```
 
 ## Installation
 
@@ -89,7 +92,6 @@ fetch <- function() {
   log_success("fetched 128 rows")
 }
 
-logtree_reset()
 with_logging(fetch(), summary = FALSE) # default verbosity ("info"): debug hidden
 #> ▶ Fetch
 #> ├─ ℹ requesting from API
@@ -124,7 +126,6 @@ connect_db <- function() {
   log_close(status = "success") # recovered: override the elevated glyph
 }
 
-logtree_reset()
 with_logging(connect_db(), summary = FALSE)
 #> ▶ Connect primary
 #> ├─ ✖ primary unreachable
@@ -144,7 +145,6 @@ apply_migration <- function() {
   stop("constraint violation on users.email")
 }
 
-logtree_reset()
 try(with_logging(apply_migration()), silent = TRUE)
 #> ▶ Apply migration
 #> ├─ ℹ adding column users.tier
@@ -176,7 +176,6 @@ run_pipeline <- function() {
   for (i in 1:2) process_item(i)
 }
 
-logtree_reset()
 with_logging(run_pipeline(), summary = FALSE)
 #> ▶ Pipeline run
 #> ├─ ▣ Item 1
@@ -207,7 +206,6 @@ with_logging(run_pipeline(), summary = FALSE)
 
 ``` r
 demo_build <- function() {
-  logtree_reset()
   with_logging({
     log_step("Build")
     log_info("compiling")

@@ -12,3 +12,6 @@ docs/_site/
 # Agent scratch
 .superpowers/
 docs/superpowers/
+
+/.quarto/
+**/*.quarto_ipynb
