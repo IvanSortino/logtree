@@ -15,13 +15,13 @@ log_debug(msg)
 \description{
 The most verbose leaf level, for fine-grained diagnostic detail that
 would be noisy at the default verbosity. Shown only when verbosity is
-\code{"debug"} (see \code{\link[=logtree_set_verbosity]{logtree_set_verbosity()}}). Like \code{\link[=log_info]{log_info()}} and
+\code{"debug"} (see \code{\link[=logtree_threshold]{logtree_threshold()}}). Like \code{\link[=log_info]{log_info()}} and
 \code{\link[=log_success]{log_success()}}, it does not elevate the enclosing step's status --
 unlike \code{\link[=log_warn]{log_warn()}}/\code{\link[=log_error]{log_error()}}.
 }
 \examples{
 logtree_reset()
-logtree_set_verbosity("debug")
+logtree_threshold("debug")
 log_debug("Cache miss for key user:42")
-logtree_set_verbosity("info")
+logtree_threshold("info")
 }

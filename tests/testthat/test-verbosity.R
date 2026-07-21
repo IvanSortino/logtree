@@ -25,7 +25,7 @@ test_that("verbosity = warn hides info/success leaf lines but keeps warn/error",
   local_ascii_theme()
   local_reset_verbosity()
 
-  logtree_set_verbosity("warn")
+  logtree_threshold("warn")
 
   f <- function() {
     log_step("Step")
@@ -42,13 +42,32 @@ test_that("verbosity = warn hides info/success leaf lines but keeps warn/error",
   expect_true(any(grepl("error line", out)))
 })
 
+test_that("logtree_threshold accepts uppercase level names", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_reset_verbosity()
+
+  logtree_threshold("WARN")
+
+  f <- function() {
+    log_step("Step")
+    log_info("info line")
+    log_warn("warn line")
+  }
+  out <- capture.output(invisible(f()))
+
+  expect_false(any(grepl("info line", out)))
+  expect_true(any(grepl("warn line", out)))
+})
+
 test_that("verbosity = error hides everything but error leaf lines", {
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
   local_reset_verbosity()
 
-  logtree_set_verbosity("error")
+  logtree_threshold("error")
 
   f <- function() {
     log_step("Step")
@@ -69,7 +88,7 @@ test_that("step open/close lines always render regardless of verbosity", {
   local_ascii_theme()
   local_reset_verbosity()
 
-  logtree_set_verbosity("error")
+  logtree_threshold("error")
 
   f <- function() {
     log_step("Always visible")
@@ -88,7 +107,7 @@ test_that("a suppressed log_warn still elevates the enclosing step's close glyph
   local_ascii_theme()
   local_reset_verbosity()
 
-  logtree_set_verbosity("error")
+  logtree_threshold("error")
 
   f <- function() {
     log_step("Step")
@@ -123,7 +142,7 @@ test_that("verbosity = debug shows debug leaf lines alongside info/success/warn/
   local_ascii_theme()
   local_reset_verbosity()
 
-  logtree_set_verbosity("debug")
+  logtree_threshold("debug")
 
   f <- function() {
     log_step("Step")

@@ -4,7 +4,7 @@ test_that("layout_logtree maps every logger severity onto the right logtree leaf
   withr::defer(logtree_reset())
   local_ascii_theme()
   local_reset_verbosity()
-  logtree_set_verbosity("debug")
+  logtree_threshold("debug")
 
   f <- function() {
     log_step("Step")

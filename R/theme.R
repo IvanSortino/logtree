@@ -47,7 +47,7 @@ logtree_set_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides 
   invisible(NULL)
 }
 
-#' Set the minimum verbosity level to render
+#' Set the minimum log level threshold to render
 #'
 #' Leaf lines below this level are silently skipped: `log_debug()` counts as
 #' `"debug"`, `log_info()` and `log_success()` count as `"info"`, `log_warn()`
@@ -56,13 +56,13 @@ logtree_set_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides 
 #' structure. Suppressed `log_warn()`/`log_error()` calls still elevate the
 #' enclosing step's close glyph -- verbosity only hides the leaf line's own text.
 #'
-#' @param level One of `"debug"`, `"info"`, `"warn"`, `"error"`.
+#' @param level One of `"debug"`, `"info"`, `"warn"`, `"error"` (case-insensitive).
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
-#' logtree_set_verbosity("info")
-logtree_set_verbosity <- function(level = c("debug", "info", "warn", "error")) {
-  the$verbosity <- match.arg(level)
+#' logtree_threshold("info")
+logtree_threshold <- function(level = c("debug", "info", "warn", "error")) {
+  the$verbosity <- match.arg(tolower(level), c("debug", "info", "warn", "error"))
   invisible(NULL)
 }
 

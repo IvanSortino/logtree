@@ -14,7 +14,7 @@ section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")
 
 logtree_reset()
 logtree_set_theme("unicode")
-logtree_set_verbosity("debug")
+logtree_threshold("debug")
 
 ns <- "logtree_demo"
 logger::log_layout(logtree::layout_logtree, namespace = ns)

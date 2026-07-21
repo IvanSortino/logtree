@@ -52,9 +52,9 @@ test_that("a per-call glyph override in log_step() replaces only that step's gly
   expect_match(out[1], "^@ Custom$")
 })
 
-test_that("logtree_set_verbosity rejects an invalid level", {
+test_that("logtree_threshold rejects an invalid level", {
   local_reset_verbosity()
-  expect_error(logtree_set_verbosity("nonexistent"))
+  expect_error(logtree_threshold("nonexistent"))
 })
 
 test_that("group theme slot styles the header glyph, color, and brackets", {

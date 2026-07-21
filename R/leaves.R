@@ -44,7 +44,7 @@ emit_leaf <- function(status, msg) {
 #'
 #' The most verbose leaf level, for fine-grained diagnostic detail that
 #' would be noisy at the default verbosity. Shown only when verbosity is
-#' `"debug"` (see [logtree_set_verbosity()]). Like [log_info()] and
+#' `"debug"` (see [logtree_threshold()]). Like [log_info()] and
 #' [log_success()], it does not elevate the enclosing step's status --
 #' unlike [log_warn()]/[log_error()].
 #'
@@ -53,9 +53,9 @@ emit_leaf <- function(status, msg) {
 #' @export
 #' @examples
 #' logtree_reset()
-#' logtree_set_verbosity("debug")
+#' logtree_threshold("debug")
 #' log_debug("Cache miss for key user:42")
-#' logtree_set_verbosity("info")
+#' logtree_threshold("info")
 log_debug <- function(msg) {
   emit_leaf("debug", msg)
   invisible(NULL)

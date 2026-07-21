@@ -19,7 +19,7 @@ fetch <- function() {
 # --- A. default verbosity ("info") -- debug lines are hidden ---------------
 section("A. default verbosity (info) -- debug hidden")
 logtree_reset()
-logtree_set_verbosity("info")
+logtree_threshold("info")
 with_logging(fetch(), summary = FALSE)
 
 # --- B. verbosity = "debug" -- shown, under every theme --------------------
@@ -27,9 +27,9 @@ for (th in c("unicode", "ascii", "emoji")) {
   section(paste0("B. verbosity = debug, theme = ", th))
   logtree_reset()
   logtree_set_theme(th)
-  logtree_set_verbosity("debug")
+  logtree_threshold("debug")
   with_logging(fetch(), summary = FALSE)
 }
 
 logtree_set_theme("unicode")
-logtree_set_verbosity("info")
+logtree_threshold("info")

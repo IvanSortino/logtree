@@ -52,7 +52,7 @@ logger::log_appender(logger::appender_void)
 \code{INFO} -> \code{\link[=log_info]{log_info()}}, \code{DEBUG}/\code{TRACE} -> \code{\link[=log_debug]{log_debug()}} (\code{logger} has
 two debug-ish tiers, \code{logtree} has one, so both collapse to the same
 leaf). Note \code{logger}'s own \code{log_threshold()} already gates before the
-layout is ever invoked; \code{logtree_set_verbosity()} is then an
+layout is ever invoked; \code{logtree_threshold()} is then an
 independent, second gate applied on top of that -- both legitimately
 apply at once, this is not a bug.
 }

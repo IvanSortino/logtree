@@ -21,7 +21,7 @@
 #' `INFO` -> [log_info()], `DEBUG`/`TRACE` -> [log_debug()] (`logger` has
 #' two debug-ish tiers, `logtree` has one, so both collapse to the same
 #' leaf). Note `logger`'s own `log_threshold()` already gates before the
-#' layout is ever invoked; `logtree_set_verbosity()` is then an
+#' layout is ever invoked; `logtree_threshold()` is then an
 #' independent, second gate applied on top of that -- both legitimately
 #' apply at once, this is not a bug.
 #'
