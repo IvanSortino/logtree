@@ -15,7 +15,7 @@
 glyphs_unicode <- list(
   step       = list(glyph = "\u25b6", width = 1L, color = "cyan"),
   info       = list(glyph = "\u2139", width = 1L, color = "blue"),
-  debug      = list(glyph = "⚙", width = 1L, color = "silver"),
+  debug      = list(glyph = "\u2699", width = 1L, color = "silver"),
   success    = list(glyph = "\u2714", width = 1L, color = "green"),
   warning    = list(glyph = "\u26a0", width = 1L, color = "yellow"),
   error      = list(glyph = "\u2716", width = 1L, color = "red"),

@@ -195,6 +195,7 @@ nesting goes.
 | warning     | ⚠       | `!`             | yellow         | 1     |
 | error       | ✖       | `x`             | red            | 1     |
 | info        | ℹ       | `i`             | blue           | 1     |
+| debug       | ⚙       | `d`             | silver         | 1     |
 | tree branch | `├─`    | `` `\|-` ``      | dim            | —     |
 | tree end    | `└─`    | `` `\|-` ``      | dim            | —     |
 | tree pipe   | `│`     | `` `\|` ``       | dim            | —     |
@@ -355,11 +356,13 @@ log_info(msg)
 log_success(msg)
 log_warn(msg)
 log_error(msg)
+log_debug(msg)
 with_logging(expr)              # top-level: error handler + end-of-run summary
 
 logtree_set_theme(theme = c("unicode", "ascii", "emoji"), overrides = list())
 logtree_set_verbosity(level)    # "debug" | "info" | "warn" | "error"
 logtree_sink_file(path, format = c("text", "json"))
+layout_logtree(level, msg, ...)  # custom logger package layout
 logtree_reset()                 # clear stack/state (mainly for tests / knitr re-runs)
 ```
 
@@ -515,3 +518,21 @@ output behind `\donttest{}`.
 7. File / NDJSON appenders (tempdir-only in examples).
 8. Docs, vignette, README.Rmd, tests; run `R CMD check --as-cran` and drive it to
    0/0/0 before considering a submission.
+
+
+## 11. Third-party integration: bridging to `logger`
+
+`logger`'s per-call pipeline is `formatter() -> layout() -> appender()`.
+Only the layout stage receives the structured level object (e.g.
+`structure(400L, level = "INFO", class = c("loglevel","integer"))`) --
+appenders only ever see a pre-formatted character line. That makes a
+custom *layout*, not a custom appender, the correct integration point:
+`layout_logtree()` (R/logger-integration.R) reads `attr(level, "level")`
+and dispatches to the matching logtree leaf function, then returns
+`character(0)` since the "record" is discarded by `logger::appender_void`
+(already exported by logger -- no bespoke no-op appender needed here).
+
+`logger`'s own `log_threshold()` gates before the layout is ever called;
+`logtree_set_verbosity()` then applies as an independent second gate on
+top. Both legitimately apply simultaneously -- this is intentional
+layering, not a bug to reconcile.
