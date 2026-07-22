@@ -219,9 +219,9 @@ logtree_theme("unicode")
 - **Output sinks** -- `logtree_sink_file(path, format = c("text", "json"))`
   mirrors console output to a plain-text or NDJSON file; every registered
   sink runs alongside the console sink.
-- **`logger` integration** -- `layout_logtree()` bridges the
-  [logger](https://daroczig.github.io/logger/) package so
-  `logger::log_info()` and friends render as logtree leaves.
+- **`logger` integration** -- `logtree_logger()` routes the
+  [logger](https://daroczig.github.io/logger/) package through logtree in one
+  call, so `logger::log_info()` and friends render as logtree leaves.
 - **Manual step control** -- `log_open()`/`log_close()` open and close steps
   by hand (with an explicit `parent`) instead of relying on frame exit,
   useful at top level or across script blocks. Opening a step at the same

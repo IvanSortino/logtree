@@ -92,6 +92,7 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | Function | Params |
 |---|---|
 | `layout_logtree` `[export]` | `level, msg, namespace = NA_character_, .logcall = sys.call(), .topcall = sys.call(-1), .topenv = parent.frame(), .timestamp = Sys.time()` |
+| `logtree_logger` `[export]` | `namespace = "global", threshold = TRUE` |
 
 ## Package hook (R/zzz.R)
 

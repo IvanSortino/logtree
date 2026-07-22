@@ -4,7 +4,7 @@
 \name{logtree-package}
 \alias{logtree}
 \alias{logtree-package}
-\title{logtree: Tree-style console logger for nested processes}
+\title{logtree: Tree-Style Console Logger for Nested Processes}
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 

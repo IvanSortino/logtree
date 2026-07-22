@@ -106,27 +106,37 @@ tryCatch(risky(), error = function(e) invisible(NULL))
 
 ## Grouping
 
-`log_step(label, group = c(name = value))` collapses adjacent steps that
-share the same `value` under one synthetic header, instead of nesting each
-step on its own. The group stays open across calls with a matching value
-and only closes -- as a sibling, with its own status aggregated from its
-members -- once a step with a different value (or a plain ungrouped step)
-appears at the same level. Grouping is strictly adjacency-based: the same
-value recurring later, after something else has closed the group, opens a
-fresh one rather than reusing the old header.
+`log_step(label, group = value)` collapses adjacent steps that share the
+same `value` under one synthetic header, instead of nesting each step on its
+own. Here several files belong to the same dataset, so each dataset becomes a
+header and its files sit underneath. The group stays open across calls with a
+matching value and only closes -- as a sibling, with its own status
+aggregated from its members -- once a step with a different value (or a plain
+ungrouped step) appears at the same level, or the enclosing step finishes.
+Grouping is strictly adjacency-based: the same value recurring later, after
+something else has closed the group, opens a fresh one rather than reusing the
+old header.
+
+Pass a bare `value` to use it as both the match key and the header, or
+`c(name = value)` to show a fixed `name` while still grouping on `value`.
 
 ```{r}
 logtree_reset()
 
-process_file <- function(file) {
-  log_step("Process", group = c(dataset = file))
+load_file <- function(dataset, file) {
+  log_step(file, group = dataset)
   log_info("Reading rows")
-  log_success("Processed")
+  log_success("Merged into dataset")
 }
 
-for (file in c("data1.csv", "data1.csv", "data2.csv")) {
-  process_file(file)
+import_datasets <- function() {
+  log_step("Import datasets")
+  load_file("sales",   "2023.csv")
+  load_file("sales",   "2024.csv")
+  load_file("returns", "2024.csv")
 }
+
+import_datasets()
 ```
 
 ## Themes
@@ -207,17 +217,18 @@ logtree_threshold("info")
 
 If your codebase already uses the CRAN `logger` package
 (<https://daroczig.github.io/logger/>) for logging, you can route those calls
-through `logtree` without rewriting them. `logtree` provides a custom layout
-function `layout_logtree` that integrates with `logger`'s pipeline. Pair it
-with `logger::appender_void` (a ready-made no-op appender) so that `logtree`
-does the rendering as a side effect.
+through `logtree` without rewriting them. Call `logtree_logger()` once near the
+top of your script: it registers `logtree`'s custom layout, pairs it with
+`logger::appender_void` (a no-op appender) so `logtree` does the rendering, and
+opens `logger`'s own threshold so that `logtree_threshold()` becomes the single
+gate on what is shown.
 
 ```{r, eval = requireNamespace("logger", quietly = TRUE)}
 logtree_reset()
+logtree_threshold("debug")  # the only gate, now that logtree_logger() opened logger's
 
 ns <- "my_app"
-logger::log_layout(logtree::layout_logtree, namespace = ns)
-logger::log_appender(logger::appender_void, namespace = ns)
+logtree_logger(namespace = ns)
 
 process_data <- function() {
   log_step("Processing data")
@@ -227,10 +238,6 @@ process_data <- function() {
 }
 
 process_data()
-
-# Restore the namespace's original layout/appender
-logger::log_layout(logger::layout_simple, namespace = ns)
-logger::log_appender(logger::appender_console, namespace = ns)
 ```
 
 `logger` severities map onto logtree leaf levels: `FATAL`/`ERROR` become

@@ -1,7 +1,7 @@
-# Bridging the `logger` package (daroczig/logger) into logtree: a custom
-# *layout* (logtree::layout_logtree) paired with logger's built-in no-op
-# appender (logger::appender_void), so logtree does the real rendering as a
-# layout side effect. Requires the `logger` package (Suggests only).
+# Bridging the `logger` package (daroczig/logger) into logtree in one call:
+# logtree_logger() registers logtree's layout + logger's no-op appender and
+# opens logger's own threshold, so every logger::log_*() call renders as a
+# logtree leaf. Requires the `logger` package (Suggests only).
 #
 #   source("debug/11_logger_integration.R")
 devtools::load_all()
@@ -16,9 +16,10 @@ logtree_reset()
 logtree_theme("unicode")
 logtree_threshold("debug")
 
+# One call wires logger -> logtree for this namespace. It is persistent for
+# the session (like logger's own config) -- there is no automatic teardown.
 ns <- "logtree_demo"
-logger::log_layout(logtree::layout_logtree, namespace = ns)
-logger::log_appender(logger::appender_void, namespace = ns)
+logtree_logger(namespace = ns)
 
 section("logger calls rendered as logtree leaves")
 pipeline <- function() {
@@ -31,8 +32,3 @@ pipeline <- function() {
   logger::log_error("request failed after 3 retries", namespace = ns)
 }
 with_logging(pipeline(), summary = FALSE)
-
-# Reset this namespace back to logger's own defaults so the demo doesn't
-# leak into the rest of the R session.
-logger::log_layout(logger::layout_simple, namespace = ns)
-logger::log_appender(logger::appender_console, namespace = ns)

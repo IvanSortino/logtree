@@ -1,5 +1,5 @@
 Package: logtree
-Title: Tree-style console logger for nested processes
+Title: Tree-Style Console Logger for Nested Processes
 Version: 0.1.0
 Authors@R:
     person("Ivan", "Sortino", , "ivan.sortino97@gmail.com", role = c("aut", "cre", "cph"))
