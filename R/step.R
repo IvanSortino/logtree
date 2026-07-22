@@ -14,12 +14,12 @@ current_depth <- function() {
   the$stack[[n]]$depth
 }
 
-parse_group_by <- function(group_by) {
-  if (length(group_by) != 1L) {
-    stop("`group_by` must be a length-1 named vector, e.g. c(name = value).", call. = FALSE)
+parse_group <- function(group) {
+  if (length(group) != 1L) {
+    stop("`group` must be a length-1 named vector, e.g. c(name = value).", call. = FALSE)
   }
-  nm    <- names(group_by)
-  value <- unname(group_by)
+  nm    <- names(group)
+  value <- unname(group)
   name  <- if (is.null(nm) || is.na(nm) || !nzchar(nm)) as.character(value) else nm
   list(name = name, value = value)
 }
@@ -81,7 +81,7 @@ elevate_group_status <- function(id, status) {
   invisible(NULL)
 }
 
-push_step <- function(label, glyph = NULL, group_by = NULL, parent = NULL) {
+push_step <- function(label, glyph = NULL, group = NULL, parent = NULL) {
   if (!is.null(parent)) {
     p <- find_stack_entry(parent)
     if (is.null(p)) {
@@ -89,12 +89,12 @@ push_step <- function(label, glyph = NULL, group_by = NULL, parent = NULL) {
     }
     parent_id <- parent
     depth     <- p$depth + 1L
-  } else if (is.null(group_by)) {
+  } else if (is.null(group)) {
     settle_groups()
     parent_id <- current_parent_id()
     depth     <- current_depth() + 1L
   } else {
-    g <- parse_group_by(group_by)
+    g <- parse_group(group)
     parent_id <- open_or_reuse_group(g$name, g$value)
     depth     <- current_depth() + 1L
   }
@@ -207,7 +207,10 @@ finalize_step <- function(id, sentinel) {
 #'
 #' @param msg Character scalar. The step's label.
 #' @param glyph Optional character scalar overriding this step's glyph.
-#' @param group_by Optional named length-1 vector `c(name = value)`. Adjacent
+#' @param parent Optional step handle (an id returned by [log_open()]/
+#'   `log_step()`) of a currently-open step to nest this one under. Defaults to
+#'   the innermost open step. The target must still be open, else an error.
+#' @param group Optional named length-1 vector `c(name = value)`. Adjacent
 #'   `log_step()` calls sharing the same `value` are grouped under a single
 #'   `< name >` header line. The value is the match key; the name is displayed.
 #' @param close Logical. When `TRUE`, the step is force-closed silently as soon
@@ -221,13 +224,27 @@ finalize_step <- function(id, sentinel) {
 #'   log_step("Doing work")
 #' }
 #' f()
-log_step <- function(msg, glyph = NULL, group_by = NULL, close = FALSE) {
-  entry <- push_step(msg, glyph, group_by = group_by)
+log_step <- function(msg, glyph = NULL, parent = NULL, group = NULL,
+                     close = FALSE) {
+  entry <- push_step(msg, glyph, group = group, parent = parent)
   if (isTRUE(close)) {
     close_step(entry$id, silent = TRUE)
     return(invisible(entry$id))
   }
   caller   <- rlang::caller_env()
+  if (identical(caller, globalenv())) {
+    # No enclosing function frame: the caller's frame is the global env, which
+    # only "exits" at session end, so the deferred close below never fires in
+    # practice and the step lingers. Nudge (once) toward the manual API.
+    rlang::inform(
+      c(
+        "!" = "log_step() at top level won't auto-close: there is no function frame to close on.",
+        "i" = "Use log_open() + log_close(), or wrap the call in a function."
+      ),
+      .frequency = "once",
+      .frequency_id = "logtree_log_step_toplevel"
+    )
+  }
   sentinel <- new.env(parent = emptyenv())
   withr::defer(finalize_step(entry$id, sentinel), envir = caller, priority = "first")
   invisible(entry$id)
@@ -251,7 +268,7 @@ log_step <- function(msg, glyph = NULL, group_by = NULL, close = FALSE) {
 #' @param parent Optional step handle (an id returned by `log_open()`/
 #'   [log_step()]) of a currently-open step to nest this one under. Defaults to
 #'   the innermost open step. The target must still be open, else an error.
-#' @param group_by Optional named length-1 vector `c(name = value)`, as in
+#' @param group Optional named length-1 vector `c(name = value)`, as in
 #'   [log_step()].
 #' @param close Logical. When `TRUE`, the step is force-closed silently as soon
 #'   as its opening line is printed: a header-only marker with no children and
@@ -265,9 +282,9 @@ log_step <- function(msg, glyph = NULL, group_by = NULL, close = FALSE) {
 #' s1 <- log_open("Step 1")
 #' log_info("a child line")
 #' log_close(s1)
-log_open <- function(msg, glyph = NULL, parent = NULL, group_by = NULL,
+log_open <- function(msg, glyph = NULL, parent = NULL, group = NULL,
                      close = FALSE) {
-  entry <- push_step(msg, glyph, group_by = group_by, parent = parent)
+  entry <- push_step(msg, glyph, group = group, parent = parent)
   if (isTRUE(close)) close_step(entry$id, silent = TRUE)
   invisible(entry$id)
 }

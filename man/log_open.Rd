@@ -4,7 +4,7 @@
 \alias{log_open}
 \title{Open a step under manual lifetime control}
 \usage{
-log_open(msg, glyph = NULL, parent = NULL, group_by = NULL, close = FALSE)
+log_open(msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE)
 }
 \arguments{
 \item{msg}{Character scalar. The step's label.}
@@ -15,7 +15,7 @@ log_open(msg, glyph = NULL, parent = NULL, group_by = NULL, close = FALSE)
 \code{\link[=log_step]{log_step()}}) of a currently-open step to nest this one under. Defaults to
 the innermost open step. The target must still be open, else an error.}
 
-\item{group_by}{Optional named length-1 vector \code{c(name = value)}, as in
+\item{group}{Optional named length-1 vector \code{c(name = value)}, as in
 \code{\link[=log_step]{log_step()}}.}
 
 \item{close}{Logical. When \code{TRUE}, the step is force-closed silently as soon

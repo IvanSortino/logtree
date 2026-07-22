@@ -15,24 +15,20 @@ with_logging(expr, summary = TRUE)
 The value of \code{expr}, invisibly.
 }
 \description{
-Wraps \code{expr} with a top-level handler for the case where a step's code
-actually throws and the error propagates up (as opposed to
-\code{\link[=log_warn]{log_warn()}}/\code{\link[=log_error]{log_error()}} being called from code that itself returns
-normally, which \code{\link[=log_step]{log_step()}}'s per-step "incomplete" handling already
-covers with no setup). Before the stack unwinds, every currently-open
-step is flagged as failed and the error is logged as a leaf line; the
-error is then rethrown once logging completes -- \code{with_logging()} never
-silently swallows errors.
+Wrap a script or pipeline's top-level call in \code{with_logging()} so an
+uncaught error leaves a clean, correctly-colored tree instead of dimmed
+"incomplete" steps. On error, every currently open step is marked
+failed, the error is logged as a leaf line, then rethrown --
+\code{with_logging()} never silently swallows errors. It also prints a
+"Run complete" / "Run failed" summary line with elapsed time.
 }
 \details{
-Note: because \code{expr} is an ordinary (lazily evaluated) argument,
-\code{log_step()} calls written directly inside the \code{{ ... }} block close
-when the function \emph{lexically enclosing} that block returns -- not
-necessarily when \code{with_logging()} itself returns. In the normal usage
-shown below, where \code{with_logging({ ... })} is a function's entire body,
-these coincide. If other code runs in the same function after the
-\code{with_logging({ ... })} call, steps opened inside the block stay open
-until that surrounding function itself returns.
+Note: \code{expr} is lazily evaluated, so \code{log_step()} calls written inside
+the \code{{ ... }} block close when the function \emph{lexically enclosing} that
+block returns -- not necessarily when \code{with_logging()} itself returns.
+Use \code{with_logging({ ... })} as a function's entire body to keep these
+in sync; if other code runs after the call in the same function, steps
+opened inside the block stay open until that function returns.
 }
 \examples{
 logtree_reset()

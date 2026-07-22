@@ -4,14 +4,18 @@
 \alias{log_step}
 \title{Open a logged step}
 \usage{
-log_step(msg, glyph = NULL, group_by = NULL, close = FALSE)
+log_step(msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE)
 }
 \arguments{
 \item{msg}{Character scalar. The step's label.}
 
 \item{glyph}{Optional character scalar overriding this step's glyph.}
 
-\item{group_by}{Optional named length-1 vector \code{c(name = value)}. Adjacent
+\item{parent}{Optional step handle (an id returned by \code{\link[=log_open]{log_open()}}/
+\code{log_step()}) of a currently-open step to nest this one under. Defaults to
+the innermost open step. The target must still be open, else an error.}
+
+\item{group}{Optional named length-1 vector \code{c(name = value)}. Adjacent
 \code{log_step()} calls sharing the same \code{value} are grouped under a single
 \verb{< name >} header line. The value is the match key; the name is displayed.}
 

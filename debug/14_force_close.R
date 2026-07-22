@@ -36,9 +36,9 @@ f()
 #    colours the group's eventual close line, even though its own "Done" line
 #    was suppressed.
 g <- function() {
-  log_step("record 1", group_by = c(Batch = "nightly"))
+  log_step("record 1", group = c(Batch = "nightly"))
   log_warn("checksum mismatch", close = TRUE)
-  log_step("record 2", group_by = c(Batch = "nightly"))
+  log_step("record 2", group = c(Batch = "nightly"))
 }
 g()
 log_open("done batching")   # ungrouped sibling settles the group above

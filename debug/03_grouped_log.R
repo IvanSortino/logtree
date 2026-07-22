@@ -1,13 +1,13 @@
 devtools::load_all()
 logtree_reset()
 
-# group_by demo: adjacent log_step() calls sharing the same value nest under a
+# group demo: adjacent log_step() calls sharing the same value nest under a
 # single < name > header. Embed the value in the name (setNames) to show it in
 # the header, e.g. < Item 1 >. Here each item runs several checks that all
 # collapse under one header.
 run_demo <- function() {
   check <- function(item, label) {
-    log_step(label, group_by = stats::setNames(item, paste0("Item ", item)))
+    log_step(label, group = stats::setNames(item, paste0("Item ", item)))
     log_info(paste0(label, " running"))
     if (item == 2 && label == "check bounds") log_warn("value out of range")
     log_success(paste0(label, " ok"))

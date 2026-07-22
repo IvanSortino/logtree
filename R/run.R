@@ -15,23 +15,19 @@ print_run_summary <- function(status, elapsed) {
 
 #' Run an expression with top-level error handling and a run summary
 #'
-#' Wraps `expr` with a top-level handler for the case where a step's code
-#' actually throws and the error propagates up (as opposed to
-#' [log_warn()]/[log_error()] being called from code that itself returns
-#' normally, which [log_step()]'s per-step "incomplete" handling already
-#' covers with no setup). Before the stack unwinds, every currently-open
-#' step is flagged as failed and the error is logged as a leaf line; the
-#' error is then rethrown once logging completes -- `with_logging()` never
-#' silently swallows errors.
+#' Wrap a script or pipeline's top-level call in `with_logging()` so an
+#' uncaught error leaves a clean, correctly-colored tree instead of dimmed
+#' "incomplete" steps. On error, every currently open step is marked
+#' failed, the error is logged as a leaf line, then rethrown --
+#' `with_logging()` never silently swallows errors. It also prints a
+#' "Run complete" / "Run failed" summary line with elapsed time.
 #'
-#' Note: because `expr` is an ordinary (lazily evaluated) argument,
-#' `log_step()` calls written directly inside the `{ ... }` block close
-#' when the function *lexically enclosing* that block returns -- not
-#' necessarily when `with_logging()` itself returns. In the normal usage
-#' shown below, where `with_logging({ ... })` is a function's entire body,
-#' these coincide. If other code runs in the same function after the
-#' `with_logging({ ... })` call, steps opened inside the block stay open
-#' until that surrounding function itself returns.
+#' Note: `expr` is lazily evaluated, so `log_step()` calls written inside
+#' the `{ ... }` block close when the function *lexically enclosing* that
+#' block returns -- not necessarily when `with_logging()` itself returns.
+#' Use `with_logging({ ... })` as a function's entire body to keep these
+#' in sync; if other code runs after the call in the same function, steps
+#' opened inside the block stay open until that function returns.
 #'
 #' @param expr Code to run.
 #' @param summary Print an end-of-run summary line? Default `TRUE`.

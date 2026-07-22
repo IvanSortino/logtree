@@ -5,7 +5,7 @@ test_that("adjacent steps sharing a group value collapse under one header", {
   local_ascii_theme()
 
   run <- function() {
-    check <- function(item, label) log_step(label, group_by = c(g = item))
+    check <- function(item, label) log_step(label, group = c(g = item))
     log_step("Root")
     check(1, "a")
     check(1, "b")
@@ -28,7 +28,7 @@ test_that("a changed group value opens a new header", {
   local_ascii_theme()
 
   run <- function() {
-    check <- function(item, label) log_step(label, group_by = c(g = item))
+    check <- function(item, label) log_step(label, group = c(g = item))
     log_step("Root")
     check(1, "a")
     check(2, "b")
@@ -46,7 +46,7 @@ test_that("a plain step after a group is a sibling of the group, not a child", {
   local_ascii_theme()
 
   run <- function() {
-    grouped <- function() log_step("g-step", group_by = c(g = 1))
+    grouped <- function() log_step("g-step", group = c(g = 1))
     plain   <- function() log_step("plain")
     log_step("Root")
     grouped()
@@ -70,7 +70,7 @@ test_that("grouped tree renders as expected (ascii snapshot)", {
 
   run <- function() {
     check <- function(item, label) {
-      log_step(label, group_by = stats::setNames(item, paste0("Item ", item)))
+      log_step(label, group = stats::setNames(item, paste0("Item ", item)))
       log_info(paste0(label, " running"))
     }
     process_item <- function(item) {
@@ -94,7 +94,7 @@ test_that("json sink emits a group event with an id/parent_id chain", {
   logtree_sink_file(path, format = "json")
 
   run <- function() {
-    check <- function(item, label) log_step(label, group_by = c(g = item))
+    check <- function(item, label) log_step(label, group = c(g = item))
     log_step("Root")
     check(1, "a")
     check(1, "b")
@@ -130,11 +130,11 @@ test_that("json sink emits a group event with an id/parent_id chain", {
   expect_false(is.na(grp_close[[1]]$elapsed))
 })
 
-test_that("group_by requires a length-1 vector", {
+test_that("group requires a length-1 vector", {
   logtree_reset()
   withr::defer(logtree_reset())
   local_reset_sinks()
 
-  f <- function() log_step("x", group_by = c(a = 1, b = 2))
+  f <- function() log_step("x", group = c(a = 1, b = 2))
   expect_error(f(), "length-1")
 })

@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# logtree
+# logtree <a href="https://ivansortino.github.io/logtree/"><img src="man/figures/logo.png" align="right" height="139" alt="logtree website" /></a>
 
 <!-- badges: start -->
 
@@ -15,7 +15,10 @@ console – tree connectors, status glyphs, and elapsed time per step –
 while keeping nesting depth correct even when a step errors partway
 through.
 
+<p align="center">
+
 <img src="man/figures/README-tree-color.svg" alt="Colorized logtree console output" width="500" />
+</p>
 
 ## Installation
 
@@ -142,13 +145,12 @@ try(with_logging(apply_migration()), silent = TRUE)
 
 ## Grouping
 
-Adjacent `log_step()` calls that share a `group_by = c(name = value)`
-value collapse under one `< name >` header instead of stacking as
-siblings:
+Adjacent `log_step()` calls that share a `group = c(name = value)` value
+collapse under one `< name >` header instead of stacking as siblings:
 
 ``` r
 check <- function(item, label) {
-  log_step(label, group_by = stats::setNames(item, paste0("Item ", item)))
+  log_step(label, group = stats::setNames(item, paste0("Item ", item)))
   log_info(paste0(label, " running"))
   log_success(paste0(label, " ok"))
 }

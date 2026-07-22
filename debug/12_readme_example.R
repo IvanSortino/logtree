@@ -2,12 +2,12 @@ devtools::load_all()
 
 ingest <- function() {
   log_step("Ingest")                     # auto step: closes when ingest() returns
-  # group_by collapses items that share a value under one < header >, but the
+  # group collapses items that share a value under one < header >, but the
   # group is only reused once the previous item has CLOSED -- so open/close each
   # by hand here (an auto log_step in this same loop would stay open and nest).
   rows <- c(prices = 24318, stocks = 8790, fx = 512)
   for (name in names(rows)) {
-    log_open(name, group_by = c(sources = "feed"))
+    log_open(name, group = c(sources = "feed"))
     log_info(sprintf("%s rows pulled", format(rows[[name]], big.mark = ",")))
     log_close()   # close this item; the next one joins the same group
   }
@@ -51,10 +51,10 @@ with_logging({
   load <- log_open("Load", parent = run)  # sibling of ingest/connect, under run
   log_open("Table: facts")                # under Load (cascade-closed via load)
   log_info("opened connection pool (5 conns)")
-  log_open("Batch 1/2", group_by = c(Batches = "load"))   # collapse under < Batches >
+  log_open("Batch 1/2", group = c(Batches = "load"))   # collapse under < Batches >
   log_info("upserted rows 1-500 of 900")
   log_close()                             # close item; next batch joins the group
-  log_open("Batch 2/2", group_by = c(Batches = "load"))
+  log_open("Batch 2/2", group = c(Batches = "load"))
   log_info("upserted rows 501-900 of 900")
   log_close()
   log_close(load)                         # cascade: Batches group + Table + Load

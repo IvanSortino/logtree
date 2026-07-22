@@ -8,6 +8,5 @@ log_info("child info 1")
 log_info("child info 2")
 log_close(s1)
 
-s2 <- log_open("Step 2")   # level 1, sibling of Step 1
-log_warn("child warn 1")
-log_close(s2)
+log_open("Step 2")   # level 1, sibling of Step 1
+log_warn("child warn 1", close = T)

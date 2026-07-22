@@ -16,7 +16,7 @@ run_section <- function(title, fn) {
 
 # The tree every section renders: two items, two steps each, under < Item N >.
 grouped <- function() {
-  step <- function(i, name) log_step(name, group_by = stats::setNames(i, paste0("Item ", i)))
+  step <- function(i, name) log_step(name, group = stats::setNames(i, paste0("Item ", i)))
   log_step("Pipeline")
   for (i in 1:2) { step(i, "validate"); step(i, "bounds") }
 }

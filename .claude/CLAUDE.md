@@ -55,7 +55,7 @@ step can ever leak and desync later indentation.
 
 ### Grouping (`R/state.R`)
 
-`log_step(label, group_by = c(name = value))` collapses adjacent steps sharing the
+`log_step(label, group = c(name = value))` collapses adjacent steps sharing the
 same `value` under one synthetic `kind = "group"` stack entry — a header line on
 open and its own corner close line on pop (a `group_close` event rendered via the
 same `format_close()` as a step). The group is not tied to any frame: it lingers

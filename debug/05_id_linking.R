@@ -12,7 +12,7 @@ logtree_sink_file(path, format = "json")
 
 run <- function() {
   check <- function(item, label) {
-    log_step(label, group_by = stats::setNames(item, paste0("Item ", item)))
+    log_step(label, group = stats::setNames(item, paste0("Item ", item)))
     log_info("running")
     if (item == 2 && label == "bounds") log_warn("out of range")
   }

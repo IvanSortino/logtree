@@ -6,14 +6,25 @@
 \alias{logtree-package}
 \title{logtree: Tree-style console logger for nested processes}
 \description{
+\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
+
 Render nested process execution as a live, colored tree in the console, with tree connectors, status glyphs, and elapsed time per step. Nesting depth is tracked via frame exit handlers so it never desynchronizes, even when a step errors. Builds on the 'cli' package for console rendering.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/IvanSortino/logtree}
+  \item \url{https://ivansortino.github.io/logtree/}
+  \item Report bugs at \url{https://github.com/IvanSortino/logtree/issues}
+}
+
+}
 \author{
-\strong{Maintainer}: Ivan Sortino \email{ivan.sortino97@gmail.com}
+\strong{Maintainer}: Ivan Sortino \email{ivan.sortino97@gmail.com} [copyright holder]
 
 Authors:
 \itemize{
-  \item Ivan Sortino \email{ivan.sortino97@gmail.com}
+  \item Ivan Sortino \email{ivan.sortino97@gmail.com} [copyright holder]
 }
 
 }

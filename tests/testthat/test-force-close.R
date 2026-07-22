@@ -93,9 +93,9 @@ test_that("silent close still folds a member's warning into its group's close li
 
   out <- capture.output({
     g <- function() {
-      log_step("record 1", group_by = c(Batch = "nightly"))
+      log_step("record 1", group = c(Batch = "nightly"))
       log_warn("checksum mismatch", close = TRUE)  # closes record 1 silently
-      log_step("record 2", group_by = c(Batch = "nightly"))
+      log_step("record 2", group = c(Batch = "nightly"))
     }
     g()
     log_open("done batching")  # ungrouped sibling settles the group

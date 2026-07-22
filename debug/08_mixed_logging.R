@@ -7,7 +7,7 @@ devtools::load_all()
 #   * log_step()              -- auto steps inside functions, self-close on
 #                                frame exit; nesting follows the call stack
 #   * log_open() / log_close()-- manual steps for block-level structure
-#   * group_by =              -- collapse adjacent steps under a < header >
+#   * group =              -- collapse adjacent steps under a < header >
 #
 # Two error flavours:
 #   * RECOVERED: log_error() from code that then returns normally -- the leaf
@@ -23,11 +23,11 @@ devtools::load_all()
 
 ingest <- function() {
   log_step("Ingest")
-  # group_by collapses items that share a value under one < header >, but the
+  # group collapses items that share a value under one < header >, but the
   # group is only reused once the previous item has CLOSED -- so open/close each
   # by hand here (an auto log_step in this same loop would stay open and nest).
   for (name in c("prices", "stocks", "fx")) {
-    log_open(name, group_by = c(sources = "feed"))
+    log_open(name, group = c(sources = "feed"))
     log_info("rows ok")
     log_close()   # close this item; the next one joins the same group
   }

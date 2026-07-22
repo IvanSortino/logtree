@@ -57,7 +57,7 @@ marks it `"incomplete"` (dimmed glyph) rather than showing false success.
 
 ## Grouping
 
-`log_step(label, group_by = c(name = value))` collapses adjacent steps
+`log_step(label, group = c(name = value))` collapses adjacent steps
 sharing the same `value` under one synthetic `kind = "group"` stack entry (a
 header-only parent).
 
