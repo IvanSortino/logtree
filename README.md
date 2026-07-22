@@ -15,20 +15,7 @@ console – tree connectors, status glyphs, and elapsed time per step –
 while keeping nesting depth correct even when a step errors partway
 through.
 
-``` ansi
-[36m▶[0m Loading pipeline configuration
-[2m├─[0m [34mℹ[0m Reading config.yml
-[2m├─[0m [32m✔[0m Validated 12 parameters              0.03s
-[2m└─[0m [32m✔[0m Done                                  0.15s
-[36m▶[0m Fetching articles
-[2m├─[0m [34mℹ[0m Connecting to API
-[2m├─[0m [33m⚠[0m Retry 1/3 due to timeout
-[2m├─[0m [32m✔[0m Fetched 1,204 articles                4.2s
-[2m└─[0m [32m✔[0m Done                                  4.4s
-[36m▶[0m Classifying articles
-[2m├─[0m [31m✖[0m Error: model timeout after 30s
-[2m└─[0m [31m✖[0m Done                                  30.10s
-```
+<img src="man/figures/README-tree-color.svg" alt="Colorized logtree console output" width="500" />
 
 ## Installation
 
@@ -187,6 +174,7 @@ with_logging(run_pipeline(), summary = FALSE)
 #> │  │  ├─ ℹ check bounds running
 #> │  │  ├─ ✔ check bounds ok
 #> │  │  └─ ✔ Done  0.00s
+#> │  └─ ✔ Done  0.00s
 #> ├─ ▣ Item 2
 #> │  ├─ ▶ validate schema
 #> │  │  ├─ ℹ validate schema running
@@ -196,6 +184,7 @@ with_logging(run_pipeline(), summary = FALSE)
 #> │  │  ├─ ℹ check bounds running
 #> │  │  ├─ ✔ check bounds ok
 #> │  │  └─ ✔ Done  0.00s
+#> │  └─ ✔ Done  0.00s
 #> └─ ✔ Done  0.00s
 ```
 

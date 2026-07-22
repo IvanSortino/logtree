@@ -56,14 +56,18 @@ step can ever leak and desync later indentation.
 ### Grouping (`R/state.R`)
 
 `log_step(label, group_by = c(name = value))` collapses adjacent steps sharing the
-same `value` under one synthetic `kind = "group"` stack entry (a header-only,
-non-closing parent). `open_or_reuse_group()` reuses the top-of-stack group if the
-incoming `(name, value)` matches; `settle_groups()` pops any lingering
-(member-less) group that doesn't match before pushing a new entry — grouping is
-strictly **adjacency-based**, not global (the same value recurring non-adjacently
-opens a fresh group). A plain leaf or ungrouped step at the group's level also
-triggers `settle_groups()`, closing the group as a sibling rather than nesting under
-it.
+same `value` under one synthetic `kind = "group"` stack entry — a header line on
+open and its own corner close line on pop (a `group_close` event rendered via the
+same `format_close()` as a step). The group is not tied to any frame: it lingers
+after its last member closes until popped. Its close line's status is **aggregated
+from its members** — `close_step()` folds each closing member's resolved status up
+into the parent group via `elevate_group_status()`, so a group with a failed member
+closes with the error glyph. `open_or_reuse_group()` reuses the top-of-stack group
+if the incoming `(name, value)` matches; `settle_groups()` closes any lingering
+group that doesn't match before pushing a new entry — grouping is strictly
+**adjacency-based**, not global (the same value recurring non-adjacently opens a
+fresh group). A plain leaf or ungrouped step at the group's level also triggers
+`settle_groups()`, closing the group as a sibling rather than nesting under it.
 
 ### Rendering
 
@@ -93,7 +97,7 @@ CRAN portability requirement for package R source.
 always on; `logtree_sink_file(path, format = c("text", "json"))` adds a plain-ASCII
 text sink or an NDJSON sink (hand-rolled scalar encoder — deliberately no `jsonlite`
 dependency for this fixed, small event shape). Event kinds are `open`, `close`,
-`group`, `leaf`.
+`group` (group header), `group_close` (group corner/close line), `leaf`.
 
 ## Testing conventions
 
