@@ -199,7 +199,7 @@ logtree_theme("unicode")
 | `success` | success glyph (clean close, `log_success()`) | `glyph`, `width`, `color` |
 | `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
 | `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
-| `incomplete` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
+| `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
 | `group` | group header marker | `glyph`, `color`, `bracket` |
 | `branch` | child connector (`├─`) | `glyph`, `color` |
 | `corner` | close-line connector (`└─`) | `glyph`, `color` |

@@ -89,8 +89,8 @@ tryCatch(run_classifier(), error = function(e) invisible(NULL))
 ```
 
 Even *without* `with_logging()`, depth tracking still unwinds correctly on
-an uncaught error -- the interrupted step just renders as dimmed/incomplete
-rather than retroactively painted red, since there was no handler installed
+an uncaught error -- the step just renders as dimmed/interrupted rather
+than retroactively painted red, since there was no handler installed
 to catch the condition and flag it before the stack unwound.
 
 ```{r}

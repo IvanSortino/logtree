@@ -1,4 +1,4 @@
-glyph_keys <- c("step", "debug", "info", "success", "warning", "error", "incomplete")
+glyph_keys <- c("step", "debug", "info", "success", "warning", "error", "interrupted")
 
 theme_preset <- function(name) {
   switch(name,
@@ -36,7 +36,7 @@ theme_preset <- function(name) {
 #' | `success` | success glyph (clean close, `log_success()`) | `glyph`, `width`, `color` |
 #' | `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
 #' | `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
-#' | `incomplete` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
+#' | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
 #' | `group` | group header marker | `glyph`, `color`, `bracket` |
 #' | `branch` | child connector (`├─`) | `glyph`, `color` |
 #' | `corner` | close-line connector (`└─`) | `glyph`, `color` |
@@ -47,7 +47,7 @@ theme_preset <- function(name) {
 #' | Field | Type | Accepted values |
 #' | ----- | ---- | --------------- |
 #' | `glyph` | `character(1)` | Any string, including `""`. In package source, non-ASCII must be written as `\u`/`\U` escapes, never literal characters. |
-#' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `warning`, `error`, `incomplete`). |
+#' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `warning`, `error`, `interrupted`). |
 #' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. See [cli::combine_ansi_styles()]. |
 #' | `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`; default `FALSE`. |
 #' @export

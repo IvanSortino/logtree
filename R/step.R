@@ -190,8 +190,8 @@ finalize_step <- function(id, sentinel) {
   if (!is.null(entry) && identical(rv, sentinel) && identical(entry$status, "running")) {
     # Abnormal (error-driven) exit with no with_logging() Tier-2 handler
     # having already elevated this step's status to "error" -- render as
-    # incomplete/dimmed rather than a false success glyph.
-    set_stack_entry_status(id, "incomplete")
+    # interrupted/dimmed rather than a false success glyph.
+    set_stack_entry_status(id, "interrupted")
   }
   close_step(id)
 }

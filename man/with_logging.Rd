@@ -17,7 +17,7 @@ The value of \code{expr}, invisibly.
 \description{
 Wrap a script or pipeline's top-level call in \code{with_logging()} so an
 uncaught error leaves a clean, correctly-colored tree instead of dimmed
-"incomplete" steps. On error, every currently open step is marked
+"interrupted" steps. On error, every currently open step is marked
 failed, the error is logged as a leaf line, then rethrown --
 \code{with_logging()} never silently swallows errors. It also prints a
 "Run complete" / "Run failed" summary line with elapsed time.

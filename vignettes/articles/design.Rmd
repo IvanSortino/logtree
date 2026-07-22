@@ -53,7 +53,7 @@ error`.
 - `with_logging()` never swallows errors.
 
 If a step's frame exits abnormally with no Tier-2 handler, `finalize_step()`
-marks it `"incomplete"` (dimmed glyph) rather than showing false success.
+marks it `"interrupted"` (dimmed glyph) rather than showing false success.
 
 ## Grouping
 

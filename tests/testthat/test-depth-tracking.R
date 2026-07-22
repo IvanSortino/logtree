@@ -31,7 +31,7 @@ test_that("Tier-1-only: uncaught error still unwinds depth with no with_logging(
   expect_length(the$stack, 0)
 })
 
-test_that("Tier-1-only: interrupted step renders incomplete, not success", {
+test_that("Tier-1-only: interrupted step renders as interrupted, not success", {
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
