@@ -81,3 +81,55 @@ test_that("with_logging prints a summary line by default, suppressible via summa
   out_without_summary <- capture.output(invisible(f_no_summary()))
   expect_false(any(grepl("Run complete", out_without_summary)))
 })
+
+# -- global = TRUE (persistent top-level handler) -------------------------
+#
+# globalCallingHandlers() can only be *established* when the condition-handler
+# stack is empty, which is never the case inside test_that() (testthat keeps
+# handlers on the stack). So the successful install + real firing is exercised
+# by debug/15_with_logging_global.R at true top level, not here. These tests
+# cover the argument guard, the graceful skip, and the handler action itself
+# (global_error_action(), which needs no install).
+
+test_that("global_error_action marks open steps failed and logs the message leaf", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  log_open("Load data")
+  out <- capture.output(global_error_action(simpleError("boom"), summary = FALSE))
+
+  expect_equal(the$stack[[1]]$status, "error")
+  expect_true(any(grepl("boom", out)))
+})
+
+test_that("global_error_action is a no-op when no steps are open", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  out <- capture.output(global_error_action(simpleError("unrelated"), summary = FALSE))
+
+  expect_length(out, 0)
+  expect_length(the$stack, 0)
+})
+
+test_that("with_logging(global = TRUE) rejects an expr argument", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  expect_error(with_logging(log_info("x"), global = TRUE), "takes no")
+})
+
+test_that("with_logging(global = TRUE) errors (fail-fast) when handlers are on the stack", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  # test_that() keeps condition handlers on the stack, so the (unguarded) global
+  # establish is illegal here and must surface R's native error rather than
+  # installing. The establish cannot be softened (a tryCatch wrapper is itself a
+  # handler and would block it even at a clean top level), so global = TRUE is
+  # documented as top-level-only.
+  expect_error(with_logging(global = TRUE), "should not be called with handlers")
+  expect_false(the$global_installed)
+})

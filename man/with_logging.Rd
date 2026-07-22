@@ -4,15 +4,30 @@
 \alias{with_logging}
 \title{Run an expression with top-level error handling and a run summary}
 \usage{
-with_logging(expr, summary = TRUE)
+with_logging(expr, summary = TRUE, global = FALSE)
 }
 \arguments{
-\item{expr}{Code to run.}
+\item{expr}{Code to run. Omitted when \code{global = TRUE}.}
 
-\item{summary}{Print an end-of-run summary line? Default \code{TRUE}.}
+\item{summary}{Print an end-of-run summary line? Default \code{TRUE}. In global
+mode only the "Run failed" line is printed (on an uncaught error); there is
+no frame exit to hang a "Run complete" line on.}
+
+\item{global}{If \code{TRUE}, do not wrap an expression; instead install a
+session-persistent global error handler for use at the \emph{top level of a
+script}. On an error that reaches top level \emph{unhandled} while logtree steps
+are open, it marks those steps failed and logs the error message as a leaf
+-- the same result as the block form, but without wrapping the body. It
+fires only for genuinely uncaught top-level errors (an inner \code{tryCatch()}
+that catches first pre-empts it) and only when steps are open. The handler
+persists until \code{\link[=logtree_reset]{logtree_reset()}}. Must be called from a clean top level --
+the first line of a script: calling it where condition handlers are active
+(inside \code{tryCatch()}, or a function running under one) errors, by design.
+Requires R (>= 4.0).}
 }
 \value{
-The value of \code{expr}, invisibly.
+In block mode, the value of \code{expr}, invisibly. In global mode,
+\code{NULL}, invisibly.
 }
 \description{
 Wrap a script or pipeline's top-level call in \code{with_logging()} so an
@@ -36,4 +51,11 @@ with_logging({
   log_step("Step one")
   log_success("done")
 })
+
+# Top-level script form -- installs a persistent handler (run at top level):
+\dontrun{
+with_logging(global = TRUE)
+log_open("Load data")
+stop("EOF")   # marks the open step failed + logs "EOF" before R exits
+}
 }
