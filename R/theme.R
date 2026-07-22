@@ -21,6 +21,35 @@ theme_preset <- function(name) {
 #'   `group` slot also accepts `bracket` (logical, default `FALSE`): when
 #'   `TRUE` the header name is wrapped in `< >`.
 #' @return `NULL`, invisibly.
+#' @details
+#' An override list is keyed by *slot*; each slot's value is itself a named
+#' list of *fields*. Only the fields you name are changed -- everything else is
+#' kept from the active theme.
+#'
+#' **Slots** (valid names in an override / preset list):
+#'
+#' | Slot | Applies to | Fields it accepts |
+#' | ---- | ---------- | ----------------- |
+#' | `step` | open / running step glyph | `glyph`, `width`, `color` |
+#' | `info` | `log_info()` leaf | `glyph`, `width`, `color` |
+#' | `debug` | `log_debug()` leaf | `glyph`, `width`, `color` |
+#' | `success` | success glyph (clean close, `log_success()`) | `glyph`, `width`, `color` |
+#' | `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
+#' | `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
+#' | `incomplete` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
+#' | `group` | group header marker | `glyph`, `color`, `bracket` |
+#' | `branch` | child connector (`├─`) | `glyph`, `color` |
+#' | `corner` | close-line connector (`└─`) | `glyph`, `color` |
+#' | `pipe` | vertical rail (`│`) | `glyph`, `color` |
+#'
+#' **Fields** (valid names inside a slot):
+#'
+#' | Field | Type | Accepted values |
+#' | ----- | ---- | --------------- |
+#' | `glyph` | `character(1)` | Any string, including `""`. In package source, non-ASCII must be written as `\u`/`\U` escapes, never literal characters. |
+#' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `warning`, `error`, `incomplete`). |
+#' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. See [cli::combine_ansi_styles()]. |
+#' | `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`; default `FALSE`. |
 #' @export
 #' @examples
 #' logtree_theme("ascii")

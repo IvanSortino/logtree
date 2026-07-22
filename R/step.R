@@ -198,12 +198,20 @@ finalize_step <- function(id, sentinel) {
 
 #' Open a logged step
 #'
-#' Prints an opening line for `msg` and registers an automatic close that
-#' fires when the *calling* function's frame exits -- whether by normal
-#' return, early `return()`, or an uncaught error propagating through it.
-#' Because the close is registered in the caller's frame rather than inside
-#' `log_step()` itself, nesting depth always stays in sync, even across
-#' errors.
+#' `log_step()` is intended to be called from *inside a function*: it prints an
+#' opening line for `msg` and registers an automatic close that fires when the
+#' *calling* function's frame exits -- whether by normal return, early
+#' `return()`, or an uncaught error propagating through it. Because the close is
+#' registered in the caller's frame rather than inside `log_step()` itself,
+#' nesting depth always stays in sync, even across errors. At top level, where
+#' there is no enclosing function frame to close on, use [log_open()] /
+#' [log_close()] instead.
+#'
+#' Opening a step at the same depth as an already-open step retires that earlier
+#' sibling automatically -- its close line is printed with no explicit
+#' [log_close()] call. In the default nested pattern each `log_step()` descends
+#' one level deeper, so this same-level retirement applies when you place steps
+#' side by side via an explicit `parent`.
 #'
 #' @param msg Character scalar. The step's label.
 #' @param glyph Optional character scalar overriding this step's glyph.

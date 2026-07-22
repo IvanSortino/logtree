@@ -66,9 +66,10 @@ pipeline()
 
 ```
 
-Steps auto-close when the function that opened them returns -- normally,
-early, or via an uncaught error -- so nesting depth never gets stuck out of
-sync.
+`log_step()` is meant to be called from inside a function: the step auto-closes
+when the function that opened it returns -- normally, early, or via an uncaught
+error -- so nesting depth never gets stuck out of sync. (At top level, with no
+function frame to close on, reach for `log_open()` / `log_close()` instead.)
 
 ## Status levels & verbosity
 
@@ -175,6 +176,44 @@ logtree_theme("unicode")
 demo_build()
 ```
 
+Or override individual slots with `overrides` -- a list keyed by slot, each
+holding only the fields to change (everything else is kept from the active
+theme):
+
+```{r theme-override}
+logtree_theme("unicode", overrides = list(
+  success = list(glyph = "*", color = c("green", "bold")),
+  group   = list(bracket = TRUE)
+))
+demo_build()
+logtree_theme("unicode")
+```
+
+**Accepted slots** (valid names in an `overrides` list):
+
+| Slot | Applies to | Fields it accepts |
+| ---- | ---------- | ----------------- |
+| `step` | open / running step glyph | `glyph`, `width`, `color` |
+| `info` | `log_info()` leaf | `glyph`, `width`, `color` |
+| `debug` | `log_debug()` leaf | `glyph`, `width`, `color` |
+| `success` | success glyph (clean close, `log_success()`) | `glyph`, `width`, `color` |
+| `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
+| `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
+| `incomplete` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
+| `group` | group header marker | `glyph`, `color`, `bracket` |
+| `branch` | child connector (`├─`) | `glyph`, `color` |
+| `corner` | close-line connector (`└─`) | `glyph`, `color` |
+| `pipe` | vertical rail (`│`) | `glyph`, `color` |
+
+**Accepted fields** (valid names inside a slot):
+
+| Field | Type | Accepted values |
+| ----- | ---- | --------------- |
+| `glyph` | `character(1)` | Any string, including `""`. |
+| `width` | `integer(1)` | Rendered display width of the glyph (`1` normal, `2` emoji/wide). Sets column alignment; status slots only. |
+| `color` | `character` / `NULL` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. |
+| `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`. |
+
 ## More
 
 - **Output sinks** -- `logtree_sink_file(path, format = c("text", "json"))`
@@ -185,7 +224,10 @@ demo_build()
   `logger::log_info()` and friends render as logtree leaves.
 - **Manual step control** -- `log_open()`/`log_close()` open and close steps
   by hand (with an explicit `parent`) instead of relying on frame exit,
-  useful at top level or across script blocks.
+  useful at top level or across script blocks. Opening a step at the same
+  depth as an open one (e.g. sharing a `parent`) retires the earlier sibling
+  automatically, so you can stream siblings without an explicit `log_close()`
+  on each.
 
 See `vignette("logtree")` and the [documentation
 site](https://IvanSortino.github.io/logtree/) for full details on error
