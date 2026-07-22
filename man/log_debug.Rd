@@ -4,7 +4,7 @@
 \alias{log_debug}
 \title{Log a debug leaf line}
 \usage{
-log_debug(msg, close = FALSE)
+log_debug(msg, close = FALSE, summary = NA)
 }
 \arguments{
 \item{msg}{Character scalar.}
@@ -12,6 +12,10 @@ log_debug(msg, close = FALSE)
 \item{close}{Logical. When \code{TRUE}, force-close the enclosing section after
 this line: the line is shown as the section's terminal (corner) line and
 its \code{Done} line is suppressed. Defaults to \code{FALSE}.}
+
+\item{summary}{Whether to record this line in the \code{\link[=logtree_summary]{logtree_summary()}}
+digest. \code{NA} (default) records it only when it is a warning or error;
+\code{TRUE} always records it; \code{FALSE} never does.}
 }
 \value{
 \code{NULL}, invisibly.

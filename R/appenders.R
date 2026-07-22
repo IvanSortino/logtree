@@ -1,4 +1,5 @@
 emit <- function(event) {
+  record_summary(event)
   for (sink in the$sinks) sink(event)
 }
 

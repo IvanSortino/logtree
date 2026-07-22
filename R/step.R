@@ -14,6 +14,22 @@ current_depth <- function() {
   the$stack[[n]]$depth
 }
 
+# Breadcrumb of the currently-open ancestor chain, outermost-first: step labels
+# and group names in stack order. Used by the summary digest to record where a
+# notable event happened. At emit() time a closing entry is still on the stack
+# (removal happens after the emit returns), so it appears as the last element.
+current_path <- function() {
+  out <- character(0)
+  for (e in the$stack) {
+    if (identical(e$kind, "step")) {
+      out <- c(out, e$label)
+    } else if (identical(e$kind, "group")) {
+      out <- c(out, e$name)
+    }
+  }
+  out
+}
+
 parse_group <- function(group) {
   if (length(group) != 1L) {
     stop("`group` must be a length-1 named vector, e.g. c(name = value).", call. = FALSE)

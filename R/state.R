@@ -1,6 +1,7 @@
 the <- new.env(parent = emptyenv())
 the$stack   <- list()
 the$next_id <- 1L
+the$summary <- list()
 
 now <- function() {
   proc.time()[["elapsed"]]
@@ -40,5 +41,6 @@ format_elapsed <- function(seconds) {
 logtree_reset <- function() {
   the$stack   <- list()
   the$next_id <- 1L
+  the$summary <- list()
   invisible(NULL)
 }

@@ -26,7 +26,7 @@ should_emit_leaf <- function(status) {
   leaf_verbosity_rank[[status]] >= verbosity_rank[[the$verbosity]]
 }
 
-emit_leaf <- function(status, msg, close = FALSE) {
+emit_leaf <- function(status, msg, close = FALSE, summary = NA) {
   # A leaf at a group's level means that (member-less) group is done -- close
   # any lingering group before the leaf is placed or gated out.
   settle_groups()
@@ -40,7 +40,7 @@ emit_leaf <- function(status, msg, close = FALSE) {
     # the section's closing line (see close = below).
     emit(list(kind = "leaf", status = status, label = msg,
               depth = current_depth(), id = id, parent_id = current_parent_id(),
-              terminal = isTRUE(close)))
+              terminal = isTRUE(close), summary = summary))
   }
   # The force-close is a structural request, independent of whether the leaf
   # line itself was verbosity-gated: close even if the line was suppressed.
@@ -60,6 +60,9 @@ emit_leaf <- function(status, msg, close = FALSE) {
 #' @param close Logical. When `TRUE`, force-close the enclosing section after
 #'   this line: the line is shown as the section's terminal (corner) line and
 #'   its `Done` line is suppressed. Defaults to `FALSE`.
+#' @param summary Whether to record this line in the [logtree_summary()]
+#'   digest. `NA` (default) records it only when it is a warning or error;
+#'   `TRUE` always records it; `FALSE` never does.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
@@ -67,8 +70,8 @@ emit_leaf <- function(status, msg, close = FALSE) {
 #' logtree_threshold("debug")
 #' log_debug("Cache miss for key user:42")
 #' logtree_threshold("info")
-log_debug <- function(msg, close = FALSE) {
-  emit_leaf("debug", msg, close = close)
+log_debug <- function(msg, close = FALSE, summary = NA) {
+  emit_leaf("debug", msg, close = close, summary = summary)
   invisible(NULL)
 }
 #' Log an informational leaf line
@@ -77,13 +80,16 @@ log_debug <- function(msg, close = FALSE) {
 #' @param close Logical. When `TRUE`, force-close the enclosing section after
 #'   this line: the line is shown as the section's terminal (corner) line and
 #'   its `Done` line is suppressed. Defaults to `FALSE`.
+#' @param summary Whether to record this line in the [logtree_summary()]
+#'   digest. `NA` (default) records it only when it is a warning or error;
+#'   `TRUE` always records it; `FALSE` never does.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_reset()
 #' log_info("Reading config.yml")
-log_info <- function(msg, close = FALSE) {
-  emit_leaf("info", msg, close = close)
+log_info <- function(msg, close = FALSE, summary = NA) {
+  emit_leaf("info", msg, close = close, summary = summary)
   invisible(NULL)
 }
 
@@ -93,13 +99,16 @@ log_info <- function(msg, close = FALSE) {
 #' @param close Logical. When `TRUE`, force-close the enclosing section after
 #'   this line: the line is shown as the section's terminal (corner) line and
 #'   its `Done` line is suppressed. Defaults to `FALSE`.
+#' @param summary Whether to record this line in the [logtree_summary()]
+#'   digest. `NA` (default) records it only when it is a warning or error;
+#'   `TRUE` always records it; `FALSE` never does.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_reset()
 #' log_success("Validated 12 parameters")
-log_success <- function(msg, close = FALSE) {
-  emit_leaf("success", msg, close = close)
+log_success <- function(msg, close = FALSE, summary = NA) {
+  emit_leaf("success", msg, close = close, summary = summary)
   invisible(NULL)
 }
 
@@ -113,14 +122,17 @@ log_success <- function(msg, close = FALSE) {
 #' @param close Logical. When `TRUE`, force-close the enclosing section after
 #'   this line: the line is shown as the section's terminal (corner) line and
 #'   its `Done` line is suppressed. Defaults to `FALSE`.
+#' @param summary Whether to record this line in the [logtree_summary()]
+#'   digest. `NA` (default) records it only when it is a warning or error;
+#'   `TRUE` always records it; `FALSE` never does.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_reset()
 #' log_warn("Retry 1/3 due to timeout")
-log_warn <- function(msg, close = FALSE) {
+log_warn <- function(msg, close = FALSE, summary = NA) {
   elevate_current_step("warning")
-  emit_leaf("warning", msg, close = close)
+  emit_leaf("warning", msg, close = close, summary = summary)
   invisible(NULL)
 }
 
@@ -135,13 +147,16 @@ log_warn <- function(msg, close = FALSE) {
 #' @param close Logical. When `TRUE`, force-close the enclosing section after
 #'   this line: the line is shown as the section's terminal (corner) line and
 #'   its `Done` line is suppressed. Defaults to `FALSE`.
+#' @param summary Whether to record this line in the [logtree_summary()]
+#'   digest. `NA` (default) records it only when it is a warning or error;
+#'   `TRUE` always records it; `FALSE` never does.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_reset()
 #' log_error("model timeout after 30s")
-log_error <- function(msg, close = FALSE) {
+log_error <- function(msg, close = FALSE, summary = NA) {
   elevate_current_step("error")
-  emit_leaf("error", msg, close = close)
+  emit_leaf("error", msg, close = close, summary = summary)
   invisible(NULL)
 }
