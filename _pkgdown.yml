@@ -1,4 +1,47 @@
 url: https://ivansortino.github.io/logtree/
+
 template:
   bootstrap: 5
 
+reference:
+- title: Steps
+  desc: Open, close, and log a step in the tree
+  contents:
+  - log_step
+  - log_open
+  - log_close
+- title: Leaf lines
+  desc: Status-tagged messages logged under the current step
+  contents:
+  - log_info
+  - log_success
+  - log_warn
+  - log_error
+  - log_debug
+- title: Error handling
+  contents:
+  - with_logging
+- title: Theming
+  contents:
+  - logtree_theme
+- title: Output & control
+  contents:
+  - logtree_sink_file
+  - logtree_threshold
+  - logtree_reset
+- title: logger package integration
+  contents:
+  - layout_logtree
+
+navbar:
+  structure:
+    left: [reference, articles, news]
+    right: [github]
+  components:
+    articles:
+      text: Articles
+      menu:
+      - text: Get started
+        href: articles/logtree.html
+      - text: Design philosophy
+        href: articles/design.html

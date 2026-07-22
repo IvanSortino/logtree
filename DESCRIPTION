@@ -16,9 +16,10 @@ Suggests:
     jsonlite,
     knitr,
     logger,
+    pkgdown,
     rmarkdown,
     testthat (>= 3.1.4)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://github.com/IvanSortino/logtree
+URL: https://github.com/IvanSortino/logtree, https://ivansortino.github.io/logtree/
 BugReports: https://github.com/IvanSortino/logtree/issues

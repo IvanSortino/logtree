@@ -9,3 +9,4 @@
 ^debug$
 ^cran-comments\.md$
 ^\.superpowers$
+^vignettes/articles$

@@ -3,15 +3,11 @@
 .RData
 .httr-oauth
 .DS_Store
-.quarto
 inst/doc
 
-# Quarto
-docs/_site/
+# pkgdown build output
+docs/
 
 # Agent scratch
 .superpowers/
 docs/superpowers/
-
-/.quarto/
-**/*.quarto_ipynb

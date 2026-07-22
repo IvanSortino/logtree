@@ -104,6 +104,31 @@ risky <- function() {
 tryCatch(risky(), error = function(e) invisible(NULL))
 ```
 
+## Grouping
+
+`log_step(label, group_by = c(name = value))` collapses adjacent steps that
+share the same `value` under one synthetic header, instead of nesting each
+step on its own. The group stays open across calls with a matching value
+and only closes -- as a sibling, with its own status aggregated from its
+members -- once a step with a different value (or a plain ungrouped step)
+appears at the same level. Grouping is strictly adjacency-based: the same
+value recurring later, after something else has closed the group, opens a
+fresh one rather than reusing the old header.
+
+```{r}
+logtree_reset()
+
+process_file <- function(file) {
+  log_step("Process", group_by = c(dataset = file))
+  log_info("Reading rows")
+  log_success("Processed")
+}
+
+for (file in c("data1.csv", "data1.csv", "data2.csv")) {
+  process_file(file)
+}
+```
+
 ## Themes
 
 Three built-in presets are available: `"unicode"` (default), `"ascii"`
