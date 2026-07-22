@@ -26,18 +26,26 @@ should_emit_leaf <- function(status) {
   leaf_verbosity_rank[[status]] >= verbosity_rank[[the$verbosity]]
 }
 
-emit_leaf <- function(status, msg) {
+emit_leaf <- function(status, msg, close = FALSE) {
   # A leaf at a group's level means that (member-less) group is done -- close
   # any lingering group before the leaf is placed or gated out.
   settle_groups()
   # Verbosity only gates whether this leaf line is rendered -- it never
   # affects elevate_current_step(), which callers run beforehand, so a
   # step's close glyph still reflects a suppressed warning/error.
-  if (!should_emit_leaf(status)) return(invisible(NULL))
-  id <- the$next_id
-  the$next_id <- id + 1L
-  emit(list(kind = "leaf", status = status, label = msg,
-            depth = current_depth(), id = id, parent_id = current_parent_id()))
+  if (should_emit_leaf(status)) {
+    id <- the$next_id
+    the$next_id <- id + 1L
+    # `terminal = TRUE` renders this leaf with the corner connector -- it is
+    # the section's closing line (see close = below).
+    emit(list(kind = "leaf", status = status, label = msg,
+              depth = current_depth(), id = id, parent_id = current_parent_id(),
+              terminal = isTRUE(close)))
+  }
+  # The force-close is a structural request, independent of whether the leaf
+  # line itself was verbosity-gated: close even if the line was suppressed.
+  if (isTRUE(close)) close_current_section_silent()
+  invisible(NULL)
 }
 
 #' Log a debug leaf line
@@ -49,6 +57,9 @@ emit_leaf <- function(status, msg) {
 #' unlike [log_warn()]/[log_error()].
 #'
 #' @param msg Character scalar.
+#' @param close Logical. When `TRUE`, force-close the enclosing section after
+#'   this line: the line is shown as the section's terminal (corner) line and
+#'   its `Done` line is suppressed. Defaults to `FALSE`.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
@@ -56,33 +67,39 @@ emit_leaf <- function(status, msg) {
 #' logtree_threshold("debug")
 #' log_debug("Cache miss for key user:42")
 #' logtree_threshold("info")
-log_debug <- function(msg) {
-  emit_leaf("debug", msg)
+log_debug <- function(msg, close = FALSE) {
+  emit_leaf("debug", msg, close = close)
   invisible(NULL)
 }
 #' Log an informational leaf line
 #'
 #' @param msg Character scalar.
+#' @param close Logical. When `TRUE`, force-close the enclosing section after
+#'   this line: the line is shown as the section's terminal (corner) line and
+#'   its `Done` line is suppressed. Defaults to `FALSE`.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_reset()
 #' log_info("Reading config.yml")
-log_info <- function(msg) {
-  emit_leaf("info", msg)
+log_info <- function(msg, close = FALSE) {
+  emit_leaf("info", msg, close = close)
   invisible(NULL)
 }
 
 #' Log a success leaf line
 #'
 #' @param msg Character scalar.
+#' @param close Logical. When `TRUE`, force-close the enclosing section after
+#'   this line: the line is shown as the section's terminal (corner) line and
+#'   its `Done` line is suppressed. Defaults to `FALSE`.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_reset()
 #' log_success("Validated 12 parameters")
-log_success <- function(msg) {
-  emit_leaf("success", msg)
+log_success <- function(msg, close = FALSE) {
+  emit_leaf("success", msg, close = close)
   invisible(NULL)
 }
 
@@ -93,14 +110,17 @@ log_success <- function(msg) {
 #' glyph even though the enclosing function returns normally.
 #'
 #' @param msg Character scalar.
+#' @param close Logical. When `TRUE`, force-close the enclosing section after
+#'   this line: the line is shown as the section's terminal (corner) line and
+#'   its `Done` line is suppressed. Defaults to `FALSE`.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_reset()
 #' log_warn("Retry 1/3 due to timeout")
-log_warn <- function(msg) {
+log_warn <- function(msg, close = FALSE) {
   elevate_current_step("warning")
-  emit_leaf("warning", msg)
+  emit_leaf("warning", msg, close = close)
   invisible(NULL)
 }
 
@@ -112,13 +132,16 @@ log_warn <- function(msg) {
 #' step's code actually throws instead).
 #'
 #' @param msg Character scalar.
+#' @param close Logical. When `TRUE`, force-close the enclosing section after
+#'   this line: the line is shown as the section's terminal (corner) line and
+#'   its `Done` line is suppressed. Defaults to `FALSE`.
 #' @return `NULL`, invisibly.
 #' @export
 #' @examples
 #' logtree_reset()
 #' log_error("model timeout after 30s")
-log_error <- function(msg) {
+log_error <- function(msg, close = FALSE) {
   elevate_current_step("error")
-  emit_leaf("error", msg)
+  emit_leaf("error", msg, close = close)
   invisible(NULL)
 }

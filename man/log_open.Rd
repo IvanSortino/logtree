@@ -4,7 +4,7 @@
 \alias{log_open}
 \title{Open a step under manual lifetime control}
 \usage{
-log_open(msg, glyph = NULL, parent = NULL, group_by = NULL)
+log_open(msg, glyph = NULL, parent = NULL, group_by = NULL, close = FALSE)
 }
 \arguments{
 \item{msg}{Character scalar. The step's label.}
@@ -17,6 +17,10 @@ the innermost open step. The target must still be open, else an error.}
 
 \item{group_by}{Optional named length-1 vector \code{c(name = value)}, as in
 \code{\link[=log_step]{log_step()}}.}
+
+\item{close}{Logical. When \code{TRUE}, the step is force-closed silently as soon
+as its opening line is printed: a header-only marker with no children and
+no \code{Done} line. Defaults to \code{FALSE}.}
 }
 \value{
 The step's id, invisibly. Capture it to pass to \code{\link[=log_close]{log_close()}} or as

@@ -4,10 +4,14 @@
 \alias{log_debug}
 \title{Log a debug leaf line}
 \usage{
-log_debug(msg)
+log_debug(msg, close = FALSE)
 }
 \arguments{
 \item{msg}{Character scalar.}
+
+\item{close}{Logical. When \code{TRUE}, force-close the enclosing section after
+this line: the line is shown as the section's terminal (corner) line and
+its \code{Done} line is suppressed. Defaults to \code{FALSE}.}
 }
 \value{
 \code{NULL}, invisibly.

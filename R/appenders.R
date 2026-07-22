@@ -8,7 +8,8 @@ console_sink <- function(event) {
     close       = format_close(event$entry),
     group       = format_group_header(event$entry),
     group_close = format_close(event$entry),
-    leaf        = format_leaf(event$status, event$label, event$depth)
+    leaf        = format_leaf(event$status, event$label, event$depth,
+                              corner = isTRUE(event$terminal))
   )
   cat(line, "\n", sep = "")
 }
@@ -23,7 +24,7 @@ file_text_sink <- function(path) {
       close       = format_close(event$entry, theme = glyphs_ascii, color = FALSE),
       group       = format_group_header(event$entry, theme = glyphs_ascii, color = FALSE),
       group_close = format_close(event$entry, theme = glyphs_ascii, color = FALSE),
-      leaf        = format_leaf(event$status, event$label, event$depth, theme = glyphs_ascii, color = FALSE)
+      leaf        = format_leaf(event$status, event$label, event$depth, theme = glyphs_ascii, color = FALSE, corner = isTRUE(event$terminal))
     )
     cat(line, "\n", file = path, append = TRUE, sep = "")
   }

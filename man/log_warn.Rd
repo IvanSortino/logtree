@@ -4,10 +4,14 @@
 \alias{log_warn}
 \title{Log a warning leaf line}
 \usage{
-log_warn(msg)
+log_warn(msg, close = FALSE)
 }
 \arguments{
 \item{msg}{Character scalar.}
+
+\item{close}{Logical. When \code{TRUE}, force-close the enclosing section after
+this line: the line is shown as the section's terminal (corner) line and
+its \code{Done} line is suppressed. Defaults to \code{FALSE}.}
 }
 \value{
 \code{NULL}, invisibly.

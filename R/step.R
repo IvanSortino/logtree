@@ -141,21 +141,27 @@ resolved_status <- function(status) {
   if (identical(status, "running")) "success" else status
 }
 
-close_step <- function(id) {
+close_step <- function(id, silent = FALSE) {
   idx <- Find(function(i) the$stack[[i]]$id == id, seq_along(the$stack))
   if (is.null(idx)) return(invisible(NULL))
   # Cascade-close deepest-first down to (and including) idx. This keeps the
   # stack correct even if closing arrives out of the expected order (e.g. the
   # same-frame-sibling pattern in log_step("A"); log_step("B")).
+  #
+  # `silent = TRUE` pops the same entries but emits no close/group_close event,
+  # so no "Done" line is printed (used by the `close =` force-close: the log
+  # line itself already served as the section's terminal). Status is still
+  # folded up into any parent group, so a silently-closed member still colours
+  # the group's eventual close line.
   result <- NULL
   for (i in rev(seq(idx, length(the$stack)))) {
     entry <- the$stack[[i]]
     entry$elapsed <- now() - entry$start
     if (identical(entry$kind, "group")) {
       # A group closes with its own corner line, statused from its members.
-      emit(list(kind = "group_close", entry = entry))
+      if (!silent) emit(list(kind = "group_close", entry = entry))
     } else {
-      emit(list(kind = "close", entry = entry))
+      if (!silent) emit(list(kind = "close", entry = entry))
       # Fold this step's outcome up into its parent group (if any). The
       # parent sits at a lower index and is still on the stack here, so it
       # picks up the elevation before its own close line is emitted.
@@ -167,6 +173,15 @@ close_step <- function(id) {
     the$stack[[i]] <- NULL
   }
   invisible(result)
+}
+
+# Force-close the innermost open section (step or group) without emitting a
+# close line. Used by the leaf `close = TRUE` path, where the leaf just emitted
+# is the section's visible terminal line.
+close_current_section_silent <- function() {
+  id <- current_parent_id()
+  if (id == 0L) return(invisible(NULL))
+  close_step(id, silent = TRUE)
 }
 
 finalize_step <- function(id, sentinel) {
@@ -195,6 +210,9 @@ finalize_step <- function(id, sentinel) {
 #' @param group_by Optional named length-1 vector `c(name = value)`. Adjacent
 #'   `log_step()` calls sharing the same `value` are grouped under a single
 #'   `< name >` header line. The value is the match key; the name is displayed.
+#' @param close Logical. When `TRUE`, the step is force-closed silently as soon
+#'   as its opening line is printed: a header-only marker with no children and
+#'   no `Done` line (and no automatic close is registered). Defaults to `FALSE`.
 #' @return The step's internal id, invisibly.
 #' @export
 #' @examples
@@ -203,9 +221,13 @@ finalize_step <- function(id, sentinel) {
 #'   log_step("Doing work")
 #' }
 #' f()
-log_step <- function(msg, glyph = NULL, group_by = NULL) {
+log_step <- function(msg, glyph = NULL, group_by = NULL, close = FALSE) {
+  entry <- push_step(msg, glyph, group_by = group_by)
+  if (isTRUE(close)) {
+    close_step(entry$id, silent = TRUE)
+    return(invisible(entry$id))
+  }
   caller   <- rlang::caller_env()
-  entry    <- push_step(msg, glyph, group_by = group_by)
   sentinel <- new.env(parent = emptyenv())
   withr::defer(finalize_step(entry$id, sentinel), envir = caller, priority = "first")
   invisible(entry$id)
@@ -231,6 +253,9 @@ log_step <- function(msg, glyph = NULL, group_by = NULL) {
 #'   the innermost open step. The target must still be open, else an error.
 #' @param group_by Optional named length-1 vector `c(name = value)`, as in
 #'   [log_step()].
+#' @param close Logical. When `TRUE`, the step is force-closed silently as soon
+#'   as its opening line is printed: a header-only marker with no children and
+#'   no `Done` line. Defaults to `FALSE`.
 #' @return The step's id, invisibly. Capture it to pass to [log_close()] or as
 #'   another step's `parent`.
 #' @seealso [log_close()], [log_step()]
@@ -240,8 +265,10 @@ log_step <- function(msg, glyph = NULL, group_by = NULL) {
 #' s1 <- log_open("Step 1")
 #' log_info("a child line")
 #' log_close(s1)
-log_open <- function(msg, glyph = NULL, parent = NULL, group_by = NULL) {
+log_open <- function(msg, glyph = NULL, parent = NULL, group_by = NULL,
+                     close = FALSE) {
   entry <- push_step(msg, glyph, group_by = group_by, parent = parent)
+  if (isTRUE(close)) close_step(entry$id, silent = TRUE)
   invisible(entry$id)
 }
 
@@ -351,11 +378,16 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
   paste0(prefix, theme_glyph(status, theme, color), " Done  ", format_elapsed(entry$elapsed))
 }
 
-format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE) {
+format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
+                        corner = FALSE) {
+  # A `corner = TRUE` leaf is the terminal line of its section (the `close =`
+  # force-close): it takes the corner connector instead of branch, standing in
+  # for the suppressed close line.
+  connector <- if (isTRUE(corner)) "corner" else "branch"
   prefix <- if (depth == 0L) {
     ""
   } else {
-    paste0(strrep(rail_unit(theme, color), max(depth - 1L, 0L)), connector_str("branch", theme, color))
+    paste0(strrep(rail_unit(theme, color), max(depth - 1L, 0L)), connector_str(connector, theme, color))
   }
   paste0(prefix, theme_glyph(status, theme, color), " ", msg)
 }

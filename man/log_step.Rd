@@ -4,7 +4,7 @@
 \alias{log_step}
 \title{Open a logged step}
 \usage{
-log_step(msg, glyph = NULL, group_by = NULL)
+log_step(msg, glyph = NULL, group_by = NULL, close = FALSE)
 }
 \arguments{
 \item{msg}{Character scalar. The step's label.}
@@ -14,6 +14,10 @@ log_step(msg, glyph = NULL, group_by = NULL)
 \item{group_by}{Optional named length-1 vector \code{c(name = value)}. Adjacent
 \code{log_step()} calls sharing the same \code{value} are grouped under a single
 \verb{< name >} header line. The value is the match key; the name is displayed.}
+
+\item{close}{Logical. When \code{TRUE}, the step is force-closed silently as soon
+as its opening line is printed: a header-only marker with no children and
+no \code{Done} line (and no automatic close is registered). Defaults to \code{FALSE}.}
 }
 \value{
 The step's internal id, invisibly.
