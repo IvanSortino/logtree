@@ -37,7 +37,7 @@ kept from the active theme.
    \code{success} \tab success glyph (clean close, \code{log_success()}) \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{warning} \tab \code{log_warn()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{error} \tab \code{log_error()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color} \cr
-   \code{incomplete} \tab abnormal-exit (dimmed) glyph \tab \code{glyph}, \code{width}, \code{color} \cr
+   \code{interrupted} \tab abnormal-exit (dimmed) glyph \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{group} \tab group header marker \tab \code{glyph}, \code{color}, \code{bracket} \cr
    \code{branch} \tab child connector (\verb{├─}) \tab \code{glyph}, \code{color} \cr
    \code{corner} \tab close-line connector (\verb{└─}) \tab \code{glyph}, \code{color} \cr
@@ -48,7 +48,7 @@ kept from the active theme.
 \strong{Fields} (valid names inside a slot):\tabular{lll}{
    Field \tab Type \tab Accepted values \cr
    \code{glyph} \tab \code{character(1)} \tab Any string, including \code{""}. In package source, non-ASCII must be written as \verb{\\u}/\verb{\\U} escapes, never literal characters. \cr
-   \code{width} \tab \code{integer(1)} \tab Rendered display width of \code{glyph} (\code{1} for normal, \code{2} for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (\code{step}, \code{info}, \code{debug}, \code{success}, \code{warning}, \code{error}, \code{incomplete}). \cr
+   \code{width} \tab \code{integer(1)} \tab Rendered display width of \code{glyph} (\code{1} for normal, \code{2} for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (\code{step}, \code{info}, \code{debug}, \code{success}, \code{warning}, \code{error}, \code{interrupted}). \cr
    \code{color} \tab \code{character} or \code{NULL} \tab One or more cli styles, or \code{NULL} for no styling. Named colors (\code{"red"}, \code{"cyan"}, \code{"silver"}, ...), bright variants (\code{"br_red"}), backgrounds (\code{"bg_blue"}), text styles (\code{"bold"}, \code{"italic"}, \code{"dim"}), or a hex string (\code{"#ff8800"}). A character vector combines styles, e.g. \code{c("red", "bold")}. See \code{\link[cli:combine_ansi_styles]{cli::combine_ansi_styles()}}. \cr
    \code{bracket} \tab \code{logical(1)} \tab \code{group} slot only. \code{TRUE} wraps the header name in \verb{< >}; default \code{FALSE}. \cr
 }

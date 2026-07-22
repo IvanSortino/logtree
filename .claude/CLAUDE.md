@@ -50,7 +50,7 @@ step can ever leak and desync later indentation.
   and logs the condition message as a leaf *before* the stack unwinds, then rethrows
   — `with_logging()` never swallows errors.
 - If a step's frame exits abnormally with no Tier-2 handler having elevated it,
-  `finalize_step()` marks it `"incomplete"` (dimmed glyph) rather than showing a
+  `finalize_step()` marks it `"interrupted"` (dimmed glyph) rather than showing a
   false success.
 
 ### Grouping (`R/state.R`)
