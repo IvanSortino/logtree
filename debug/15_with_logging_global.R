@@ -1,5 +1,5 @@
-# Demo: with_logging(global = TRUE) -- top-level (script) error handling.
 #
+# Demo: with_logging(global = TRUE) -- top-level (script) error handling.
 # The block form with_logging({ ... }) wraps a function body. At the top level
 # of a *script* there is no body to wrap: with_logging(global = TRUE) instead
 # installs a session-persistent global error handler. When an error reaches the
@@ -11,6 +11,7 @@
 # exactly the situation the handler exists for. Run it with:
 #   Rscript -e 'devtools::load_all(); source("debug/15_with_logging_global.R")'
 
+devtools::load_all()
 logtree_reset()
 
 # Install the handler as the first line of the script.

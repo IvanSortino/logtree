@@ -133,3 +133,50 @@ test_that("with_logging(global = TRUE) errors (fail-fast) when handlers are on t
   expect_error(with_logging(global = TRUE), "should not be called with handlers")
   expect_false(the$global_installed)
 })
+
+test_that("global_error_action prints a 'Run failed' summary when summary = TRUE", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  log_open("Load data")
+  # install_global_logging() stamps the$global_start; set it here so the
+  # elapsed-time formatting in the summary line has a numeric base to subtract.
+  the$global_start <- now()
+  out <- capture.output(global_error_action(simpleError("boom"), summary = TRUE))
+
+  expect_true(any(grepl("Run failed", out)))
+})
+
+test_that("install_global_logging is idempotent: a second call is a no-op", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  # Pretend a handler is already installed. The early return must fire BEFORE any
+  # globalCallingHandlers() call (which would error under test handlers), proving
+  # idempotency without touching the real global handler stack.
+  the$global_installed <- TRUE
+  withr::defer({ the$global_installed <- FALSE; the$global_prev <- NULL })
+
+  expect_null(install_global_logging(TRUE))
+  expect_true(the$global_installed)
+})
+
+test_that("mark_open_steps elevates open steps but skips group entries", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  # A grouped step pushes a synthetic group entry (kind = "group") plus the step
+  # entry, so the loop must `next` past the group and elevate only the step.
+  capture.output(log_step("member", group = c(Batch = "x")))
+  mark_open_steps("error")
+
+  kinds <- vapply(the$stack, function(e) e$kind, character(1))
+  grp <- the$stack[[which(kinds == "group")]]
+  stp <- the$stack[[which(kinds == "step")]]
+  expect_equal(stp$status, "error")   # the step was elevated
+  expect_equal(grp$status, "running")  # the group was skipped, not elevated
+
+  logtree_reset()  # drop the still-open step before its frame-exit defer fires
+})

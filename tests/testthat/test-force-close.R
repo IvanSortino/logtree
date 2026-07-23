@@ -106,3 +106,12 @@ test_that("silent close still folds a member's warning into its group's close li
   # ... yet the group closes with the warning glyph folded up from it.
   expect_true(any(grepl("^\\|- ! Done", out)))
 })
+
+test_that("close_current_section_silent is a no-op when no section is open", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  # Empty stack -> current_parent_id() is 0 -> nothing to close, no error.
+  expect_no_error(close_current_section_silent())
+  expect_length(the$stack, 0)
+})

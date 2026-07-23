@@ -56,3 +56,29 @@ test_that("step ids are unique and monotonically increasing across pushes", {
   ids <- f()
   expect_true(ids[2] > ids[1])
 })
+
+test_that("set_stack_entry_status is a no-op for an id that isn't on the stack", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  capture.output(log_open("Open"))
+  before <- the$stack[[1]]$status
+  expect_no_error(set_stack_entry_status(999999L, "error"))
+  expect_equal(the$stack[[1]]$status, before)  # unrelated entry untouched
+})
+
+test_that("logtree_reset keeps the global handler installed when it can't tear down", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  # Simulate an installed global handler. Inside test_that(), condition handlers
+  # are on the stack, so globalCallingHandlers(NULL) errors; the guarded teardown
+  # must swallow that and leave the handler flagged installed (a later top-level
+  # reset clears it) rather than throwing.
+  the$global_installed <- TRUE
+  the$global_prev      <- list()
+  withr::defer({ the$global_installed <- FALSE; the$global_prev <- NULL })
+
+  expect_no_error(logtree_reset())
+  expect_true(the$global_installed)  # could not tear down under active handlers
+})
