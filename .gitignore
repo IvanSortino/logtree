@@ -11,3 +11,8 @@ docs/
 # Agent scratch
 .superpowers/
 docs/superpowers/
+
+# local coverage report (dev/coverage.R output)
+dev/coverage-report.html
+dev/coverage-report_files/
+dev/lib/

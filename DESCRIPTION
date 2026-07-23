@@ -15,6 +15,7 @@ Imports:
     rlang,
     withr
 Suggests:
+    covr,
     jsonlite,
     knitr,
     logger,
