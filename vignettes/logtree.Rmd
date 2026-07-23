@@ -154,6 +154,44 @@ pipeline()
 logtree_theme("unicode")
 ```
 
+Individual glyph slots can be overridden with `overrides` -- a named list
+keyed by slot, each element holding only the fields to change (everything else
+is kept from the active theme):
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  success = list(glyph = "*", color = c("green", "bold")),
+  group   = list(bracket = TRUE)
+))
+pipeline()
+logtree_theme("unicode")
+```
+
+**Accepted slots** (valid names in an `overrides` list):
+
+| Slot | Applies to | Fields it accepts |
+| ---- | ---------- | ----------------- |
+| `step` | open / running step glyph | `glyph`, `width`, `color` |
+| `info` | `log_info()` leaf | `glyph`, `width`, `color` |
+| `debug` | `log_debug()` leaf | `glyph`, `width`, `color` |
+| `success` | success glyph (clean close, `log_success()`) | `glyph`, `width`, `color` |
+| `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
+| `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
+| `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
+| `group` | group header marker | `glyph`, `color`, `bracket` |
+| `branch` | child connector (`├─`) | `glyph`, `color` |
+| `corner` | close-line connector (`└─`) | `glyph`, `color` |
+| `pipe` | vertical rail (`│`) | `glyph`, `color` |
+
+**Accepted fields** (valid names inside a slot):
+
+| Field | Type | Accepted values |
+| ----- | ---- | --------------- |
+| `glyph` | `character(1)` | Any string, including `""`. |
+| `width` | `integer(1)` | Rendered display width of the glyph (`1` normal, `2` emoji/wide). Sets column alignment; status slots only. |
+| `color` | `character` / `NULL` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. |
+| `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`. |
+
 ## Output sinks
 
 The console sink is always on. `logtree_sink_file()` adds a plain-text or
