@@ -4,7 +4,7 @@
 \alias{logtree_summary}
 \title{Report a digest of notable events}
 \usage{
-logtree_summary(filter = NULL)
+logtree_summary(filter = NULL, depth = NULL)
 }
 \arguments{
 \item{filter}{Optional character vector of statuses to include, e.g.
@@ -12,6 +12,13 @@ logtree_summary(filter = NULL)
 matches are printed and returned; recognised statuses are \code{"error"},
 \code{"warning"}, \code{"interrupted"}, and the pinned leaf statuses \code{"info"},
 \code{"success"}, \code{"debug"}. \code{NULL} (the default) reports every entry.}
+
+\item{depth}{Optional positive integer limiting how many trailing (deepest)
+breadcrumb nodes are printed. The message counts as the terminal node, so
+\code{depth = 1} prints just the message (or, for a step entry, its innermost
+step), \code{depth = 2} the message plus its immediate parent, and so on.
+\code{NULL} (the default) prints the full breadcrumb. Affects printing only; the
+returned entries always carry the full \code{path}.}
 }
 \value{
 The recorded entries, invisibly: a list of records, each a list with

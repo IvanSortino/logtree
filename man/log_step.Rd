@@ -4,7 +4,14 @@
 \alias{log_step}
 \title{Open a logged step}
 \usage{
-log_step(msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE)
+log_step(
+  msg,
+  glyph = NULL,
+  parent = NULL,
+  group = NULL,
+  close = FALSE,
+  key = NULL
+)
 }
 \arguments{
 \item{msg}{Character scalar. The step's label.}
@@ -22,6 +29,13 @@ the innermost open step. The target must still be open, else an error.}
 \item{close}{Logical. When \code{TRUE}, the step is force-closed silently as soon
 as its opening line is printed: a header-only marker with no children and
 no \code{Done} line (and no automatic close is registered). Defaults to \code{FALSE}.}
+
+\item{key}{Optional character scalar giving this step a stable identity for
+re-run reconciliation. At top level (the global env) the label is used
+automatically, so re-running the same line re-anchors to that node instead
+of nesting under the previous run's leftovers. Pass \code{key} to override the
+automatic label key, or to keep two same-label steps that are open at once
+distinct. Ignored when \code{parent} is supplied.}
 }
 \value{
 The step's internal id, invisibly.

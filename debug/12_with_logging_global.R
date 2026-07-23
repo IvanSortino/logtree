@@ -9,7 +9,7 @@
 #
 # This script is MEANT to end with an uncaught error (non-zero exit): that is
 # exactly the situation the handler exists for. Run it with:
-#   Rscript -e 'devtools::load_all(); source("debug/15_with_logging_global.R")'
+#   Rscript -e 'devtools::load_all(); source("debug/12_with_logging_global.R")'
 
 devtools::load_all()
 logtree_reset()

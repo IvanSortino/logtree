@@ -1,7 +1,7 @@
 # group: every situation, one section each. Each scenario resets state and
 # runs in its own frame so steps close cleanly on return.
 #
-#   source("debug/04_group_situations.R")
+#   source("debug/03_grouped.R")
 devtools::load_all()
 
 section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")

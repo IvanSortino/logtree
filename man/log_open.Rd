@@ -4,7 +4,14 @@
 \alias{log_open}
 \title{Open a step under manual lifetime control}
 \usage{
-log_open(msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE)
+log_open(
+  msg,
+  glyph = NULL,
+  parent = NULL,
+  group = NULL,
+  close = FALSE,
+  key = NULL
+)
 }
 \arguments{
 \item{msg}{Character scalar. The step's label.}
@@ -21,6 +28,12 @@ the innermost open step. The target must still be open, else an error.}
 \item{close}{Logical. When \code{TRUE}, the step is force-closed silently as soon
 as its opening line is printed: a header-only marker with no children and
 no \code{Done} line. Defaults to \code{FALSE}.}
+
+\item{key}{Optional character scalar giving this step a stable identity for
+re-run reconciliation, as in \code{\link[=log_step]{log_step()}}. At top level the label is used
+automatically, so re-running the same \code{log_open()} line re-anchors to that
+node instead of nesting under the previous run's leftovers. Ignored when
+\code{parent} is supplied.}
 }
 \value{
 The step's id, invisibly. Capture it to pass to \code{\link[=log_close]{log_close()}} or as

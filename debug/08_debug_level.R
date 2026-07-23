@@ -3,7 +3,7 @@
 # suppressed debug leaf never elevates the enclosing step's status (like
 # log_info()/log_success(), unlike log_warn()/log_error()).
 #
-#   source("debug/10_debug_level.R")
+#   source("debug/08_debug_level.R")
 devtools::load_all()
 
 section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")

@@ -68,6 +68,12 @@ record_summary <- function(event) {
 #'   matches are printed and returned; recognised statuses are `"error"`,
 #'   `"warning"`, `"interrupted"`, and the pinned leaf statuses `"info"`,
 #'   `"success"`, `"debug"`. `NULL` (the default) reports every entry.
+#' @param depth Optional positive integer limiting how many trailing (deepest)
+#'   breadcrumb nodes are printed. The message counts as the terminal node, so
+#'   `depth = 1` prints just the message (or, for a step entry, its innermost
+#'   step), `depth = 2` the message plus its immediate parent, and so on.
+#'   `NULL` (the default) prints the full breadcrumb. Affects printing only; the
+#'   returned entries always carry the full `path`.
 #' @return The recorded entries, invisibly: a list of records, each a list with
 #'   `kind`, `status`, `msg`, `path` (character vector), and `elapsed`.
 #' @seealso [with_logging()], [logtree_reset()]
@@ -80,7 +86,14 @@ record_summary <- function(event) {
 #' }
 #' f()
 #' logtree_summary()
-logtree_summary <- function(filter = NULL) {
+logtree_summary <- function(filter = NULL, depth = NULL) {
+  if (!is.null(depth)) {
+    if (!is.numeric(depth) || length(depth) != 1L || is.na(depth) ||
+        depth < 1 || depth != as.integer(depth)) {
+      stop("`depth` must be NULL or a positive whole number.", call. = FALSE)
+    }
+    depth <- as.integer(depth)
+  }
   entries <- the$summary
   if (!is.null(filter)) {
     keep <- vapply(entries, function(e) e$status %in% filter, logical(1))
@@ -105,19 +118,26 @@ logtree_summary <- function(filter = NULL) {
     if (n_pinned      > 0L) sprintf("%d pinned", n_pinned)
   )
   cat("Summary: ", paste(parts, collapse = ", "), "\n", sep = "")
+  # depth (when set) keeps only the trailing `depth` breadcrumb nodes.
+  clip <- function(nodes) if (is.null(depth)) nodes else utils::tail(nodes, depth)
   for (e in entries) {
-    path   <- paste(e$path, collapse = " > ")
-    detail <- if (identical(e$kind, "leaf")) {
-      e$msg
+    if (identical(e$kind, "leaf")) {
+      # The leaf's message is the terminal node of its breadcrumb, so join it to
+      # the ancestor path with the same " > " separator.
+      crumb <- paste(clip(c(e$path, e$msg)), collapse = " > ")
+      cat(theme_glyph(e$status), " ", crumb, "\n", sep = "")
     } else {
-      switch(e$status,
+      # Step entries carry no message; render the switch()-mapped outcome word
+      # after the path, set off by two spaces (a description, not a path node).
+      path   <- paste(clip(e$path), collapse = " > ")
+      detail <- switch(e$status,
         error       = "failed",
         warning     = "completed with warning",
         interrupted = "did not complete",
         e$status
       )
+      cat(theme_glyph(e$status), " ", path, "  ", detail, "\n", sep = "")
     }
-    cat(theme_glyph(e$status), " ", path, "  ", detail, "\n", sep = "")
   }
   invisible(entries)
 }

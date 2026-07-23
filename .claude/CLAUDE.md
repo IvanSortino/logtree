@@ -23,9 +23,11 @@ behind architectural decisions referenced below.
 - Full CRAN-style check: `devtools::check()` (target: 0 errors/warnings/notes)
 - Rebuild `README.md` from `README.Rmd`: `devtools::build_readme()`
 - Run a feature demo: `Rscript -e 'devtools::load_all(); source("debug/01_simple_log.R")'`
-  — each `debug/*.R` script is a standalone, runnable demo of one feature area.
-  **Add a new `debug/*.R` script whenever you add a feature** (established
-  convention: `01_simple_log.R` … `06_group_styling.R`, one file per capability).
+  — each `debug/*.R` script is a standalone, runnable demo of one feature area,
+  numbered contiguously (`01_simple_log.R` … `14_srckey_replay.R`, one file per
+  capability). **Add a new numbered `debug/*.R` script whenever you add a
+  feature.** Non-demo build/release helpers (README-asset regen, CRAN checklist)
+  live under `debug/maintenance/`, kept out of the numbered demo sequence.
 
 ## Architecture
 

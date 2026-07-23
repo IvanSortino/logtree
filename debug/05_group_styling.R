@@ -2,7 +2,7 @@
 # resets state + theme and runs the same little grouped tree so the styling
 # change is the only difference.
 #
-#   source("debug/06_group_styling.R")
+#   source("debug/05_group_styling.R")
 devtools::load_all()
 
 section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")
