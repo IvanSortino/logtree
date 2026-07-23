@@ -29,6 +29,7 @@ reference:
   - logtree_sink_file
   - logtree_threshold
   - logtree_reset
+  - logtree_summary
 - title: logger package integration
   contents:
   - logtree_logger
