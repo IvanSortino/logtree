@@ -341,7 +341,12 @@ log_step <- function(msg, glyph = NULL, parent = NULL, group = NULL,
     )
   }
   sentinel <- new.env(parent = emptyenv())
-  withr::defer(finalize_step(entry$id, sentinel), envir = caller, priority = "first")
+  # At top level withr::defer() also emits its own "Setting global deferred
+  # event(s)" message the first time -- redundant with the nudge above, so
+  # silence it here rather than let both fire.
+  suppressMessages(
+    withr::defer(finalize_step(entry$id, sentinel), envir = caller, priority = "first")
+  )
   invisible(entry$id)
 }
 

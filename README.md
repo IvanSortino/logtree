@@ -5,6 +5,10 @@
 
 <!-- badges: start -->
 
+[![R-CMD-check](https://github.com/IvanSortino/logtree/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/IvanSortino/logtree/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/IvanSortino/logtree/graph/badge.svg)](https://app.codecov.io/gh/IvanSortino/logtree)
+
 [Documentation](https://IvanSortino.github.io/logtree/) \|
 [GitHub](https://github.com/IvanSortino/logtree)
 
