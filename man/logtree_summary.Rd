@@ -4,7 +4,14 @@
 \alias{logtree_summary}
 \title{Report a digest of notable events}
 \usage{
-logtree_summary()
+logtree_summary(filter = NULL)
+}
+\arguments{
+\item{filter}{Optional character vector of statuses to include, e.g.
+\code{"error"} or \code{c("warning", "interrupted")}. Only entries whose status
+matches are printed and returned; recognised statuses are \code{"error"},
+\code{"warning"}, \code{"interrupted"}, and the pinned leaf statuses \code{"info"},
+\code{"success"}, \code{"debug"}. \code{NULL} (the default) reports every entry.}
 }
 \value{
 The recorded entries, invisibly: a list of records, each a list with

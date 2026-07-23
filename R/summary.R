@@ -63,6 +63,11 @@ record_summary <- function(event) {
 #' logged with `summary = TRUE`; a warning or error can be excluded with
 #' `summary = FALSE`.
 #'
+#' @param filter Optional character vector of statuses to include, e.g.
+#'   `"error"` or `c("warning", "interrupted")`. Only entries whose status
+#'   matches are printed and returned; recognised statuses are `"error"`,
+#'   `"warning"`, `"interrupted"`, and the pinned leaf statuses `"info"`,
+#'   `"success"`, `"debug"`. `NULL` (the default) reports every entry.
 #' @return The recorded entries, invisibly: a list of records, each a list with
 #'   `kind`, `status`, `msg`, `path` (character vector), and `elapsed`.
 #' @seealso [with_logging()], [logtree_reset()]
@@ -75,8 +80,12 @@ record_summary <- function(event) {
 #' }
 #' f()
 #' logtree_summary()
-logtree_summary <- function() {
+logtree_summary <- function(filter = NULL) {
   entries <- the$summary
+  if (!is.null(filter)) {
+    keep <- vapply(entries, function(e) e$status %in% filter, logical(1))
+    entries <- entries[keep]
+  }
   if (length(entries) == 0L) {
     cat("Summary: nothing to report\n")
     return(invisible(entries))

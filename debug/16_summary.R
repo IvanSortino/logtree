@@ -54,3 +54,21 @@ logtree_reset()
 clean <- function() { log_step("All good"); log_success("validated 12 params") }
 clean()
 logtree_summary()
+
+# ---------------------------------------------------------------------------
+# E. Filter the digest: pass a status, or a vector of statuses, to report only
+#    those categories. NULL (the default) reports everything.
+section("E. filter: report only selected categories")
+logtree_reset()
+pipeline <- function() {
+  log_step("Extract");   log_warn("2 rows dropped")
+  log_step("Transform"); log_error("schema mismatch")
+  log_info("42 records staged", summary = TRUE)          # pinned
+}
+pipeline()
+cat("-- errors only --\n")
+logtree_summary(filter = "error")
+cat("-- warnings + errors --\n")
+logtree_summary(filter = c("warning", "error"))
+cat("-- everything (default) --\n")
+logtree_summary()
