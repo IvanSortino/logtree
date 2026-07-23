@@ -98,3 +98,9 @@ test_that("each theme preset defines a distinct debug glyph", {
   logtree_theme("emoji")
   expect_equal(the$theme$debug$glyph, "\U0001f41b")
 })
+
+test_that("theme_preset() errors on an unknown preset name", {
+  # logtree_theme() guards preset names via match.arg() before this internal is
+  # reached, so exercise theme_preset()'s own fallback stop() directly.
+  expect_error(theme_preset("nonexistent"), "Unknown theme preset")
+})

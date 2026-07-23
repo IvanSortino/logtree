@@ -149,3 +149,105 @@ test_that("logtree_reset() clears the summary buffer", {
   logtree_reset()
   expect_length(the$summary, 0L)
 })
+
+test_that("filter filters the digest to a single status", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  f <- function() {
+    log_step("T")
+    log_warn("w1")
+    log_error("e1")
+  }
+  capture.output(f())
+
+  out <- capture.output(res <- logtree_summary(filter = "error"))
+  expect_match(out[[1]], "1 error")
+  expect_false(any(grepl("warning", out)))
+  expect_length(res, 1L)
+  expect_identical(res[[1]]$status, "error")
+})
+
+test_that("filter accepts a vector of statuses", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  inner <- function() {
+    log_step("Inner")
+    stop("boom")
+  }
+  outer <- function() {
+    log_step("Outer")
+    inner()
+  }
+  capture.output(tryCatch(outer(), error = function(e) NULL))
+  g <- function() {
+    log_step("T2")
+    log_warn("careful")
+  }
+  capture.output(g())
+
+  res <- logtree_summary(filter = c("warning", "interrupted"))
+  statuses <- vapply(res, function(e) e$status, character(1))
+  expect_setequal(statuses, c("interrupted", "warning"))
+})
+
+test_that("filter with no matching status reports nothing", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  f <- function() {
+    log_step("T")
+    log_warn("w")
+  }
+  capture.output(f())
+
+  out <- capture.output(res <- logtree_summary(filter = "error"))
+  expect_match(out, "nothing to report")
+  expect_length(res, 0L)
+})
+
+test_that("logtree_summary() prints outcome words for non-leaf step entries", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  # A step that elevates via a summary = FALSE leaf records a *step* entry (the
+  # leaf itself is dropped), so logtree_summary() renders the switch()-mapped
+  # outcome word rather than a message.
+  warned <- function() {
+    log_step("Warned")
+    log_warn("quiet", summary = FALSE)
+  }
+  failed <- function() {
+    log_step("Failed")
+    log_error("quiet", summary = FALSE)
+  }
+  capture.output({ warned(); failed() })
+
+  out <- capture.output(logtree_summary())
+  expect_true(any(grepl("Warned  completed with warning", out)))
+  expect_true(any(grepl("Failed  failed", out)))
+})
+
+test_that("logtree_summary() reports an interrupted step as 'did not complete'", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  inner <- function() {
+    log_step("Inner")
+    stop("boom")
+  }
+  outer <- function() {
+    log_step("Outer")
+    inner()
+  }
+  capture.output(tryCatch(outer(), error = function(e) NULL))
+
+  out <- capture.output(logtree_summary())
+  expect_true(any(grepl("did not complete", out)))
+})
