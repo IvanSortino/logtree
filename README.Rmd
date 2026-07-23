@@ -29,7 +29,7 @@ while keeping nesting depth correct even when a step errors partway
 through.
 
 <p align="center">
-<img src="man/figures/README-tree-color.svg" alt="Colorized logtree console output" width="500" />
+<img src="man/figures/README-tree-color.svg" alt="Annotated logtree console output" width="760" />
 </p>
 
 
@@ -129,6 +129,33 @@ apply_migration <- function() {
 try(with_logging(apply_migration()), silent = TRUE)
 ```
 
+## Run summary
+
+When a run ends, `logtree_summary()` prints a breadcrumb digest of every
+error, warning, and pinned leaf since the last reset -- so you see *what* went
+wrong without scrolling back through the tree. `filter` restricts by status;
+`depth` trims each breadcrumb to its `N` deepest nodes.
+
+```{r summary}
+logtree_reset()
+
+migrate <- function() {
+  log_step("Apply migration")
+  log_warn("table lock held 800ms")
+  log_error("constraint violation on users.email")
+}
+
+release <- function() {
+  log_step("Release v2.1")
+  migrate()
+  log_step("Smoke test")
+  log_success("all endpoints 200")
+}
+
+with_logging(release(), summary = FALSE)
+logtree_summary()
+```
+
 ## Grouping
 
 Adjacent `log_step()` calls that share a `group = c(name = value)` value
@@ -192,30 +219,11 @@ demo_build()
 logtree_theme("unicode")
 ```
 
-**Accepted slots** (valid names in an `overrides` list):
-
-| Slot | Applies to | Fields it accepts |
-| ---- | ---------- | ----------------- |
-| `step` | open / running step glyph | `glyph`, `width`, `color` |
-| `info` | `log_info()` leaf | `glyph`, `width`, `color` |
-| `debug` | `log_debug()` leaf | `glyph`, `width`, `color` |
-| `success` | success glyph (clean close, `log_success()`) | `glyph`, `width`, `color` |
-| `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
-| `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
-| `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
-| `group` | group header marker | `glyph`, `color`, `bracket` |
-| `branch` | child connector (`├─`) | `glyph`, `color` |
-| `corner` | close-line connector (`└─`) | `glyph`, `color` |
-| `pipe` | vertical rail (`│`) | `glyph`, `color` |
-
-**Accepted fields** (valid names inside a slot):
-
-| Field | Type | Accepted values |
-| ----- | ---- | --------------- |
-| `glyph` | `character(1)` | Any string, including `""`. |
-| `width` | `integer(1)` | Rendered display width of the glyph (`1` normal, `2` emoji/wide). Sets column alignment; status slots only. |
-| `color` | `character` / `NULL` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. |
-| `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`. |
+The full list of overridable slots (`step`, `info`, `success`, `group`,
+`branch`, `corner`, ...) and their fields (`glyph`, `width`, `color`,
+`bracket`) is in the [Themes section of the
+vignette](https://IvanSortino.github.io/logtree/articles/logtree.html#themes)
+and `?logtree_theme`.
 
 ## More
 
@@ -237,11 +245,6 @@ logtree_theme("unicode")
   re-anchors to that node instead of nesting deeper on every run. Pass an
   explicit `key` to opt out, or to keep two same-label steps open at once
   distinct.
-- **Run digests** -- `logtree_summary(filter = NULL, depth = NULL)` reports a
-  breadcrumb digest of errors, warnings, and pinned leaves once a run ends
-  (`with_logging()` calls it automatically unless `summary = FALSE`);
-  `filter` restricts by status, `depth` trims each breadcrumb to its `N`
-  deepest nodes.
 
 See `vignette("logtree")` and the [documentation
 site](https://IvanSortino.github.io/logtree/) for full details on error

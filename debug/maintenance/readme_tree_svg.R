@@ -271,9 +271,9 @@ pad_x       <- 20
 pad_top     <- 16
 pad_bottom  <- 16
 
-max_chars <- max(nchar(plain, type = "chars"))
-width  <- ceiling(pad_x * 2 + max_chars * char_width)
-height <- ceiling(pad_top + length(ansi_lines) * line_height + pad_bottom - (line_height - font_size))
+max_chars  <- max(nchar(plain, type = "chars"))
+tree_width <- ceiling(pad_x * 2 + max_chars * char_width)
+height     <- ceiling(pad_top + length(ansi_lines) * line_height + pad_bottom - (line_height - font_size))
 
 row_top <- function(i) pad_top + (i - 1L) * line_height
 row_mid <- function(i) row_top(i) + line_height / 2
@@ -337,6 +337,43 @@ for (i in seq_along(content_segs)) {
                          x, y, paste(tspans, collapse = ""))
 }
 
+# --- annotations: color-coded right-gutter callouts ------------------------
+# Each callout points a faint dotted guide from one matched tree row to a short
+# label rendered in that feature's own accent color, so the label reads as an
+# explanation of the glyph it lines up with. Keyed by a unique substring of the
+# (plain, ANSI-stripped) row text so it survives layout tweaks.
+annotations <- list(
+  list(match = "ETL run",      color = palette[["36"]], text = "open step — runs on ▶, closes ✔"),
+  list(match = "sources",      color = palette[["35"]], text = "group header: adjacent steps collapse here"),
+  list(match = "24,318",       color = palette[["34"]], text = "info leaf line"),
+  list(match = "Done  1m 27s", color = palette[["32"]], text = "elapsed time, tracked per step"),
+  list(match = "unreachable",  color = palette[["31"]], text = "error leaf elevates the step — run keeps going"),
+  list(match = "12ms latency", color = palette[["32"]], text = "… then closes ✔ once recovered"),
+  list(match = "Run complete", color = palette[["32"]], text = "run summary line (with_logging)")
+)
+
+ann_font    <- 11
+ann_char    <- 6.1                       # approx label glyph width (sans, 11px)
+ann_x       <- tree_width + 40           # label column start, past the tree
+guide_color <- "#d0d7de"
+
+ann_svg <- character(0)
+for (a in annotations) {
+  i <- which(vapply(plain, function(p) grepl(a$match, p, fixed = TRUE), logical(1)))[1]
+  if (is.na(i)) next
+  y  <- row_mid(i)
+  x0 <- pad_x + nchar(plain[[i]]) * char_width + 8   # just past this row's text
+  x1 <- ann_x - 10
+  ann_svg <- c(ann_svg,
+    sprintf('<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="%s" stroke-width="1" stroke-dasharray="1 3"/>',
+            x0, y, x1, y, guide_color),
+    sprintf('<circle cx="%.2f" cy="%.2f" r="2" fill="%s"/>', x1 + 4, y, a$color),
+    sprintf('<text x="%.2f" y="%.2f" fill="%s">%s</text>', ann_x, y + ann_font / 3, a$color, esc_xml(a$text)))
+}
+
+max_label <- max(vapply(annotations, function(a) nchar(a$text), integer(1)))
+width <- ceiling(ann_x + max_label * ann_char + pad_x)
+
 svg <- paste0(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ', width, ' ', height,
   '" width="', width, '" height="', height,
@@ -347,8 +384,10 @@ svg <- paste0(
   '<g stroke-linecap="round">\n', paste(vline_svg, collapse = "\n"), "\n",
   paste(hline_svg, collapse = "\n"), '\n</g>\n',
   '<g font-family="ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="', font_size, '">\n',
-  paste(text_svg, collapse = "\n"), '\n',
-  '</g>\n</svg>\n'
+  paste(text_svg, collapse = "\n"), '\n</g>\n',
+  '<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="', ann_font, '">\n',
+  paste(ann_svg, collapse = "\n"), '\n</g>\n',
+  '</svg>\n'
 )
 
 out_path <- "man/figures/README-tree-color.svg"
