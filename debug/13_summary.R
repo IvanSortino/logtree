@@ -3,7 +3,7 @@
 # with a breadcrumb path -- so you see "what went wrong" without scrolling the
 # whole tree. Every log_*() takes summary = TRUE/FALSE to pin or drop a line.
 #
-#   source("debug/07_summary.R")
+#   source("debug/13_summary.R")
 devtools::load_all()
 
 section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")
@@ -71,4 +71,24 @@ logtree_summary(filter = "error")
 cat("-- warnings + errors --\n")
 logtree_summary(filter = c("warning", "error"))
 cat("-- everything (default) --\n")
+logtree_summary()
+
+# ---------------------------------------------------------------------------
+# F. Trim the breadcrumb: depth = N keeps only the N deepest crumb nodes (the
+#    message counts as the terminal node). Handy when deep nesting makes the
+#    full path noisy and only the innermost context matters.
+section("F. depth: trim the breadcrumb to its deepest nodes")
+logtree_reset()
+nested <- function() {
+  log_step("Load data")
+  log_step("Parse CSV")
+  log_step("Tokenize")
+  log_error("unexpected EOF at line 402")
+}
+tryCatch(nested(), error = identity)
+cat("-- depth = 1 (message only) --\n")
+logtree_summary(depth = 1)
+cat("-- depth = 2 (message + parent) --\n")
+logtree_summary(depth = 2)
+cat("-- full (default) --\n")
 logtree_summary()

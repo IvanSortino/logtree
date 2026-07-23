@@ -97,7 +97,46 @@ elevate_group_status <- function(id, status) {
   invisible(NULL)
 }
 
-push_step <- function(label, glyph = NULL, group = NULL, parent = NULL) {
+# Content-key reconcile (top-level line-by-line / re-run support).
+#
+# At top level the caller frame is globalenv(), which never exits mid-session,
+# so a step's deferred close never fires and re-running a block would nest the
+# new run *under* the previous run's still-open steps. To keep depth stable,
+# top-level log_step()/log_open() carry a content `key` (the label) plus the
+# call-site `srcref`. Before pushing, if that key matches a still-open step we
+# re-anchor to it instead of descending. Colliding labels are disambiguated by
+# srcref when available (same call site -> reuse; different -> a genuinely
+# distinct step -> nest); with no srcref we reuse the outermost label match.
+# Returns the stack index to reuse, or NULL to push a fresh step.
+reconcile_open_step <- function(key, srcref) {
+  if (is.null(key)) return(NULL)
+  idxs <- Filter(function(i) {
+    e <- the$stack[[i]]
+    identical(e$kind, "step") && identical(e$key, key)
+  }, seq_along(the$stack))
+  if (length(idxs) == 0L) return(NULL)
+  if (!is.null(srcref) && !is.na(srcref)) {
+    exact <- Find(function(i) identical(the$stack[[i]]$srcref, srcref), idxs)
+    if (!is.null(exact)) return(exact)
+    # Same label but a different call site is open: nest a new step instead.
+    return(NULL)
+  }
+  idxs[[1L]]
+}
+
+# "file:line" of a call site, or NA when source references are unavailable
+# (e.g. keep.source = FALSE under non-interactive Rscript). NA disables srcref
+# disambiguation, leaving the portable label-only reconcile in force.
+src_location <- function(call) {
+  line <- utils::getSrcLocation(call, "line")
+  if (is.null(line) || is.na(line)) return(NA_character_)
+  file <- utils::getSrcFilename(call)
+  if (is.null(file) || !nzchar(file)) file <- "<text>"
+  paste0(basename(file), ":", line)
+}
+
+push_step <- function(label, glyph = NULL, group = NULL, parent = NULL,
+                      key = NULL, srcref = NULL) {
   if (!is.null(parent)) {
     p <- find_stack_entry(parent)
     if (is.null(p)) {
@@ -106,6 +145,20 @@ push_step <- function(label, glyph = NULL, group = NULL, parent = NULL) {
     parent_id <- parent
     depth     <- p$depth + 1L
   } else if (is.null(group)) {
+    idx <- reconcile_open_step(key, srcref)
+    if (!is.null(idx)) {
+      # Re-anchor to the matched open step: close everything deeper, then
+      # re-emit its open line so the re-run re-renders at the same depth.
+      if (length(the$stack) > idx) {
+        close_step(the$stack[[idx + 1L]]$id)
+      }
+      entry <- the$stack[[idx]]
+      entry$start  <- now()
+      entry$status <- "running"
+      the$stack[[idx]] <- entry
+      emit(list(kind = "open", entry = entry))
+      return(entry)
+    }
     settle_groups()
     parent_id <- current_parent_id()
     depth     <- current_depth() + 1L
@@ -133,7 +186,9 @@ push_step <- function(label, glyph = NULL, group = NULL, parent = NULL) {
     start     = now(),
     depth     = depth,
     status    = "running",
-    glyph     = glyph
+    glyph     = glyph,
+    key       = key,
+    srcref    = srcref
   )
   the$stack[[length(the$stack) + 1L]] <- entry
   emit(list(kind = "open", entry = entry))
@@ -240,6 +295,12 @@ finalize_step <- function(id, sentinel) {
 #' @param close Logical. When `TRUE`, the step is force-closed silently as soon
 #'   as its opening line is printed: a header-only marker with no children and
 #'   no `Done` line (and no automatic close is registered). Defaults to `FALSE`.
+#' @param key Optional character scalar giving this step a stable identity for
+#'   re-run reconciliation. At top level (the global env) the label is used
+#'   automatically, so re-running the same line re-anchors to that node instead
+#'   of nesting under the previous run's leftovers. Pass `key` to override the
+#'   automatic label key, or to keep two same-label steps that are open at once
+#'   distinct. Ignored when `parent` is supplied.
 #' @return The step's internal id, invisibly.
 #' @export
 #' @examples
@@ -249,17 +310,27 @@ finalize_step <- function(id, sentinel) {
 #' }
 #' f()
 log_step <- function(msg, glyph = NULL, parent = NULL, group = NULL,
-                     close = FALSE) {
-  entry <- push_step(msg, glyph, group = group, parent = parent)
+                     close = FALSE, key = NULL) {
+  caller <- rlang::caller_env()
+  srcref <- NULL
+  if (is.null(key) && is.null(parent) && identical(caller, globalenv())) {
+    # Top-level call: key on the label so re-running this line re-anchors to
+    # the same node instead of nesting; srcref disambiguates same-label steps.
+    key    <- msg
+    srcref <- src_location(sys.call())
+  }
+  entry <- push_step(msg, glyph, group = group, parent = parent,
+                     key = key, srcref = srcref)
   if (isTRUE(close)) {
     close_step(entry$id, silent = TRUE)
     return(invisible(entry$id))
   }
-  caller   <- rlang::caller_env()
   if (identical(caller, globalenv())) {
     # No enclosing function frame: the caller's frame is the global env, which
     # only "exits" at session end, so the deferred close below never fires in
-    # practice and the step lingers. Nudge (once) toward the manual API.
+    # practice and the step lingers. Re-running the same top-level line now
+    # re-anchors instead of nesting, but the step still won't auto-close --
+    # nudge (once) toward the manual API.
     rlang::inform(
       c(
         "!" = "log_step() at top level won't auto-close: there is no function frame to close on.",
@@ -297,6 +368,11 @@ log_step <- function(msg, glyph = NULL, parent = NULL, group = NULL,
 #' @param close Logical. When `TRUE`, the step is force-closed silently as soon
 #'   as its opening line is printed: a header-only marker with no children and
 #'   no `Done` line. Defaults to `FALSE`.
+#' @param key Optional character scalar giving this step a stable identity for
+#'   re-run reconciliation, as in [log_step()]. At top level the label is used
+#'   automatically, so re-running the same `log_open()` line re-anchors to that
+#'   node instead of nesting under the previous run's leftovers. Ignored when
+#'   `parent` is supplied.
 #' @return The step's id, invisibly. Capture it to pass to [log_close()] or as
 #'   another step's `parent`.
 #' @seealso [log_close()], [log_step()]
@@ -307,8 +383,17 @@ log_step <- function(msg, glyph = NULL, parent = NULL, group = NULL,
 #' log_info("a child line")
 #' log_close(s1)
 log_open <- function(msg, glyph = NULL, parent = NULL, group = NULL,
-                     close = FALSE) {
-  entry <- push_step(msg, glyph, group = group, parent = parent)
+                     close = FALSE, key = NULL) {
+  caller <- rlang::caller_env()
+  srcref <- NULL
+  if (is.null(key) && is.null(parent) && identical(caller, globalenv())) {
+    # Top-level call: key on the label so re-running this line re-anchors to
+    # the same node instead of nesting; srcref disambiguates same-label steps.
+    key    <- msg
+    srcref <- src_location(sys.call())
+  }
+  entry <- push_step(msg, glyph, group = group, parent = parent,
+                     key = key, srcref = srcref)
   if (isTRUE(close)) close_step(entry$id, silent = TRUE)
   invisible(entry$id)
 }

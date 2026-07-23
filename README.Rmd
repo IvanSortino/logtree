@@ -228,6 +228,17 @@ logtree_theme("unicode")
   depth as an open one (e.g. sharing a `parent`) retires the earlier sibling
   automatically, so you can stream siblings without an explicit `log_close()`
   on each.
+- **Re-running top-level lines** -- at top level (e.g. re-running selected
+  lines in RStudio/Positron while iterating), `log_step()`/`log_open()` key
+  each step on its label and call site, so re-running the same line
+  re-anchors to that node instead of nesting deeper on every run. Pass an
+  explicit `key` to opt out, or to keep two same-label steps open at once
+  distinct.
+- **Run digests** -- `logtree_summary(filter = NULL, depth = NULL)` reports a
+  breadcrumb digest of errors, warnings, and pinned leaves once a run ends
+  (`with_logging()` calls it automatically unless `summary = FALSE`);
+  `filter` restricts by status, `depth` trims each breadcrumb to its `N`
+  deepest nodes.
 
 See `vignette("logtree")` and the [documentation
 site](https://IvanSortino.github.io/logtree/) for full details on error

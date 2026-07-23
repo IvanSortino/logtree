@@ -119,6 +119,97 @@ test_that("logtree_summary() prints a header with counts and returns entries inv
   expect_false(withVisible(logtree_summary())$visible)
 })
 
+test_that("a leaf message joins its breadcrumb with ' > ' as the terminal node", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  pipeline <- function() {
+    log_step("Extract")
+    log_warn("2 rows dropped")
+    log_step("Transform")
+    log_error("schema mismatch")
+    log_info("42 records staged", summary = TRUE)
+  }
+  capture.output(pipeline())
+
+  out <- capture.output(logtree_summary())
+  expect_true(any(grepl("Extract > 2 rows dropped", out, fixed = TRUE)))
+  expect_true(any(grepl("Extract > Transform > schema mismatch", out, fixed = TRUE)))
+  expect_true(any(grepl("Extract > Transform > 42 records staged", out, fixed = TRUE)))
+})
+
+test_that("depth keeps only the trailing N breadcrumb nodes (message counts)", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  pipeline <- function() {
+    log_step("Extract")
+    log_step("Transform")
+    log_error("schema mismatch")
+  }
+  capture.output(pipeline())
+
+  out1 <- capture.output(logtree_summary(depth = 1))
+  expect_true(any(grepl("schema mismatch", out1, fixed = TRUE)))
+  expect_false(any(grepl("Transform > schema mismatch", out1, fixed = TRUE)))
+
+  out2 <- capture.output(logtree_summary(depth = 2))
+  expect_true(any(grepl("Transform > schema mismatch", out2, fixed = TRUE)))
+  expect_false(any(grepl("Extract > Transform", out2, fixed = TRUE)))
+
+  # depth beyond the crumb length is a no-op (full path shown).
+  out9 <- capture.output(logtree_summary(depth = 9))
+  expect_true(any(grepl("Extract > Transform > schema mismatch", out9, fixed = TRUE)))
+})
+
+test_that("depth clips a step (non-leaf) entry's path too, keeping the outcome word", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  inner <- function() {
+    log_step("Inner")
+    stop("boom")
+  }
+  outer <- function() {
+    log_step("Outer")
+    inner()
+  }
+  capture.output(tryCatch(outer(), error = function(e) NULL))
+
+  out <- capture.output(logtree_summary(depth = 1))
+  expect_true(any(grepl("Inner  did not complete", out, fixed = TRUE)))
+  expect_false(any(grepl("Outer > Inner", out, fixed = TRUE)))
+})
+
+test_that("depth returns the full path in the entries regardless of printing", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  f <- function() {
+    log_step("A")
+    log_step("B")
+    log_error("x")
+  }
+  capture.output(f())
+
+  res <- capture.output(entries <- logtree_summary(depth = 1))
+  expect_identical(entries[[1]]$path, c("A", "B"))
+})
+
+test_that("depth rejects non-positive or non-integer values", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  expect_error(logtree_summary(depth = 0), "positive whole number")
+  expect_error(logtree_summary(depth = -1), "positive whole number")
+  expect_error(logtree_summary(depth = 1.5), "positive whole number")
+  expect_error(logtree_summary(depth = "2"), "positive whole number")
+})
+
 test_that("an empty summary prints nothing-to-report", {
   logtree_reset()
   withr::defer(logtree_reset())

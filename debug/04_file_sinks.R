@@ -1,13 +1,25 @@
-# Tier-1 id linking: every event carries a stable `id` and a `parent_id`
-# pointing at its enclosing node (step, group, or root=0). The JSON sink emits
-# both, so the flat NDJSON stream reconstructs the tree WITHOUT relying on
-# depth -- useful for aggregation / post-hoc or parallel-worker merge.
+# File sinks: emit() fans every event to the always-on console sink plus any
+# file sinks registered with logtree_sink_file(path, format = ). Two formats:
 #
-#   source("debug/05_id_linking.R")
+#   * "text" -- plain-ASCII rendering of the tree (theme-independent), for
+#               logfiles / CI artifacts.
+#   * "json" -- one NDJSON object per event, each carrying a stable `id` and
+#               `parent_id` pointing at its enclosing node (step, group, or
+#               root = 0). The flat stream reconstructs the tree WITHOUT
+#               relying on depth -- useful for aggregation / post-hoc or
+#               parallel-worker merge.
+#
+# Both sinks are attached to ONE run below (a single with_logging() writes both
+# files); both target tempfile(), never the working directory. Note sinks are
+# additive and NOT cleared by logtree_reset(), so register once per session.
+#
+#   source("debug/04_file_sinks.R")
 devtools::load_all()
 
 logtree_reset()
+txt  <- tempfile(fileext = ".log")
 path <- tempfile(fileext = ".ndjson")
+logtree_sink_file(txt,  format = "text")
 logtree_sink_file(path, format = "json")
 
 run <- function() {
@@ -23,7 +35,12 @@ run <- function() {
 }
 with_logging(run(), summary = FALSE)
 
-# --- 1. raw event stream: id + parent_id on every line ----------------------
+# --- A. text sink: plain-ASCII tree written to a file -----------------------
+cat("\n\033[1m== text sink (format = \"text\") ==\033[0m\n")
+cat(readLines(txt), sep = "\n")
+cat("\n")
+
+# --- B. json sink: id / parent_id on every event ----------------------------
 cat("\n\033[1m== NDJSON events (id / parent_id) ==\033[0m\n")
 events <- lapply(readLines(path), function(l) jsonlite::fromJSON(l))
 for (e in events) {
@@ -31,7 +48,7 @@ for (e in events) {
               e$id, e$parent_id, e$level, e$status, e$label))
 }
 
-# --- 2. rebuild the tree from parent_id ALONE (ignore depth) -----------------
+# --- C. rebuild the tree from parent_id ALONE (ignore depth) ----------------
 # Take only the node-opening events (open/group); each knows its parent_id.
 cat("\n\033[1m== tree rebuilt from parent_id (depth ignored) ==\033[0m\n")
 nodes <- Filter(function(e) e$level %in% c("open", "group"), events)

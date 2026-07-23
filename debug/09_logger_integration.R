@@ -3,7 +3,7 @@
 # opens logger's own threshold, so every logger::log_*() call renders as a
 # logtree leaf. Requires the `logger` package (Suggests only).
 #
-#   source("debug/11_logger_integration.R")
+#   source("debug/09_logger_integration.R")
 devtools::load_all()
 
 if (!requireNamespace("logger", quietly = TRUE)) {
