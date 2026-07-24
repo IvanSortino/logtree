@@ -9,6 +9,27 @@ theme_preset <- function(name) {
   )
 }
 
+# Resolve the `compact` argument of logtree_theme() to NULL / "medium" / "tight".
+resolve_compact <- function(x) {
+  if (is.null(x) || isFALSE(x)) return(NULL)
+  if (isTRUE(x)) return("tight")
+  match.arg(x, c("medium", "tight"))
+}
+
+# Mutate the active theme in place for a compact density. "medium" drops the
+# trailing gap after each connector (col_gap 0); "tight" also slims the
+# branch/corner connectors to a single character. Cleared by a later preset
+# swap, since a fresh preset has no col_gap and full-width connectors.
+apply_compact <- function(level) {
+  the$theme$col_gap <- 0L
+  if (identical(level, "tight")) {
+    for (key in c("branch", "corner")) {
+      the$theme[[key]]$glyph <- substring(the$theme[[key]]$glyph, 1L, 1L)
+    }
+  }
+  invisible(NULL)
+}
+
 #' Set the active glyph/color theme
 #'
 #' @param theme Either a preset name (`"unicode"`, `"ascii"`, `"emoji"`) to
@@ -20,6 +41,13 @@ theme_preset <- function(name) {
 #'   and/or `color`; unspecified fields are kept from the existing entry. The
 #'   `group` slot also accepts `bracket` (logical, default `FALSE`): when
 #'   `TRUE` the header name is wrapped in `< >`.
+#' @param compact Density of the tree's per-level indentation. `FALSE` (the
+#'   default) keeps the normal spacing (three columns per level in the unicode
+#'   theme); `"medium"` drops the trailing gap after each connector (two columns
+#'   per level); `"tight"` additionally slims the branch and corner connectors
+#'   to a single character (one column per level). `TRUE` is an alias for
+#'   `"tight"`. Compact applies to the active (console) theme and is cleared by a
+#'   subsequent preset swap such as `logtree_theme("unicode")`.
 #' @return `NULL`, invisibly.
 #' @details
 #' An override list is keyed by *slot*; each slot's value is itself a named
@@ -56,8 +84,11 @@ theme_preset <- function(name) {
 #' logtree_theme("unicode")
 #' logtree_theme(overrides = list(success = list(glyph = "*")))
 #' logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
+#' logtree_theme("unicode", compact = "medium")
+#' logtree_theme("unicode", compact = "tight")
 #' logtree_theme("unicode")
-logtree_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides = list()) {
+logtree_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides = list(),
+                          compact = FALSE) {
   if (is.character(theme)) {
     theme <- match.arg(theme)
     the$theme <- theme_preset(theme)
@@ -68,6 +99,10 @@ logtree_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides = li
   } else {
     stop("`theme` must be a preset name or a list of overrides.", call. = FALSE)
   }
+
+  # Apply the compact density before user overrides so explicit overrides win.
+  compact <- resolve_compact(compact)
+  if (!is.null(compact)) apply_compact(compact)
 
   for (key in names(overrides)) {
     the$theme[[key]] <- utils::modifyList(the$theme[[key]], overrides[[key]])
@@ -97,6 +132,13 @@ logtree_threshold <- function(level = c("debug", "info", "warn", "error")) {
 
 theme_slot_width <- function(theme = the$theme) {
   max(vapply(theme[glyph_keys], function(g) g$width, integer(1)))
+}
+
+# Trailing-space columns after each connector/rail. Defaults to 1L when the
+# theme carries no `col_gap` (every built-in preset), so non-compact rendering
+# is byte-for-byte unchanged; compact mode sets it to 0L.
+theme_col_gap <- function(theme = the$theme) {
+  if (is.null(theme$col_gap)) 1L else theme$col_gap
 }
 
 colorize <- function(text, color, enabled = TRUE) {

@@ -4,7 +4,11 @@
 \alias{logtree_theme}
 \title{Set the active glyph/color theme}
 \usage{
-logtree_theme(theme = c("unicode", "ascii", "emoji"), overrides = list())
+logtree_theme(
+  theme = c("unicode", "ascii", "emoji"),
+  overrides = list(),
+  compact = FALSE
+)
 }
 \arguments{
 \item{theme}{Either a preset name (\code{"unicode"}, \code{"ascii"}, \code{"emoji"}) to
@@ -17,6 +21,14 @@ in the package documentation).}
 and/or \code{color}; unspecified fields are kept from the existing entry. The
 \code{group} slot also accepts \code{bracket} (logical, default \code{FALSE}): when
 \code{TRUE} the header name is wrapped in \verb{< >}.}
+
+\item{compact}{Density of the tree's per-level indentation. \code{FALSE} (the
+default) keeps the normal spacing (three columns per level in the unicode
+theme); \code{"medium"} drops the trailing gap after each connector (two columns
+per level); \code{"tight"} additionally slims the branch and corner connectors
+to a single character (one column per level). \code{TRUE} is an alias for
+\code{"tight"}. Compact applies to the active (console) theme and is cleared by a
+subsequent preset swap such as \code{logtree_theme("unicode")}.}
 }
 \value{
 \code{NULL}, invisibly.
@@ -58,5 +70,7 @@ logtree_theme("ascii")
 logtree_theme("unicode")
 logtree_theme(overrides = list(success = list(glyph = "*")))
 logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
+logtree_theme("unicode", compact = "medium")
+logtree_theme("unicode", compact = "tight")
 logtree_theme("unicode")
 }

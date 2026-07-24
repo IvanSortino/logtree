@@ -293,6 +293,21 @@ demo_build()
 logtree_theme("unicode")
 ```
 
+Pass `compact` to tighten the tree’s per-level indentation – `"medium"`
+drops the trailing gap after each connector, `"tight"` also slims the
+connectors down to a single character:
+
+``` r
+logtree_theme("unicode", compact = "medium")
+demo_build()
+#> ▶ Build
+#> ├─ℹ compiling
+#> ├─⚠ 3 deprecation warnings
+#> ├─✔ build ok
+#> └─⚠ Done  0.00s
+logtree_theme("unicode")
+```
+
 The full list of overridable slots (`step`, `info`, `success`, `group`,
 `branch`, `corner`, …) and their fields (`glyph`, `width`, `color`,
 `bracket`) is in the [Themes section of the

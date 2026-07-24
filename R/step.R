@@ -472,7 +472,7 @@ log_close <- function(id = NULL, status = NULL) {
 # with no ANSI codes (design doc section 6).
 
 tree_col_width <- function(theme = the$theme) {
-  nchar(theme$branch$glyph) + 1L
+  nchar(theme$branch$glyph) + theme_col_gap(theme)
 }
 
 rail_unit <- function(theme = the$theme, color = TRUE) {
@@ -483,7 +483,7 @@ rail_unit <- function(theme = the$theme, color = TRUE) {
 }
 
 connector_str <- function(key, theme = the$theme, color = TRUE) {
-  paste0(theme_connector(key, theme, color), " ")
+  paste0(theme_connector(key, theme, color), strrep(" ", theme_col_gap(theme)))
 }
 
 pad_custom_glyph <- function(glyph, theme = the$theme) {
