@@ -46,7 +46,8 @@ kept from the active theme.
    \code{step} \tab open / running step glyph \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{info} \tab \code{log_info()} leaf \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{debug} \tab \code{log_debug()} leaf \tab \code{glyph}, \code{width}, \code{color} \cr
-   \code{success} \tab success glyph (clean close, \code{log_success()}) \tab \code{glyph}, \code{width}, \code{color} \cr
+   \code{success} \tab \code{log_success()} leaf \tab \code{glyph}, \code{width}, \code{color} \cr
+   \code{done} \tab a step's own \code{Done} line on a clean close \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{warning} \tab \code{log_warn()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{error} \tab \code{log_error()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{interrupted} \tab abnormal-exit (dimmed) glyph \tab \code{glyph}, \code{width}, \code{color} \cr
@@ -57,10 +58,17 @@ kept from the active theme.
 }
 
 
+\code{success} and \code{done} are separate slots that merely \emph{look} the same by
+default (every preset ships the same tick in both): \code{success} styles the
+\code{\link[=log_success]{log_success()}} leaf line, \code{done} styles the \code{Done} line a step prints when
+it closes cleanly. Override one and the other is untouched. A step that
+closes elevated still renders \code{warning} / \code{error} / \code{interrupted}, so \code{done}
+only ever governs the clean close.
+
 \strong{Fields} (valid names inside a slot):\tabular{lll}{
    Field \tab Type \tab Accepted values \cr
    \code{glyph} \tab \code{character(1)} \tab Any string, including \code{""}. In package source, non-ASCII must be written as \verb{\\u}/\verb{\\U} escapes, never literal characters. \cr
-   \code{width} \tab \code{integer(1)} \tab Rendered display width of \code{glyph} (\code{1} for normal, \code{2} for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (\code{step}, \code{info}, \code{debug}, \code{success}, \code{warning}, \code{error}, \code{interrupted}). \cr
+   \code{width} \tab \code{integer(1)} \tab Rendered display width of \code{glyph} (\code{1} for normal, \code{2} for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (\code{step}, \code{info}, \code{debug}, \code{success}, \code{done}, \code{warning}, \code{error}, \code{interrupted}). \cr
    \code{color} \tab \code{character} or \code{NULL} \tab One or more cli styles, or \code{NULL} for no styling. Named colors (\code{"red"}, \code{"cyan"}, \code{"silver"}, ...), bright variants (\code{"br_red"}), backgrounds (\code{"bg_blue"}), text styles (\code{"bold"}, \code{"italic"}, \code{"dim"}), or a hex string (\code{"#ff8800"}). A character vector combines styles, e.g. \code{c("red", "bold")}. See \code{\link[cli:combine_ansi_styles]{cli::combine_ansi_styles()}}. \cr
    \code{bracket} \tab \code{logical(1)} \tab \code{group} slot only. \code{TRUE} wraps the header name in \verb{< >}; default \code{FALSE}. \cr
 }
@@ -69,6 +77,8 @@ kept from the active theme.
 logtree_theme("ascii")
 logtree_theme("unicode")
 logtree_theme(overrides = list(success = list(glyph = "*")))
+# The close ("Done") tick is its own slot, restyled independently:
+logtree_theme(overrides = list(done = list(glyph = "=", color = "silver")))
 logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
 logtree_theme("unicode", compact = "medium")
 logtree_theme("unicode", compact = "tight")

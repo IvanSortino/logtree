@@ -167,6 +167,18 @@ pipeline()
 logtree_theme("unicode")
 ```
 
+The tick on a `log_success()` line and the tick on a step's own `Done` line are
+two different slots -- `success` and `done` -- that simply ship the same glyph
+in every preset. Restyle one and the other stays as it was:
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  done = list(glyph = "=", color = "silver")
+))
+pipeline()
+logtree_theme("unicode")
+```
+
 **Accepted slots** (valid names in an `overrides` list):
 
 | Slot | Applies to | Fields it accepts |
@@ -174,7 +186,8 @@ logtree_theme("unicode")
 | `step` | open / running step glyph | `glyph`, `width`, `color` |
 | `info` | `log_info()` leaf | `glyph`, `width`, `color` |
 | `debug` | `log_debug()` leaf | `glyph`, `width`, `color` |
-| `success` | success glyph (clean close, `log_success()`) | `glyph`, `width`, `color` |
+| `success` | `log_success()` leaf | `glyph`, `width`, `color` |
+| `done` | a step's own `Done` line on a clean close | `glyph`, `width`, `color` |
 | `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
 | `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
 | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
