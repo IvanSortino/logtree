@@ -17,3 +17,5 @@ dev/coverage-report.html
 dev/coverage-report_files/
 dev/lib/
 graphify-out/
+
+blog*
