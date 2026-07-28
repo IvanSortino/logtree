@@ -3,3 +3,12 @@
 0 errors | 0 warnings | 1 note
 
 * This is a new release.
+
+## Notes for the reviewer
+
+* There are no published references describing the methods in this package,
+  so the Description field contains no doi/arXiv/ISBN citation.
+* All uses of suggested packages ('jsonlite', 'logger') are conditional:
+  examples are guarded with `requireNamespace()`, tests with
+  `testthat::skip_if_not_installed()`, and `logtree_logger()` calls
+  `rlang::check_installed("logger")` before touching the namespace.

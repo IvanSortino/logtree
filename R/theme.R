@@ -66,9 +66,9 @@ apply_compact <- function(level) {
 #' | `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
 #' | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
 #' | `group` | group header marker | `glyph`, `color`, `bracket` |
-#' | `branch` | child connector (`├─`) | `glyph`, `color` |
-#' | `corner` | close-line connector (`└─`) | `glyph`, `color` |
-#' | `pipe` | vertical rail (`│`) | `glyph`, `color` |
+#' | `branch` | child connector: the "tee" drawn before every child line | `glyph`, `color` |
+#' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
+#' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
 #'
 #' **Fields** (valid names inside a slot):
 #'

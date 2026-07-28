@@ -44,6 +44,16 @@ block returns -- not necessarily when \code{with_logging()} itself returns.
 Use \code{with_logging({ ... })} as a function's entire body to keep these
 in sync; if other code runs after the call in the same function, steps
 opened inside the block stay open until that function returns.
+
+The \code{global = TRUE} form is meant for the top level of a script, where
+there is no frame to wrap. It is not shown in the examples below because
+it installs a session-persistent handler and is only meaningful for an
+error that reaches top level:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{with_logging(global = TRUE)
+log_open("Load data")
+stop("EOF")   # marks the open step failed + logs "EOF" before R exits
+}\if{html}{\out{</div>}}
 }
 \examples{
 logtree_reset()
@@ -51,11 +61,4 @@ with_logging({
   log_step("Step one")
   log_success("done")
 })
-
-# Top-level script form -- installs a persistent handler (run at top level):
-\dontrun{
-with_logging(global = TRUE)
-log_open("Load data")
-stop("EOF")   # marks the open step failed + logs "EOF" before R exits
-}
 }

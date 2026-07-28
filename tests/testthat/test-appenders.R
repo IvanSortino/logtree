@@ -44,6 +44,7 @@ test_that("text file sink stays plain ASCII even when the console theme is unico
 })
 
 test_that("json sink produces one parseable NDJSON object per event", {
+  skip_if_not_installed("jsonlite")
   logtree_reset()
   withr::defer(logtree_reset())
   local_reset_sinks()

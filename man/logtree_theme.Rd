@@ -51,9 +51,9 @@ kept from the active theme.
    \code{error} \tab \code{log_error()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{interrupted} \tab abnormal-exit (dimmed) glyph \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{group} \tab group header marker \tab \code{glyph}, \code{color}, \code{bracket} \cr
-   \code{branch} \tab child connector (\verb{├─}) \tab \code{glyph}, \code{color} \cr
-   \code{corner} \tab close-line connector (\verb{└─}) \tab \code{glyph}, \code{color} \cr
-   \code{pipe} \tab vertical rail (\verb{│}) \tab \code{glyph}, \code{color} \cr
+   \code{branch} \tab child connector: the "tee" drawn before every child line \tab \code{glyph}, \code{color} \cr
+   \code{corner} \tab close-line connector: the "elbow" drawn on a step's own close line \tab \code{glyph}, \code{color} \cr
+   \code{pipe} \tab vertical rail carried down the left of nested lines \tab \code{glyph}, \code{color} \cr
 }
 
 
