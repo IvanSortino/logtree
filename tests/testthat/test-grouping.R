@@ -85,6 +85,7 @@ test_that("grouped tree renders as expected (ascii snapshot)", {
 })
 
 test_that("json sink emits a group event with an id/parent_id chain", {
+  skip_if_not_installed("jsonlite")
   logtree_reset()
   withr::defer(logtree_reset())
   local_reset_sinks()
