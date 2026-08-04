@@ -17,6 +17,10 @@ glyphs_unicode <- list(
   info        = list(glyph = "\u2139", width = 1L, color = "blue"),
   debug       = list(glyph = "\u2699", width = 1L, color = "silver"),
   success     = list(glyph = "\u2714", width = 1L, color = "green"),
+  # Same tick as `success` by default, but its own slot: the close ("Done")
+  # line reads from `done`, so the completion tick can be restyled without
+  # touching log_success() leaves (and vice versa).
+  done        = list(glyph = "\u2714", width = 1L, color = "green"),
   warning     = list(glyph = "\u26a0", width = 1L, color = "yellow"),
   error       = list(glyph = "\u2716", width = 1L, color = "red"),
   interrupted = list(glyph = "\u25cc", width = 1L, color = "dim"),
@@ -31,6 +35,7 @@ glyphs_ascii <- list(
   info        = list(glyph = "i", width = 1L, color = NULL),
   debug       = list(glyph = "d", width = 1L, color = NULL),
   success     = list(glyph = "+", width = 1L, color = NULL),
+  done        = list(glyph = "+", width = 1L, color = NULL),
   warning     = list(glyph = "!", width = 1L, color = NULL),
   error       = list(glyph = "x", width = 1L, color = NULL),
   interrupted = list(glyph = "-", width = 1L, color = NULL),
@@ -54,6 +59,7 @@ glyphs_emoji <- list(
   info        = list(glyph = "\U0001f4a1", width = 2L, color = NULL),
   debug       = list(glyph = "\U0001f41b", width = 2L, color = NULL),
   success     = list(glyph = "\u2705", width = 2L, color = NULL),
+  done        = list(glyph = "\u2705", width = 2L, color = NULL),
   warning     = list(glyph = "\u26a0\ufe0f", width = 2L, color = NULL),
   error       = list(glyph = "\u274c", width = 2L, color = NULL),
   interrupted = list(glyph = "\u2753", width = 2L, color = NULL),

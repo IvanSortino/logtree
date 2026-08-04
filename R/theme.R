@@ -1,4 +1,5 @@
-glyph_keys <- c("step", "debug", "info", "success", "warning", "error", "interrupted")
+glyph_keys <- c("step", "debug", "info", "success", "done", "warning", "error",
+                "interrupted")
 
 theme_preset <- function(name) {
   switch(name,
@@ -61,7 +62,8 @@ apply_compact <- function(level) {
 #' | `step` | open / running step glyph | `glyph`, `width`, `color` |
 #' | `info` | `log_info()` leaf | `glyph`, `width`, `color` |
 #' | `debug` | `log_debug()` leaf | `glyph`, `width`, `color` |
-#' | `success` | success glyph (clean close, `log_success()`) | `glyph`, `width`, `color` |
+#' | `success` | `log_success()` leaf | `glyph`, `width`, `color` |
+#' | `done` | a step's own `Done` line on a clean close | `glyph`, `width`, `color` |
 #' | `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
 #' | `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
 #' | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
@@ -70,12 +72,19 @@ apply_compact <- function(level) {
 #' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
 #' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
 #'
+#' `success` and `done` are separate slots that merely *look* the same by
+#' default (every preset ships the same tick in both): `success` styles the
+#' [log_success()] leaf line, `done` styles the `Done` line a step prints when
+#' it closes cleanly. Override one and the other is untouched. A step that
+#' closes elevated still renders `warning` / `error` / `interrupted`, so `done`
+#' only ever governs the clean close.
+#'
 #' **Fields** (valid names inside a slot):
 #'
 #' | Field | Type | Accepted values |
 #' | ----- | ---- | --------------- |
 #' | `glyph` | `character(1)` | Any string, including `""`. In package source, non-ASCII must be written as `\u`/`\U` escapes, never literal characters. |
-#' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `warning`, `error`, `interrupted`). |
+#' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `done`, `warning`, `error`, `interrupted`). |
 #' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. See [cli::combine_ansi_styles()]. |
 #' | `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`; default `FALSE`. |
 #' @export
@@ -83,6 +92,8 @@ apply_compact <- function(level) {
 #' logtree_theme("ascii")
 #' logtree_theme("unicode")
 #' logtree_theme(overrides = list(success = list(glyph = "*")))
+#' # The close ("Done") tick is its own slot, restyled independently:
+#' logtree_theme(overrides = list(done = list(glyph = "=", color = "silver")))
 #' logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
 #' logtree_theme("unicode", compact = "medium")
 #' logtree_theme("unicode", compact = "tight")
@@ -131,7 +142,20 @@ logtree_threshold <- function(level = c("debug", "info", "warn", "error")) {
 }
 
 theme_slot_width <- function(theme = the$theme) {
-  max(vapply(theme[glyph_keys], function(g) g$width, integer(1)))
+  # Only the status slots the theme actually carries: a hand-built theme (or one
+  # created before a slot existed) may be missing some, and a missing slot must
+  # not break column alignment for the rest.
+  slots <- theme[intersect(glyph_keys, names(theme))]
+  max(vapply(slots, function(g) g$width, integer(1)))
+}
+
+# Status slot a close ("Done") line renders with. A clean close reads the
+# `done` slot rather than `success`, so the completion tick and the
+# log_success() leaf glyph are themeable independently; every other status
+# (warning / error / interrupted) keeps its own slot. Themes with no `done`
+# entry fall back to `success`, the pre-`done` behaviour.
+close_glyph_key <- function(status, theme = the$theme) {
+  if (identical(status, "success") && !is.null(theme$done)) "done" else status
 }
 
 # Trailing-space columns after each connector/rail. Defaults to 1L when the
