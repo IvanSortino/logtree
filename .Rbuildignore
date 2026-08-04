@@ -13,3 +13,4 @@
 ^vignettes/articles$
 ^dev$
 ^graphify-out$
+^CRAN-SUBMISSION$
