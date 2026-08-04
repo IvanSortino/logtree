@@ -229,7 +229,11 @@ demo_build()
 logtree_theme("unicode")
 ```
 
-The full list of overridable slots (`step`, `info`, `success`, `group`,
+The `Done` line a step prints when it closes cleanly has its own `done` slot,
+distinct from the `success` slot used by `log_success()` leaves -- they just
+ship the same tick by default, so either can be restyled on its own.
+
+The full list of overridable slots (`step`, `info`, `success`, `done`, `group`,
 `branch`, `corner`, ...) and their fields (`glyph`, `width`, `color`,
 `bracket`) is in the [Themes section of the
 vignette](https://IvanSortino.github.io/logtree/articles/logtree.html#themes)

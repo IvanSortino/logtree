@@ -70,6 +70,7 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `logtree_threshold` `[export]` | `level = c("debug", "info", "warn", "error")` |
 | `theme_preset` | `name` |
 | `theme_slot_width` | `theme = the$theme` |
+| `close_glyph_key` | `status, theme = the$theme` |
 | `colorize` | `text, color, enabled = TRUE` |
 | `theme_glyph` | `key, theme = the$theme, color = TRUE` |
 | `theme_connector` | `key, theme = the$theme, color = TRUE` |

@@ -506,7 +506,8 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
   d <- entry$depth
   prefix <- paste0(strrep(rail_unit(theme, color), max(d - 1L, 0L)), connector_str("corner", theme, color))
   status <- resolved_status(entry$status)
-  paste0(prefix, theme_glyph(status, theme, color), " Done  ", format_elapsed(entry$elapsed))
+  glyph  <- theme_glyph(close_glyph_key(status, theme), theme, color)
+  paste0(prefix, glyph, " Done  ", format_elapsed(entry$elapsed))
 }
 
 format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
