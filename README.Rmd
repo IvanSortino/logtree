@@ -35,7 +35,7 @@ through.
 
 ## Installation
 
-logtree isn't on CRAN yet. Install the development version from
+Install the development version from
 [GitHub](https://github.com/IvanSortino/logtree):
 
 ``` r
@@ -43,7 +43,7 @@ logtree isn't on CRAN yet. Install the development version from
 pak::pak("IvanSortino/logtree")
 ```
 
-Once released to CRAN:
+Or install directly from CRAN:
 
 ``` r
 install.packages("logtree")
@@ -66,6 +66,7 @@ load_config <- function() {
 }
 
 pipeline()
+logtree_summary()
 
 ```
 
@@ -73,6 +74,9 @@ pipeline()
 when the function that opened it returns -- normally, early, or via an uncaught
 error -- so nesting depth never gets stuck out of sync. (At top level, with no
 function frame to close on, reach for `log_open()` / `log_close()` instead.)
+`logtree_summary()` prints a digest of anything worth noting since the last
+reset -- see [Run summary](#run-summary) below for what it looks like when a
+run actually breaks.
 
 ## Status levels & verbosity
 

@@ -52,26 +52,30 @@ local({
 
 
 
-ansi_lines <- capture.output(with_logging({
-  run <- log_open("ETL run")           # manual root (block level)
+ansi_lines <- capture.output({
+  with_logging({
+    run <- log_open("ETL run")           # manual root (block level)
 
-  ingest()                             # auto step + grouped sub-tree
-  connect()                            # auto step + recovered error
+    ingest()                             # auto step + grouped sub-tree
+    connect()                            # auto step + recovered error
 
-  # Manual deep branch: explicit parent links + hand-controlled batches.
-  load <- log_open("Load", parent = run)  # sibling of ingest/connect, under run
-  log_open("Table: facts")                # under Load (cascade-closed via load)
-  log_info("opened connection pool (5 conns)")
-  log_open("Batch 1/2", group = c(Batches = "load"))   # collapse under < Batches >
-  log_info("upserted rows 1-500 of 900")
-  log_close()                             # close item; next batch joins the group
-  log_open("Batch 2/2", group = c(Batches = "load"))
-  log_info("upserted rows 501-900 of 900")
-  log_close()
-  log_close(load)                         # cascade: Batches group + Table + Load
+    # Manual deep branch: explicit parent links + hand-controlled batches.
+    load <- log_open("Load", parent = run)  # sibling of ingest/connect, under run
+    log_open("Table: facts")                # under Load (cascade-closed via load)
+    log_info("opened connection pool (5 conns)")
+    log_open("Batch 1/2", group = c(Batches = "load"))   # collapse under < Batches >
+    log_info("upserted rows 1-500 of 900")
+    log_close()                             # close item; next batch joins the group
+    log_open("Batch 2/2", group = c(Batches = "load"))
+    log_info("upserted rows 501-900 of 900")
+    log_close()
+    log_close(load)                         # cascade: Batches group + Table + Load
 
-  log_close(run)                          # close the manual root
-}))
+    log_close(run)                          # close the manual root
+  })
+
+  logtree_summary()                      # breadcrumb digest of the recovered error
+})
 
 # --- ANSI -> SVG -------------------------------------------------------
 
@@ -349,7 +353,8 @@ annotations <- list(
   list(match = "Done  1m 27s", color = palette[["32"]], text = "elapsed time, tracked per step"),
   list(match = "unreachable",  color = palette[["31"]], text = "error leaf elevates the step — run keeps going"),
   list(match = "12ms latency", color = palette[["32"]], text = "… then closes ✔ once recovered"),
-  list(match = "Run complete", color = palette[["32"]], text = "run summary line (with_logging)")
+  list(match = "Run complete", color = palette[["32"]], text = "run summary line (with_logging)"),
+  list(match = "Summary:",     color = dim_color,        text = "digest of warnings/errors (logtree_summary)")
 )
 
 ann_font    <- 11
