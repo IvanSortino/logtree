@@ -26,7 +26,7 @@ through.
 
 ## Installation
 
-logtree isn’t on CRAN yet. Install the development version from
+Install the development version from
 [GitHub](https://github.com/IvanSortino/logtree):
 
 ``` r
@@ -34,7 +34,7 @@ logtree isn’t on CRAN yet. Install the development version from
 pak::pak("IvanSortino/logtree")
 ```
 
-Once released to CRAN:
+Or install directly from CRAN:
 
 ``` r
 install.packages("logtree")
@@ -63,13 +63,18 @@ pipeline()
 #> │  ├─ ✔ Validated 12 parameters
 #> │  └─ ✔ Done  0.00s
 #> └─ ✔ Done  0.00s
+logtree_summary()
+#> Summary: nothing to report
 ```
 
 `log_step()` is meant to be called from inside a function: the step
 auto-closes when the function that opened it returns – normally, early,
 or via an uncaught error – so nesting depth never gets stuck out of
 sync. (At top level, with no function frame to close on, reach for
-`log_open()` / `log_close()` instead.)
+`log_open()` / `log_close()` instead.) `logtree_summary()` prints a
+digest of anything worth noting since the last reset – see [Run
+summary](#run-summary) below for what it looks like when a run actually
+breaks.
 
 ## Status levels & verbosity
 
@@ -232,7 +237,7 @@ with_logging(run_pipeline(), summary = FALSE)
 #> │  │  ├─ ✔ check bounds ok
 #> │  │  └─ ✔ Done  0.00s
 #> │  └─ ✔ Done  0.00s
-#> └─ ✔ Done  0.00s
+#> └─ ✔ Done  0.01s
 ```
 
 ## Themes
@@ -256,7 +261,7 @@ demo_build()
 #> |- i compiling
 #> |- ! 3 deprecation warnings
 #> |- + build ok
-#> |- ! Done  0.00s
+#> |- ! Done  0.01s
 
 logtree_theme("emoji")
 demo_build()
@@ -308,13 +313,14 @@ demo_build()
 logtree_theme("unicode")
 ```
 
-The `Done` line a step prints when it closes cleanly has its own `done` slot,
-distinct from the `success` slot used by `log_success()` leaves – they just
-ship the same tick by default, so either can be restyled on its own.
+The `Done` line a step prints when it closes cleanly has its own `done`
+slot, distinct from the `success` slot used by `log_success()` leaves –
+they just ship the same tick by default, so either can be restyled on
+its own.
 
-The full list of overridable slots (`step`, `info`, `success`, `done`, `group`,
-`branch`, `corner`, …) and their fields (`glyph`, `width`, `color`,
-`bracket`) is in the [Themes section of the
+The full list of overridable slots (`step`, `info`, `success`, `done`,
+`group`, `branch`, `corner`, …) and their fields (`glyph`, `width`,
+`color`, `bracket`) is in the [Themes section of the
 vignette](https://IvanSortino.github.io/logtree/articles/logtree.html#themes)
 and `?logtree_theme`.
 
