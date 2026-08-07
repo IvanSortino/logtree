@@ -1,7 +1,7 @@
 glyph_keys <- c("step", "debug", "info", "success", "done", "warning", "error",
                 "interrupted")
 
-theme_presets <- c("unicode", "ascii", "emoji", "minimal")
+theme_presets <- c("unicode", "ascii", "emoji", "minimal", "ci")
 
 theme_preset <- function(name) {
   switch(name,
@@ -9,6 +9,7 @@ theme_preset <- function(name) {
     ascii   = glyphs_ascii,
     emoji   = glyphs_emoji,
     minimal = glyphs_minimal,
+    ci      = glyphs_ci,
     stop("Unknown theme preset: ", name, call. = FALSE)
   )
 }

@@ -132,3 +132,32 @@ glyphs_minimal <- list(
   # indentation, so it is part of the preset rather than a compact setting.
   col_gap     = 2L
 )
+
+# The `ci` preset is built for log capture rather than a terminal: bracketed
+# word glyphs instead of symbols, pure-ASCII connectors, and no colour in any
+# slot -- so it survives a runner that strips ANSI and mangles UTF-8, and
+# greps cleanly for "[fail]".
+#
+# The words are different lengths on purpose; each declares its true width, so
+# theme_slot_width() pads them out and the message column still lines up.
+# Close lines drop the word (`text = ""`): "[done] Done" would say it twice.
+glyphs_ci <- list(
+  step        = list(glyph = "[step]",  width = 6L, color = NULL),
+  info        = list(glyph = "[info]",  width = 6L, color = NULL),
+  debug       = list(glyph = "[debug]", width = 7L, color = NULL),
+  success     = list(glyph = "[ok]",    width = 4L, color = NULL),
+  done        = list(glyph = "[done]",  width = 6L, color = NULL, text = ""),
+  warning     = list(glyph = "[warn]",  width = 6L, color = NULL),
+  error       = list(glyph = "[fail]",  width = 6L, color = NULL),
+  interrupted = list(glyph = "[break]", width = 7L, color = NULL),
+  group       = list(glyph = "", color = NULL, bracket = TRUE),
+  # Unlike the ascii preset, `ci` does spell the corner differently from the
+  # branch: "\\-" is still plain ASCII and makes a closed subtree obvious in a
+  # wall of captured output.
+  branch      = list(glyph = "|-", color = NULL),
+  corner      = list(glyph = "\\-", color = NULL),
+  pipe        = list(glyph = "|",  color = NULL),
+  elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = NULL),
+  crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
+  summary     = list(gap = 1L, rule = TRUE, line = "-")
+)
