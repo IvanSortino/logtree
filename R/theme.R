@@ -87,23 +87,31 @@ apply_overrides <- function(overrides) {
 
 #' Set the active glyph/color theme
 #'
-#' @param theme Either a preset name (`"unicode"`, `"ascii"`, `"emoji"`) to
-#'   swap the whole glyph set, or a named list of per-key overrides to merge
-#'   onto the currently active theme (matching the two calling styles shown
-#'   in the package documentation). `NULL` (the default) keeps the active
-#'   preset: **a preset is swapped only when you name one**, so a call that
-#'   sets just `overrides`, `compact` or `glyph_gap` merges onto whatever theme
-#'   is active.
-#'   Reset with `logtree_theme("unicode")`.
+#' @param theme Either a preset name to swap the whole glyph set, or a named
+#'   list of per-key overrides to merge onto the currently active theme
+#'   (matching the two calling styles shown in the package documentation).
+#'   `NULL` (the default) keeps the active preset: **a preset is swapped only
+#'   when you name one**, so a call that sets just `overrides`, `compact`,
+#'   `glyph_gap` or `wrap` merges onto whatever theme is active. Reset with
+#'   `logtree_theme("unicode")`. Five presets ship with the package:
+#'
+#'   | Preset | What it is for |
+#'   | ------ | -------------- |
+#'   | `"unicode"` | The default. Box-drawing connectors and coloured symbol glyphs, for an interactive terminal. |
+#'   | `"ascii"` | Plain ASCII, no colour. Safe for log files, CI, and non-UTF-8 terminals; also what every file sink renders through. |
+#'   | `"emoji"` | Emoji status glyphs (width-2 cells) over box-drawing connectors. |
+#'   | `"minimal"` | No connectors at all: `branch`, `corner` and `pipe` are empty, so depth is carried by indentation alone (two columns per level). Lighter glyphs, dimmed times, wordless close lines. `info`, `debug` and `interrupted` share the middle dot and are told apart by colour. |
+#'   | `"ci"` | Bracketed word glyphs (`[step]`, `[ok]`, `[warn]`, `[fail]`, ...) over pure-ASCII connectors, with no colour in any slot -- so a captured build log survives a runner that strips ANSI, and a failure greps as `[fail]`. |
 #' @param overrides A named list of per-slot overrides applied on top of
 #'   `theme` once it is resolved -- on top of the *active* theme when `theme`
 #'   is `NULL`. An unknown slot name is an error, listing the valid ones. Each
-#'   entry may specify `glyph`, `width`,
-#'   and/or `color`; unspecified fields are kept from the existing entry. The
-#'   `group` slot also accepts `bracket` (logical, default `FALSE`): when
-#'   `TRUE` the header name is wrapped in `< >`. The two non-glyph slots
-#'   `crumb` and `summary` carry [logtree_summary()]'s appearance -- see the
-#'   slot table below.
+#'   entry names only the fields to change; unspecified fields are kept from
+#'   the existing entry. Status slots take `glyph`, `width` and `color`; the
+#'   close-line statuses (`done`, `warning`, `error`, `interrupted`) also take
+#'   `text`. The `group` slot takes `bracket`, the `elapsed` slot governs the
+#'   time column on close lines, and the two non-glyph slots `crumb` and
+#'   `summary` carry [logtree_summary()]'s appearance. See the slot and field
+#'   tables below for the complete set.
 #' @param compact Density of the tree's per-level indentation. `FALSE` (the
 #'   default) keeps the normal spacing (three columns per level in the unicode
 #'   theme); `"medium"` drops the trailing gap after each connector (two columns
@@ -119,6 +127,25 @@ apply_overrides <- function(overrides) {
 #'   [with_logging()] run-summary line -- so the message column stays aligned.
 #'   Like `compact`, it applies to the active (console) theme and is cleared by
 #'   a subsequent preset swap such as `logtree_theme("unicode")`.
+#' @param wrap Column budget a rendered line is wrapped to, instead of letting
+#'   a long message run off the right edge. `FALSE` never wraps (the built-in
+#'   behaviour); `TRUE` wraps at [cli::console_width()], measured at render
+#'   time so a terminal resized mid-run is picked up on its own; a positive
+#'   number pins a fixed width. `NULL` (the default) leaves the active setting
+#'   alone.
+#'
+#'   Continuation lines indent to the message column and carry the rails down,
+#'   so a wrapped message still reads as one node of the tree: after a branch
+#'   connector the vertical rail continues, after a corner it does not. A token
+#'   with no break opportunity -- a long path, a URL -- is split by display
+#'   width rather than left to overflow, and a budget narrower than the tree is
+#'   deep degrades to no wrapping rather than to an unusable one-column line.
+#'   It applies to every line logtree renders, including the
+#'   [logtree_summary()] digest and the [with_logging()] run-summary line.
+#'
+#'   Like `compact` and `glyph_gap`, it applies to the active (console) theme
+#'   and is cleared by a subsequent preset swap. File sinks are never wrapped:
+#'   they render through the ascii preset, and a file has no width to wrap to.
 #' @return `NULL`, invisibly.
 #' @details
 #' An override list is keyed by *slot*; each slot's value is itself a named
@@ -133,11 +160,12 @@ apply_overrides <- function(overrides) {
 #' | `info` | `log_info()` leaf | `glyph`, `width`, `color` |
 #' | `debug` | `log_debug()` leaf | `glyph`, `width`, `color` |
 #' | `success` | `log_success()` leaf | `glyph`, `width`, `color` |
-#' | `done` | a step's own `Done` line on a clean close | `glyph`, `width`, `color` |
-#' | `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
-#' | `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
-#' | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
+#' | `done` | a step's own close line on a clean close | `glyph`, `width`, `color`, `text` |
+#' | `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color`, `text` |
+#' | `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color`, `text` |
+#' | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color`, `text` |
 #' | `group` | group header marker | `glyph`, `color`, `bracket` |
+#' | `elapsed` | the elapsed-time column printed on every close line | `show`, `min`, `color`, `slow`, `slow_color` |
 #' | `branch` | child connector: the "tee" drawn before every child line | `glyph`, `color` |
 #' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
 #' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
@@ -151,13 +179,27 @@ apply_overrides <- function(overrides) {
 #' closes elevated still renders `warning` / `error` / `interrupted`, so `done`
 #' only ever governs the clean close.
 #'
+#' The same split governs the `text` field, the word a close line prints before
+#' its elapsed time. It is read from the closing status's own slot, falling back
+#' to `done`'s and then to the built-in `"Done"` -- so
+#' `list(done = list(text = "Complete"))` renames every close line, while
+#' `list(error = list(text = "Failed"))` renames only the ones that went wrong.
+#' `success` has no `text` of its own precisely because a clean close reads
+#' `done`. `text` is a close-line concern only: it never touches the message a
+#' [log_warn()] or [log_error()] leaf prints.
+#'
 #' **Fields** (valid names inside a slot):
 #'
 #' | Field | Type | Accepted values |
 #' | ----- | ---- | --------------- |
 #' | `glyph` | `character(1)` | Any string, including `""`. In package source, non-ASCII must be written as `\u`/`\U` escapes, never literal characters. |
 #' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `done`, `warning`, `error`, `interrupted`). |
-#' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. See [cli::combine_ansi_styles()]. |
+#' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself. See [cli::combine_ansi_styles()]. |
+#' | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its elapsed time; `""` drops it, leaving the glyph and the time. Two placeholders are expanded: `{label}` (the closing step's own label, or a group's name) and `{elapsed}` (the formatted time). A template that places `{elapsed}` itself owns that column, so the time is not appended after it a second time. |
+#' | `show` | `logical(1)` | `elapsed` slot only. `FALSE` drops the elapsed-time column entirely. Default `TRUE`. |
+#' | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds -- `min = 0.1` silences the `0.00s` noise on trivial steps. Default `0` (show everything). |
+#' | `slow` | `numeric(1)` or `NULL` | `elapsed` slot only. Times at or over this many seconds count as slow and are styled with `slow_color` instead of `color`. `NULL` (the default) means nothing is ever flagged. |
+#' | `slow_color` | `character` or `NULL` | `elapsed` slot only. Styles applied to a slow time in place of `color`. Same accepted values as `color`; `"yellow"` in the unicode, emoji and minimal presets, `NULL` in the colourless ascii and ci presets. |
 #' | `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`; default `FALSE`. |
 #' | `path_color` | `character` or `NULL` | `crumb` slot only. Styles the breadcrumb's path nodes, setting them apart from a leaf's message (which stays unstyled). Same accepted values as `color`; `"bold"` in the unicode and emoji presets, `NULL` in ascii. |
 #' | `gap` | `integer(1)` | `summary` slot only. Blank lines printed above the digest; `0` prints it flush against the tree. |
@@ -176,6 +218,18 @@ apply_overrides <- function(overrides) {
 #' logtree_theme(list(crumb = list(glyph = " / ", path_color = "cyan")))
 #' logtree_theme(list(summary = list(gap = 2, rule = "Run report")))
 #'
+#' # The word on a close line: every one at once, or only the failures.
+#' logtree_theme(list(done = list(text = "Complete")))
+#' logtree_theme(list(error = list(text = "Failed")))
+#' logtree_theme(list(done = list(text = "{label} took {elapsed}")))
+#' logtree_theme(list(done = list(text = "")))  # glyph + time only
+#'
+#' # The elapsed-time column: hide the trivial, flag the slow.
+#' logtree_theme(list(elapsed = list(min = 0.1)))
+#' logtree_theme(list(elapsed = list(color = "silver", slow = 5,
+#'                                   slow_color = "red")))
+#' logtree_theme(list(elapsed = list(show = FALSE)))
+#'
 #' # Naming one swaps the whole preset, clearing every override above.
 #' logtree_theme("unicode")
 #' logtree_theme("unicode", compact = "medium")
@@ -184,7 +238,16 @@ apply_overrides <- function(overrides) {
 #' # Spacing between the glyph and the message.
 #' logtree_theme(glyph_gap = 0)   # tightest: no space after the glyph
 #' logtree_theme(glyph_gap = 2)   # roomier message column
-#' logtree_theme("unicode")       # back to the built-in single space
+#'
+#' # Wrapping long messages.
+#' logtree_theme(wrap = TRUE)     # follow the console width
+#' logtree_theme(wrap = 72)       # pin a fixed width
+#' logtree_theme(wrap = FALSE)    # back to letting long lines overflow
+#'
+#' # The other two presets.
+#' logtree_theme("minimal")       # no connectors: indentation only
+#' logtree_theme("ci")            # [ok] / [warn] / [fail], no colour
+#' logtree_theme("unicode")       # back to the default
 logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
                           glyph_gap = NULL, wrap = NULL) {
   if (is.character(theme)) {
