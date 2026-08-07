@@ -4,7 +4,12 @@
 \alias{logtree_theme}
 \title{Set the active glyph/color theme}
 \usage{
-logtree_theme(theme = NULL, overrides = list(), compact = FALSE)
+logtree_theme(
+  theme = NULL,
+  overrides = list(),
+  compact = FALSE,
+  glyph_gap = NULL
+)
 }
 \arguments{
 \item{theme}{Either a preset name (\code{"unicode"}, \code{"ascii"}, \code{"emoji"}) to
@@ -12,7 +17,8 @@ swap the whole glyph set, or a named list of per-key overrides to merge
 onto the currently active theme (matching the two calling styles shown
 in the package documentation). \code{NULL} (the default) keeps the active
 preset: \strong{a preset is swapped only when you name one}, so a call that
-sets just \code{overrides} or \code{compact} merges onto whatever theme is active.
+sets just \code{overrides}, \code{compact} or \code{glyph_gap} merges onto whatever theme
+is active.
 Reset with \code{logtree_theme("unicode")}.}
 
 \item{overrides}{A named list of per-slot overrides applied on top of
@@ -32,6 +38,15 @@ per level); \code{"tight"} additionally slims the branch and corner connectors
 to a single character (one column per level). \code{TRUE} is an alias for
 \code{"tight"}. Compact applies to the active (console) theme and is cleared by a
 subsequent preset swap such as \code{logtree_theme("unicode")}.}
+
+\item{glyph_gap}{Number of spaces printed between a line's status glyph and
+its message text. \code{NULL} (the default) leaves the active setting alone;
+\code{1} is the built-in spacing, \code{0} butts the message straight against the
+glyph, and \code{2} or more airs the two columns apart. Applies to every line
+kind -- step open, \code{Done} close, leaf, group header and the
+\code{\link[=with_logging]{with_logging()}} run-summary line -- so the message column stays aligned.
+Like \code{compact}, it applies to the active (console) theme and is cleared by
+a subsequent preset swap such as \code{logtree_theme("unicode")}.}
 }
 \value{
 \code{NULL}, invisibly.
@@ -98,5 +113,9 @@ logtree_theme(list(summary = list(gap = 2, rule = "Run report")))
 logtree_theme("unicode")
 logtree_theme("unicode", compact = "medium")
 logtree_theme("unicode", compact = "tight")
-logtree_theme("unicode")
+
+# Spacing between the glyph and the message.
+logtree_theme(glyph_gap = 0)   # tightest: no space after the glyph
+logtree_theme(glyph_gap = 2)   # roomier message column
+logtree_theme("unicode")       # back to the built-in single space
 }

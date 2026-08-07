@@ -227,7 +227,7 @@ logtree_summary <- function(filter = NULL, depth = NULL,
       # the ancestor path with the same separator -- but unstyled, so the
       # emphasised path reads as the trail leading to it.
       crumb <- format_crumb(clip(c(e$path, e$msg)), plain_last = TRUE)
-      cat(theme_glyph(e$status), " ", crumb, "\n", sep = "")
+      cat(theme_glyph(e$status), glyph_pad(), crumb, "\n", sep = "")
     } else {
       # Step entries carry no message; render the switch()-mapped outcome word
       # after the path, set off by two spaces (a description, not a path node).
@@ -238,7 +238,7 @@ logtree_summary <- function(filter = NULL, depth = NULL,
         interrupted = "did not complete",
         e$status
       )
-      cat(theme_glyph(e$status), " ", path, "  ", detail, "\n", sep = "")
+      cat(theme_glyph(e$status), glyph_pad(), path, "  ", detail, "\n", sep = "")
     }
   }
   invisible(entries)

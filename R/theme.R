@@ -17,6 +17,16 @@ resolve_compact <- function(x) {
   match.arg(x, c("medium", "tight"))
 }
 
+# Resolve the `glyph_gap` argument of logtree_theme() to NULL (leave as is) or
+# a non-negative integer count of spaces.
+resolve_glyph_gap <- function(x) {
+  if (is.null(x)) return(NULL)
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) || x < 0) {
+    stop("`glyph_gap` must be a single non-negative number.", call. = FALSE)
+  }
+  as.integer(x)
+}
+
 # Mutate the active theme in place for a compact density. "medium" drops the
 # trailing gap after each connector (col_gap 0); "tight" also slims the
 # branch/corner connectors to a single character. Cleared by a later preset
@@ -64,7 +74,8 @@ apply_overrides <- function(overrides) {
 #'   onto the currently active theme (matching the two calling styles shown
 #'   in the package documentation). `NULL` (the default) keeps the active
 #'   preset: **a preset is swapped only when you name one**, so a call that
-#'   sets just `overrides` or `compact` merges onto whatever theme is active.
+#'   sets just `overrides`, `compact` or `glyph_gap` merges onto whatever theme
+#'   is active.
 #'   Reset with `logtree_theme("unicode")`.
 #' @param overrides A named list of per-slot overrides applied on top of
 #'   `theme` once it is resolved -- on top of the *active* theme when `theme`
@@ -82,6 +93,14 @@ apply_overrides <- function(overrides) {
 #'   to a single character (one column per level). `TRUE` is an alias for
 #'   `"tight"`. Compact applies to the active (console) theme and is cleared by a
 #'   subsequent preset swap such as `logtree_theme("unicode")`.
+#' @param glyph_gap Number of spaces printed between a line's status glyph and
+#'   its message text. `NULL` (the default) leaves the active setting alone;
+#'   `1` is the built-in spacing, `0` butts the message straight against the
+#'   glyph, and `2` or more airs the two columns apart. Applies to every line
+#'   kind -- step open, `Done` close, leaf, group header and the
+#'   [with_logging()] run-summary line -- so the message column stays aligned.
+#'   Like `compact`, it applies to the active (console) theme and is cleared by
+#'   a subsequent preset swap such as `logtree_theme("unicode")`.
 #' @return `NULL`, invisibly.
 #' @details
 #' An override list is keyed by *slot*; each slot's value is itself a named
@@ -143,8 +162,13 @@ apply_overrides <- function(overrides) {
 #' logtree_theme("unicode")
 #' logtree_theme("unicode", compact = "medium")
 #' logtree_theme("unicode", compact = "tight")
-#' logtree_theme("unicode")
-logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE) {
+#'
+#' # Spacing between the glyph and the message.
+#' logtree_theme(glyph_gap = 0)   # tightest: no space after the glyph
+#' logtree_theme(glyph_gap = 2)   # roomier message column
+#' logtree_theme("unicode")       # back to the built-in single space
+logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
+                          glyph_gap = NULL) {
   if (is.character(theme)) {
     theme <- match.arg(theme, c("unicode", "ascii", "emoji"))
     the$theme <- theme_preset(theme)
@@ -162,6 +186,11 @@ logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE) {
   # Apply the compact density before user overrides so explicit overrides win.
   compact <- resolve_compact(compact)
   if (!is.null(compact)) apply_compact(compact)
+
+  # Glyph-to-message spacing rides the active theme the same way col_gap does:
+  # set here, carried by the theme object, cleared by the next preset swap.
+  glyph_gap <- resolve_glyph_gap(glyph_gap)
+  if (!is.null(glyph_gap)) the$theme$glyph_gap <- glyph_gap
 
   apply_overrides(overrides)
 
@@ -209,6 +238,18 @@ close_glyph_key <- function(status, theme = the$theme) {
 # is byte-for-byte unchanged; compact mode sets it to 0L.
 theme_col_gap <- function(theme = the$theme) {
   if (is.null(theme$col_gap)) 1L else theme$col_gap
+}
+
+# Spaces between a line's status glyph and its message text. Defaults to 1L
+# when the theme carries no `glyph_gap` (every built-in preset), so default
+# rendering is byte-for-byte unchanged; 0L butts the message straight against
+# the glyph, 2L+ airs the two columns apart.
+theme_glyph_gap <- function(theme = the$theme) {
+  if (is.null(theme$glyph_gap)) 1L else theme$glyph_gap
+}
+
+glyph_pad <- function(theme = the$theme) {
+  strrep(" ", theme_glyph_gap(theme))
 }
 
 colorize <- function(text, color, enabled = TRUE) {
