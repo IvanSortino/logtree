@@ -160,12 +160,10 @@ try(with_logging(apply_migration()), silent = TRUE)
 When a run ends, `logtree_summary()` prints a breadcrumb digest of every
 error, warning, and pinned leaf since the last reset – so you see *what*
 went wrong without scrolling back through the tree. `filter` restricts
-by status; `depth` trims each breadcrumb to its `N` deepest nodes. The
-digest is set off from the tree by a blank gap and a `cli` rule labelled
-with its counts, and its breadcrumbs emphasise the path so it reads
-apart from the message. Both come from the active theme –
-`logtree_theme(list(crumb = ..., summary = ...))` – and
-`logtree_summary(gap =, rule =)` overrides the divider for one call.
+by status; `depth` trims each breadcrumb to its `N` deepest nodes. A
+blank gap and a `cli` rule set the digest off from the tree, and the
+breadcrumb emphasises the path so it reads apart from the message – both
+are theme settings.
 
 ``` r
 logtree_reset()
@@ -250,9 +248,7 @@ with_logging(run_pipeline(), summary = FALSE)
 ## Themes
 
 `logtree_theme()` swaps the whole glyph/color preset (`"unicode"`,
-`"ascii"`, `"emoji"`) or merges per-slot overrides onto the active one –
-a preset is swapped only when you name one, so a call that just passes
-`overrides` or `compact` keeps the theme you are on:
+`"ascii"`, `"emoji"`) or merges per-glyph overrides onto the active one:
 
 ``` r
 demo_build <- function() {
