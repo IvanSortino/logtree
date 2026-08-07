@@ -1,5 +1,15 @@
 # logtree (development version)
 
+* New `"ci"` theme preset: `logtree_theme("ci")` renders bracketed word glyphs
+  -- `[step]`, `[info]`, `[debug]`, `[ok]`, `[done]`, `[warn]`, `[fail]`,
+  `[break]` -- over pure-ASCII connectors with no colour in any slot, so a
+  captured build log survives a runner that strips ANSI and mangles UTF-8, and
+  a failure greps as `[fail]` rather than as a glyph you cannot type into a
+  search box. The words are different lengths on purpose: each declares its
+  true width, so the message column still lines up. Unlike the `ascii` preset
+  it spells the corner (`\-`) differently from the branch (`|-`), which makes a
+  closed subtree obvious in a wall of output.
+
 * New `"minimal"` theme preset: `logtree_theme("minimal")` draws no tree
   connectors at all -- `branch`, `corner` and `pipe` are empty, so depth is
   carried by indentation alone (two columns per level) and the output stays
