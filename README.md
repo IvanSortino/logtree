@@ -64,7 +64,8 @@ pipeline()
 #> │  └─ ✔ Done  0.00s
 #> └─ ✔ Done  0.00s
 logtree_summary()
-#> Summary: nothing to report
+#> 
+#> ── Summary: nothing to report ──────────────────────────────────────────────────
 ```
 
 `log_step()` is meant to be called from inside a function: the step
@@ -159,7 +160,10 @@ try(with_logging(apply_migration()), silent = TRUE)
 When a run ends, `logtree_summary()` prints a breadcrumb digest of every
 error, warning, and pinned leaf since the last reset – so you see *what*
 went wrong without scrolling back through the tree. `filter` restricts
-by status; `depth` trims each breadcrumb to its `N` deepest nodes.
+by status; `depth` trims each breadcrumb to its `N` deepest nodes. A
+blank gap and a `cli` rule set the digest off from the tree, and the
+breadcrumb emphasises the path so it reads apart from the message – both
+are theme settings.
 
 ``` r
 logtree_reset()
@@ -188,9 +192,10 @@ with_logging(release(), summary = FALSE)
 #> │  └─ ✔ Done  0.00s
 #> └─ ✔ Done  0.00s
 logtree_summary()
-#> Summary: 1 error, 1 warning
-#> ⚠ Release v2.1 > Apply migration > table lock held 800ms
-#> ✖ Release v2.1 > Apply migration > constraint violation on users.email
+#> 
+#> ── Summary: 1 error, 1 warning ─────────────────────────────────────────────────
+#> ⚠ Release v2.1 › Apply migration › table lock held 800ms
+#> ✖ Release v2.1 › Apply migration › constraint violation on users.email
 ```
 
 ## Grouping

@@ -31,17 +31,50 @@ apply_compact <- function(level) {
   invisible(NULL)
 }
 
+# Merge an override list onto the active theme, one slot at a time. A mistyped
+# slot is caught here rather than reaching modifyList(), whose
+# "is.list(x) is not TRUE" names neither the offending slot nor the valid ones.
+# Only list-valued slots can be overridden -- scalars such as `col_gap` are
+# theme internals, set through logtree_theme()'s `compact` argument.
+apply_overrides <- function(overrides) {
+  if (length(overrides) == 0L) return(invisible(NULL))
+  if (is.null(names(overrides)) || any(!nzchar(names(overrides)))) {
+    stop("`overrides` must be a named list, keyed by theme slot.", call. = FALSE)
+  }
+  slots   <- names(the$theme)[vapply(the$theme, is.list, logical(1))]
+  unknown <- setdiff(names(overrides), slots)
+  if (length(unknown) > 0L) {
+    stop(
+      "Unknown theme slot", if (length(unknown) > 1L) "s" else "", ": ",
+      paste0("`", unknown, "`", collapse = ", "), ".\n",
+      "Valid slots: ", paste(slots, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  for (key in names(overrides)) {
+    the$theme[[key]] <- utils::modifyList(the$theme[[key]], overrides[[key]])
+  }
+  invisible(NULL)
+}
+
 #' Set the active glyph/color theme
 #'
 #' @param theme Either a preset name (`"unicode"`, `"ascii"`, `"emoji"`) to
 #'   swap the whole glyph set, or a named list of per-key overrides to merge
 #'   onto the currently active theme (matching the two calling styles shown
-#'   in the package documentation).
-#' @param overrides A named list of per-key overrides applied on top of
-#'   `theme` after it is resolved. Each entry may specify `glyph`, `width`,
+#'   in the package documentation). `NULL` (the default) keeps the active
+#'   preset: **a preset is swapped only when you name one**, so a call that
+#'   sets just `overrides` or `compact` merges onto whatever theme is active.
+#'   Reset with `logtree_theme("unicode")`.
+#' @param overrides A named list of per-slot overrides applied on top of
+#'   `theme` once it is resolved -- on top of the *active* theme when `theme`
+#'   is `NULL`. An unknown slot name is an error, listing the valid ones. Each
+#'   entry may specify `glyph`, `width`,
 #'   and/or `color`; unspecified fields are kept from the existing entry. The
 #'   `group` slot also accepts `bracket` (logical, default `FALSE`): when
-#'   `TRUE` the header name is wrapped in `< >`.
+#'   `TRUE` the header name is wrapped in `< >`. The two non-glyph slots
+#'   `crumb` and `summary` carry [logtree_summary()]'s appearance -- see the
+#'   slot table below.
 #' @param compact Density of the tree's per-level indentation. `FALSE` (the
 #'   default) keeps the normal spacing (three columns per level in the unicode
 #'   theme); `"medium"` drops the trailing gap after each connector (two columns
@@ -71,6 +104,8 @@ apply_compact <- function(level) {
 #' | `branch` | child connector: the "tee" drawn before every child line | `glyph`, `color` |
 #' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
 #' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
+#' | `crumb` | [logtree_summary()] breadcrumb: the separator between path nodes | `glyph`, `color`, `path_color` |
+#' | `summary` | [logtree_summary()] divider above the digest | `gap`, `rule`, `line` |
 #'
 #' `success` and `done` are separate slots that merely *look* the same by
 #' default (every preset ships the same tick in both): `success` styles the
@@ -87,37 +122,48 @@ apply_compact <- function(level) {
 #' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `done`, `warning`, `error`, `interrupted`). |
 #' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. See [cli::combine_ansi_styles()]. |
 #' | `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`; default `FALSE`. |
+#' | `path_color` | `character` or `NULL` | `crumb` slot only. Styles the breadcrumb's path nodes, setting them apart from a leaf's message (which stays unstyled). Same accepted values as `color`; `"bold"` in the unicode and emoji presets, `NULL` in ascii. |
+#' | `gap` | `integer(1)` | `summary` slot only. Blank lines printed above the digest; `0` prints it flush against the tree. |
+#' | `rule` | `logical(1)` or `character(1)` | `summary` slot only. `TRUE` draws a [cli::rule()] labelled with the digest header, `FALSE` draws none, a string sets a custom title. |
+#' | `line` | `integer(1)` or `character(1)` | `summary` slot only. The rule's line, passed to [cli::rule()]'s `line`: a line type (`1`-`8`, `"double"`, ...) or the string to repeat (`"-"` in the ascii preset). |
 #' @export
 #' @examples
 #' logtree_theme("ascii")
 #' logtree_theme("unicode")
+#'
+#' # No preset named: these merge onto the active theme, whichever it is.
 #' logtree_theme(overrides = list(success = list(glyph = "*")))
 #' # The close ("Done") tick is its own slot, restyled independently:
-#' logtree_theme(overrides = list(done = list(glyph = "=", color = "silver")))
-#' logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
+#' logtree_theme(list(done = list(glyph = "=", color = "silver")))
+#' logtree_theme(list(group = list(glyph = "#", bracket = TRUE)))
+#' logtree_theme(list(crumb = list(glyph = " / ", path_color = "cyan")))
+#' logtree_theme(list(summary = list(gap = 2, rule = "Run report")))
+#'
+#' # Naming one swaps the whole preset, clearing every override above.
+#' logtree_theme("unicode")
 #' logtree_theme("unicode", compact = "medium")
 #' logtree_theme("unicode", compact = "tight")
 #' logtree_theme("unicode")
-logtree_theme <- function(theme = c("unicode", "ascii", "emoji"), overrides = list(),
-                          compact = FALSE) {
+logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE) {
   if (is.character(theme)) {
-    theme <- match.arg(theme)
+    theme <- match.arg(theme, c("unicode", "ascii", "emoji"))
     the$theme <- theme_preset(theme)
   } else if (is.list(theme)) {
     # Called as logtree_theme(list(...)) -- overrides-only, merge onto
     # whatever theme is already active.
     overrides <- theme
-  } else {
+  } else if (!is.null(theme)) {
     stop("`theme` must be a preset name or a list of overrides.", call. = FALSE)
   }
+  # theme = NULL (the default) keeps the active preset: a preset is swapped
+  # only when one is named, so a call that just sets `overrides` or `compact`
+  # merges onto whatever is active rather than silently reverting to unicode.
 
   # Apply the compact density before user overrides so explicit overrides win.
   compact <- resolve_compact(compact)
   if (!is.null(compact)) apply_compact(compact)
 
-  for (key in names(overrides)) {
-    the$theme[[key]] <- utils::modifyList(the$theme[[key]], overrides[[key]])
-  }
+  apply_overrides(overrides)
 
   invisible(NULL)
 }

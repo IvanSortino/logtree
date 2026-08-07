@@ -14,9 +14,12 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `close_current_section_silent` | *(none)* |
 | `finalize_step` | `id, sentinel` |
 | `find_stack_entry` | `id` |
+| `reconcile_open_step` | `key, srcref` |
+| `src_location` | `call` |
 | `set_stack_entry_status` | `id, status` |
 | `resolved_status` | `status` |
 | `current_parent_id` | *(none)* |
+| `current_path` | *(none)* |
 | `current_depth` | *(none)* |
 | `parse_group` | `group` |
 | `settle_groups` | `name = NULL, value = NULL` |
@@ -53,6 +56,8 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `with_logging` `[export]` | `expr, summary = TRUE` |
 | `mark_open_steps` | `status` |
 | `print_run_summary` | `status, elapsed` |
+| `global_error_action` | `cnd, summary` |
+| `install_global_logging` | `summary` |
 
 ## State / clock (R/state.R)
 
@@ -66,14 +71,31 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 | Function | Params |
 |---|---|
-| `logtree_theme` `[export]` | `theme = c("unicode", "ascii", "emoji"), overrides = list()` |
+| `logtree_theme` `[export]` | `theme = NULL, overrides = list(), compact = FALSE` |
 | `logtree_threshold` `[export]` | `level = c("debug", "info", "warn", "error")` |
 | `theme_preset` | `name` |
+| `resolve_compact` | `x` |
+| `apply_compact` | `level` |
+| `apply_overrides` | `overrides` |
 | `theme_slot_width` | `theme = the$theme` |
 | `close_glyph_key` | `status, theme = the$theme` |
+| `theme_col_gap` | `theme = the$theme` |
 | `colorize` | `text, color, enabled = TRUE` |
 | `theme_glyph` | `key, theme = the$theme, color = TRUE` |
 | `theme_connector` | `key, theme = the$theme, color = TRUE` |
+
+## Run summary digest (R/summary.R)
+
+| Function | Params |
+|---|---|
+| `logtree_summary` `[export]` | `filter = NULL, depth = NULL, gap = NULL, rule = NULL` |
+| `covers` | `anc, desc` |
+| `record_summary` | `event` |
+| `theme_field` | `slot, field, default, theme = the$theme` |
+| `resolve_gap` | `gap, theme = the$theme` |
+| `resolve_rule` | `rule, theme = the$theme` |
+| `format_crumb` | `nodes, plain_last = FALSE, theme = the$theme, color = TRUE` |
+| `print_summary_header` | `header, gap, rule` |
 
 ## Appenders / sinks (R/appenders.R)
 
@@ -107,4 +129,4 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 ---
 
-**Totals:** 14 exported fns, 33 internal fns, 1 pkg hook, 3 data objects.
+**Totals:** 16 exported fns, 59 internal fns, 1 pkg hook, 3 data objects.
