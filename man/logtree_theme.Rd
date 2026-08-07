@@ -4,20 +4,21 @@
 \alias{logtree_theme}
 \title{Set the active glyph/color theme}
 \usage{
-logtree_theme(
-  theme = c("unicode", "ascii", "emoji"),
-  overrides = list(),
-  compact = FALSE
-)
+logtree_theme(theme = NULL, overrides = list(), compact = FALSE)
 }
 \arguments{
 \item{theme}{Either a preset name (\code{"unicode"}, \code{"ascii"}, \code{"emoji"}) to
 swap the whole glyph set, or a named list of per-key overrides to merge
 onto the currently active theme (matching the two calling styles shown
-in the package documentation).}
+in the package documentation). \code{NULL} (the default) keeps the active
+preset: \strong{a preset is swapped only when you name one}, so a call that
+sets just \code{overrides} or \code{compact} merges onto whatever theme is active.
+Reset with \code{logtree_theme("unicode")}.}
 
-\item{overrides}{A named list of per-key overrides applied on top of
-\code{theme} after it is resolved. Each entry may specify \code{glyph}, \code{width},
+\item{overrides}{A named list of per-slot overrides applied on top of
+\code{theme} once it is resolved -- on top of the \emph{active} theme when \code{theme}
+is \code{NULL}. An unknown slot name is an error, listing the valid ones. Each
+entry may specify \code{glyph}, \code{width},
 and/or \code{color}; unspecified fields are kept from the existing entry. The
 \code{group} slot also accepts \code{bracket} (logical, default \code{FALSE}): when
 \code{TRUE} the header name is wrapped in \verb{< >}. The two non-glyph slots
@@ -84,12 +85,16 @@ only ever governs the clean close.
 \examples{
 logtree_theme("ascii")
 logtree_theme("unicode")
+
+# No preset named: these merge onto the active theme, whichever it is.
 logtree_theme(overrides = list(success = list(glyph = "*")))
 # The close ("Done") tick is its own slot, restyled independently:
-logtree_theme(overrides = list(done = list(glyph = "=", color = "silver")))
-logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
-logtree_theme(overrides = list(crumb = list(glyph = " / ", path_color = "cyan")))
-logtree_theme(overrides = list(summary = list(gap = 2, rule = "Run report")))
+logtree_theme(list(done = list(glyph = "=", color = "silver")))
+logtree_theme(list(group = list(glyph = "#", bracket = TRUE)))
+logtree_theme(list(crumb = list(glyph = " / ", path_color = "cyan")))
+logtree_theme(list(summary = list(gap = 2, rule = "Run report")))
+
+# Naming one swaps the whole preset, clearing every override above.
 logtree_theme("unicode")
 logtree_theme("unicode", compact = "medium")
 logtree_theme("unicode", compact = "tight")

@@ -250,7 +250,9 @@ with_logging(run_pipeline(), summary = FALSE)
 ## Themes
 
 `logtree_theme()` swaps the whole glyph/color preset (`"unicode"`,
-`"ascii"`, `"emoji"`) or merges per-glyph overrides onto the active one:
+`"ascii"`, `"emoji"`) or merges per-slot overrides onto the active one –
+a preset is swapped only when you name one, so a call that just passes
+`overrides` or `compact` keeps the theme you are on:
 
 ``` r
 demo_build <- function() {
