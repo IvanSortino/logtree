@@ -1,5 +1,18 @@
 # logtree (development version)
 
+* The word a step prints when it closes is themeable: the new `text` field on a
+  status slot replaces the hard-coded `Done`. It is read from the closing
+  status's own slot, falling back to `done`'s and then to `"Done"`, so
+  `logtree_theme(list(done = list(text = "Complete")))` renames every close
+  line while `list(error = list(text = "Failed"))` renames only the ones that
+  went wrong -- which is also all localisation needs. `text = ""` drops the
+  word, leaving the glyph and the elapsed time. Two placeholders are expanded:
+  `{label}` (the step's own label, or a group's name) and `{elapsed}` (the
+  formatted time); a template that places `{elapsed}` itself owns that column
+  rather than having the time appended twice. `text` governs close lines only
+  -- `log_error()`'s own message is untouched -- and every preset ships
+  `text = "Done"`, so existing output is unchanged.
+
 * `logtree_theme()` gains `glyph_gap`, the number of spaces between a line's
   status glyph and its message: `0` butts the message against the glyph for a
   minimal look, `2` or more airs the message column out. It applies to every

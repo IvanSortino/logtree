@@ -216,6 +216,23 @@ logtree_threshold <- function(level = c("debug", "info", "warn", "error")) {
   invisible(NULL)
 }
 
+# Look one field up inside one theme slot, falling back to `default`.
+#
+# Both lookups have to be name-guarded rather than written as
+# `theme[[slot]][[field]]`: `[[` on a list *errors* for a name that is not
+# there, and neither is guaranteed to be. A hand-built theme -- or one built
+# before a slot existed -- may carry neither the slot nor the field, and
+# modifyList() deletes an entry outright when an override sets it to NULL, so
+# a field can go missing at runtime too. Every optional theme setting reads
+# through here so a missing one degrades to its default instead of throwing.
+theme_field <- function(slot, field, default, theme = the$theme) {
+  if (!slot %in% names(theme)) return(default)
+  entry <- theme[[slot]]
+  if (is.null(entry) || !field %in% names(entry)) return(default)
+  value <- entry[[field]]
+  if (is.null(value)) default else value
+}
+
 theme_slot_width <- function(theme = the$theme) {
   # Only the status slots the theme actually carries: a hand-built theme (or one
   # created before a slot existed) may be missing some, and a missing slot must

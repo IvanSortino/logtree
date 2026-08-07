@@ -53,16 +53,9 @@ record_summary <- function(event) {
 # The digest is printed straight after the last log line, which makes it read
 # as one more branch of the tree. A blank gap plus a cli rule sets it apart as
 # its own block. The defaults live in the active theme's `summary` slot
-# (gap / rule / line), so appearance is customised in one place --
-# logtree_theme() -- and logtree_summary()'s own `gap` / `rule` arguments are
-# per-call overrides of it.
-
-# Field lookup with a fallback, for themes predating these slots (a
-# user-supplied preset need not carry them).
-theme_field <- function(slot, field, default, theme = the$theme) {
-  value <- theme[[slot]][[field]]
-  if (is.null(value)) default else value
-}
+# (gap / rule / line), read through theme_field() (R/theme.R), so appearance is
+# customised in one place -- logtree_theme() -- and logtree_summary()'s own
+# `gap` / `rule` arguments are per-call overrides of it.
 
 resolve_gap <- function(gap, theme = the$theme) {
   if (is.null(gap)) gap <- theme_field("summary", "gap", 1L, theme)
