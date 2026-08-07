@@ -13,11 +13,16 @@
 # U+2699 = GEAR (unicode debug glyph)
 # U+203A = SINGLE RIGHT-POINTING ANGLE QUOTATION MARK (breadcrumb separator)
 #
-# Beyond the glyph slots, each preset carries two non-glyph slots used only by
-# logtree_summary(): `crumb` (breadcrumb separator + the styling that sets the
-# path apart from the message) and `summary` (the digest's divider layout).
-# They live in the theme so there is one place to customise appearance --
-# logtree_theme() -- rather than a second, options-based channel.
+# Beyond the glyph slots, each preset carries three non-glyph slots: `elapsed`
+# (how a close line's time column is gated and styled), plus `crumb`
+# (breadcrumb separator + the styling that sets the path apart from the
+# message) and `summary` (the digest's divider layout), both used only by
+# logtree_summary(). They live in the theme so there is one place to customise
+# appearance -- logtree_theme() -- rather than a second, options-based channel.
+#
+# The `done` slot also carries `text`, the word a close line prints before its
+# elapsed time. It is read per status (falling back to `done`'s, then to
+# "Done"), so a preset -- or a user -- can rename or drop it.
 
 glyphs_unicode <- list(
   step        = list(glyph = "\u25b6", width = 1L, color = "cyan"),
@@ -26,8 +31,9 @@ glyphs_unicode <- list(
   success     = list(glyph = "\u2714", width = 1L, color = "green"),
   # Same tick as `success` by default, but its own slot: the close ("Done")
   # line reads from `done`, so the completion tick can be restyled without
-  # touching log_success() leaves (and vice versa).
-  done        = list(glyph = "\u2714", width = 1L, color = "green"),
+  # touching log_success() leaves (and vice versa). `text` is the word that
+  # line prints before its elapsed time.
+  done        = list(glyph = "\u2714", width = 1L, color = "green", text = "Done"),
   warning     = list(glyph = "\u26a0", width = 1L, color = "yellow"),
   error       = list(glyph = "\u2716", width = 1L, color = "red"),
   interrupted = list(glyph = "\u25cc", width = 1L, color = "dim"),
@@ -44,7 +50,7 @@ glyphs_ascii <- list(
   info        = list(glyph = "i", width = 1L, color = NULL),
   debug       = list(glyph = "d", width = 1L, color = NULL),
   success     = list(glyph = "+", width = 1L, color = NULL),
-  done        = list(glyph = "+", width = 1L, color = NULL),
+  done        = list(glyph = "+", width = 1L, color = NULL, text = "Done"),
   warning     = list(glyph = "!", width = 1L, color = NULL),
   error       = list(glyph = "x", width = 1L, color = NULL),
   interrupted = list(glyph = "-", width = 1L, color = NULL),
@@ -72,7 +78,7 @@ glyphs_emoji <- list(
   info        = list(glyph = "\U0001f4a1", width = 2L, color = NULL),
   debug       = list(glyph = "\U0001f41b", width = 2L, color = NULL),
   success     = list(glyph = "\u2705", width = 2L, color = NULL),
-  done        = list(glyph = "\u2705", width = 2L, color = NULL),
+  done        = list(glyph = "\u2705", width = 2L, color = NULL, text = "Done"),
   warning     = list(glyph = "\u26a0\ufe0f", width = 2L, color = NULL),
   error       = list(glyph = "\u274c", width = 2L, color = NULL),
   interrupted = list(glyph = "\u2753", width = 2L, color = NULL),

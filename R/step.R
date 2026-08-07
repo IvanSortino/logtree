@@ -506,12 +506,49 @@ format_open <- function(entry, theme = the$theme, color = TRUE) {
   paste0(prefix, glyph, glyph_pad(theme), entry$label)
 }
 
+# The word a close line prints before its elapsed time. Read from the closing
+# status's own slot, falling back to the `done` slot's `text` and finally to
+# the built-in "Done" -- so a theme can rename every close line at once
+# (`done = list(text = "Complete")`) or only the ones that went wrong
+# (`error = list(text = "Failed")`). close_glyph_key() already maps a clean
+# close onto `done`, which is why `success` carries no `text` of its own.
+close_text_template <- function(status, theme = the$theme) {
+  key <- close_glyph_key(status, theme)
+  theme_field(key, "text", theme_field("done", "text", "Done", theme), theme)
+}
+
+# Expand a close-line template: `{label}` is the closing step's own label --
+# a group's name, for a group close, since groups carry `name` and no `label`
+# -- and `{elapsed}` the already-formatted time.
+expand_close_text <- function(template, entry, elapsed) {
+  label <- if (!is.null(entry$label)) entry$label else entry$name
+  # An entry carrying neither (a hand-assembled one, or a future entry kind)
+  # expands to the empty string; gsub() rejects a NULL replacement outright.
+  if (is.null(label)) label <- ""
+  out <- gsub("{label}", label, template, fixed = TRUE)
+  gsub("{elapsed}", elapsed, out, fixed = TRUE)
+}
+
+# A close line's message: the themed word, then the elapsed time. Either side
+# can be empty -- `text = ""` drops the word entirely -- so the two-space
+# separator is placed only when there is something on both sides of it.
+close_message <- function(entry, status, theme = the$theme) {
+  template <- close_text_template(status, theme)
+  elapsed  <- format_elapsed(entry$elapsed)
+  text     <- expand_close_text(template, entry, elapsed)
+  # A template that places {elapsed} itself owns that column; don't print the
+  # time a second time after it.
+  if (grepl("{elapsed}", template, fixed = TRUE)) return(text)
+  if (!nzchar(text)) return(elapsed)
+  paste0(text, "  ", elapsed)
+}
+
 format_close <- function(entry, theme = the$theme, color = TRUE) {
   d <- entry$depth
   prefix <- paste0(strrep(rail_unit(theme, color), max(d - 1L, 0L)), connector_str("corner", theme, color))
   status <- resolved_status(entry$status)
   glyph  <- theme_glyph(close_glyph_key(status, theme), theme, color)
-  paste0(prefix, glyph, glyph_pad(theme), "Done  ", format_elapsed(entry$elapsed))
+  paste0(prefix, glyph, glyph_pad(theme), close_message(entry, status, theme))
 }
 
 format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
