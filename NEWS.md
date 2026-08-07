@@ -1,5 +1,17 @@
 # logtree (development version)
 
+* New `elapsed` theme slot controls the time column on close lines, with five
+  fields: `show = FALSE` drops it entirely, `min` hides anything faster than a
+  threshold (`logtree_theme(list(elapsed = list(min = 0.1)))` silences the
+  `0.00s` noise on trivial steps), `color` styles the time, and `slow` +
+  `slow_color` restyle the ones worth noticing -- so a step that ran long is
+  visible at a glance without reading every number. It is an ordinary override
+  slot, so it needs no new `logtree_theme()` argument. The `with_logging()`
+  run-summary line takes the colouring but never the hiding rules, since
+  `Run complete in <time>` would read as an unfinished sentence without its
+  time. The defaults (`show = TRUE`, `min = 0`, no `slow`) leave output
+  unchanged.
+
 * The word a step prints when it closes is themeable: the new `text` field on a
   status slot replaces the hard-coded `Done`. It is read from the closing
   status's own slot, falling back to `done`'s and then to `"Done"`, so

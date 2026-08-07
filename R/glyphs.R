@@ -41,6 +41,7 @@ glyphs_unicode <- list(
   branch      = list(glyph = "\u251c\u2500", color = "dim"),
   corner      = list(glyph = "\u2514\u2500", color = "dim"),
   pipe        = list(glyph = "\u2502", color = "dim"),
+  elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = "yellow"),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
@@ -61,6 +62,9 @@ glyphs_ascii <- list(
   branch      = list(glyph = "|-", color = NULL),
   corner      = list(glyph = "|-", color = NULL),
   pipe        = list(glyph = "|", color = NULL),
+  # No `slow_color` either: this preset is colorless by design, so a slow time
+  # is left to the reader rather than highlighted.
+  elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = NULL),
   # Plain ASCII throughout, colorless like every other slot of this preset --
   # which is what makes ascii output stable and easy to pattern-match in tests.
   crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
@@ -87,6 +91,7 @@ glyphs_emoji <- list(
   branch      = list(glyph = "\u251c\u2500", color = "dim"),
   corner      = list(glyph = "\u2514\u2500", color = "dim"),
   pipe        = list(glyph = "\u2502", color = "dim"),
+  elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = "yellow"),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )

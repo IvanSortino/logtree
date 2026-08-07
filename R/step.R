@@ -529,17 +529,45 @@ expand_close_text <- function(template, entry, elapsed) {
   gsub("{elapsed}", elapsed, out, fixed = TRUE)
 }
 
+# The elapsed-time column of a close line, governed by the theme's `elapsed`
+# slot: `show = FALSE` drops it outright, `min` hides anything faster than a
+# threshold (which is how you silence the "0.00s" noise on trivial steps), and
+# `slow` / `slow_color` restyle the ones worth noticing. Returns "" when the
+# time is hidden, so callers join their columns conditionally.
+#
+# `gate = FALSE` keeps the styling but skips the hiding rules. The
+# with_logging() run-summary line uses it: that line reads "Run complete in
+# <time>", so suppressing the time would leave a dangling sentence.
+format_elapsed_field <- function(seconds, theme = the$theme, color = TRUE,
+                                 gate = TRUE) {
+  if (gate) {
+    if (!isTRUE(theme_field("elapsed", "show", TRUE, theme))) return("")
+    min <- theme_field("elapsed", "min", 0, theme)
+    if (is.numeric(min) && length(min) == 1L && !is.na(min) && seconds < min) {
+      return("")
+    }
+  }
+  col  <- theme_field("elapsed", "color", NULL, theme)
+  slow <- theme_field("elapsed", "slow", NULL, theme)
+  if (is.numeric(slow) && length(slow) == 1L && !is.na(slow) && seconds >= slow) {
+    col <- theme_field("elapsed", "slow_color", NULL, theme)
+  }
+  colorize(format_elapsed(seconds), col, color)
+}
+
 # A close line's message: the themed word, then the elapsed time. Either side
-# can be empty -- `text = ""` drops the word entirely -- so the two-space
-# separator is placed only when there is something on both sides of it.
-close_message <- function(entry, status, theme = the$theme) {
+# can be empty -- `text = ""` drops the word, and the `elapsed` slot can hide
+# the time -- so the two-space separator is placed only when there is
+# something on both sides of it.
+close_message <- function(entry, status, theme = the$theme, color = TRUE) {
   template <- close_text_template(status, theme)
-  elapsed  <- format_elapsed(entry$elapsed)
+  elapsed  <- format_elapsed_field(entry$elapsed, theme, color)
   text     <- expand_close_text(template, entry, elapsed)
   # A template that places {elapsed} itself owns that column; don't print the
   # time a second time after it.
   if (grepl("{elapsed}", template, fixed = TRUE)) return(text)
   if (!nzchar(text)) return(elapsed)
+  if (!nzchar(elapsed)) return(text)
   paste0(text, "  ", elapsed)
 }
 
@@ -548,7 +576,10 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
   prefix <- paste0(strrep(rail_unit(theme, color), max(d - 1L, 0L)), connector_str("corner", theme, color))
   status <- resolved_status(entry$status)
   glyph  <- theme_glyph(close_glyph_key(status, theme), theme, color)
-  paste0(prefix, glyph, glyph_pad(theme), close_message(entry, status, theme))
+  msg    <- close_message(entry, status, theme, color)
+  # A theme that drops both the word and the time leaves a glyph-only close
+  # line; skip the gap too rather than trailing a space off the end of it.
+  paste0(prefix, glyph, if (nzchar(msg)) glyph_pad(theme) else "", msg)
 }
 
 format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
