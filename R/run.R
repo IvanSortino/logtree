@@ -13,8 +13,10 @@ print_run_summary <- function(status, elapsed) {
   # gate = FALSE: this line reads "Run complete in <time>", so it takes the
   # `elapsed` slot's colouring but never its hiding rules -- a suppressed time
   # would leave the sentence hanging.
-  cat(theme_glyph(status), glyph_pad(), label, " in ",
-      format_elapsed_field(elapsed, gate = FALSE), "\n", sep = "")
+  cat(compose_flat_line(
+        theme_glyph(status),
+        paste0(label, " in ", format_elapsed_field(elapsed, gate = FALSE))
+      ), "\n", sep = "")
 }
 
 # The action run by the global (top-level) error handler installed via
