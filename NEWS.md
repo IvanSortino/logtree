@@ -1,4 +1,4 @@
-# logtree 0.1.1
+# logtree 0.2.0
 
 * New `done` theme slot: a step's own `Done` line (a clean close) is styled
   separately from `log_success()` leaf lines, which keep the `success` slot.
