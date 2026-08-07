@@ -95,3 +95,40 @@ glyphs_emoji <- list(
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
+
+# U+25B8 = BLACK RIGHT-POINTING SMALL TRIANGLE (a lighter step marker)
+# U+00B7 = MIDDLE DOT                  U+2713 = CHECK MARK (light)
+# U+00D7 = MULTIPLICATION SIGN
+#
+# The `minimal` preset draws no tree connectors at all: `branch`, `corner` and
+# `pipe` are empty strings, so a level costs nothing but its `col_gap` and the
+# tree is carried by indentation alone. The existing layout math already
+# handles this -- tree_col_width() becomes 0 + col_gap and rail_unit() pads an
+# empty pipe out to that same width -- so no formatter changes are needed.
+#
+# The glyph vocabulary is deliberately small, and that is the trade the preset
+# makes: `info`, `debug` and `interrupted` all render the middle dot and are
+# told apart by colour alone. Close lines carry no word (`text = ""`), leaving
+# a tick and the elapsed time, and times are dimmed so the eye lands on the
+# labels rather than the numbers.
+glyphs_minimal <- list(
+  step        = list(glyph = "\u25b8", width = 1L, color = "cyan"),
+  info        = list(glyph = "\u00b7", width = 1L, color = "blue"),
+  debug       = list(glyph = "\u00b7", width = 1L, color = "silver"),
+  success     = list(glyph = "\u2713", width = 1L, color = "green"),
+  done        = list(glyph = "\u2713", width = 1L, color = "green", text = ""),
+  warning     = list(glyph = "!", width = 1L, color = "yellow"),
+  error       = list(glyph = "\u00d7", width = 1L, color = "red"),
+  interrupted = list(glyph = "\u00b7", width = 1L, color = "dim"),
+  # No marker before a group header either -- the name alone carries it.
+  group       = list(glyph = "", color = "magenta", bracket = FALSE),
+  branch      = list(glyph = "", color = NULL),
+  corner      = list(glyph = "", color = NULL),
+  pipe        = list(glyph = "", color = NULL),
+  elapsed     = list(show = TRUE, min = 0, color = "dim", slow = NULL, slow_color = "yellow"),
+  crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
+  summary     = list(gap = 1L, rule = TRUE, line = 1L),
+  # Two spaces per level. With empty connectors this scalar is the entire
+  # indentation, so it is part of the preset rather than a compact setting.
+  col_gap     = 2L
+)

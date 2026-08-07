@@ -1,11 +1,14 @@
 glyph_keys <- c("step", "debug", "info", "success", "done", "warning", "error",
                 "interrupted")
 
+theme_presets <- c("unicode", "ascii", "emoji", "minimal")
+
 theme_preset <- function(name) {
   switch(name,
     unicode = glyphs_unicode,
     ascii   = glyphs_ascii,
     emoji   = glyphs_emoji,
+    minimal = glyphs_minimal,
     stop("Unknown theme preset: ", name, call. = FALSE)
   )
 }
@@ -170,7 +173,7 @@ apply_overrides <- function(overrides) {
 logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
                           glyph_gap = NULL) {
   if (is.character(theme)) {
-    theme <- match.arg(theme, c("unicode", "ascii", "emoji"))
+    theme <- match.arg(theme, theme_presets)
     the$theme <- theme_preset(theme)
   } else if (is.list(theme)) {
     # Called as logtree_theme(list(...)) -- overrides-only, merge onto
