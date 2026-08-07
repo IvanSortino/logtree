@@ -49,6 +49,59 @@ record_summary <- function(event) {
   invisible(NULL)
 }
 
+# --- Divider ---------------------------------------------------------------
+# The digest is printed straight after the last log line, which makes it read
+# as one more branch of the tree. A blank gap plus a cli rule sets it apart as
+# its own block. Both are arguments of logtree_summary(), defaulting to the
+# `logtree.summary_gap` / `logtree.summary_rule` options so a project can set
+# the layout once instead of at every call site.
+
+# NULL means "the shipped default" for both knobs, so clearing the option
+# (options(logtree.summary_gap = NULL)) restores the default layout -- an
+# option explicitly set to NULL is still *set*, so getOption()'s fallback
+# never fires for it.
+validate_gap <- function(gap) {
+  if (is.null(gap)) return(1L)
+  if (!is.numeric(gap) || length(gap) != 1L || is.na(gap) ||
+      gap < 0 || gap != as.integer(gap)) {
+    stop("`gap` must be a non-negative whole number.", call. = FALSE)
+  }
+  as.integer(gap)
+}
+
+validate_rule <- function(rule) {
+  if (is.null(rule)) return(TRUE)
+  ok <- (is.logical(rule) && length(rule) == 1L && !is.na(rule)) ||
+    (is.character(rule) && length(rule) == 1L && !is.na(rule))
+  if (!ok) {
+    stop("`rule` must be TRUE, FALSE, or a single title string.", call. = FALSE)
+  }
+  rule
+}
+
+# The rule follows the active theme's character set: the ASCII preset (rail
+# "|") gets an ASCII line, every other theme gets cli's box-drawing default
+# (which itself degrades to ASCII on a non-UTF-8 console).
+summary_rule_line <- function(theme = the$theme) {
+  if (identical(theme$pipe$glyph, "|")) "-" else 1L
+}
+
+# Prints the gap, then the rule and/or the plain header line:
+#   rule = TRUE    -- header becomes the rule's label (no separate line)
+#   rule = FALSE   -- plain header line, no rule
+#   rule = "title" -- rule labelled "title", header line below it
+print_summary_header <- function(header, gap, rule) {
+  if (gap > 0L) cat(strrep("\n", gap))
+  if (isFALSE(rule)) {
+    cat(header, "\n", sep = "")
+    return(invisible(NULL))
+  }
+  label <- if (isTRUE(rule)) header else rule
+  cat(cli::rule(left = label, line = summary_rule_line()), "\n", sep = "")
+  if (!isTRUE(rule)) cat(header, "\n", sep = "")
+  invisible(NULL)
+}
+
 #' Report a digest of notable events
 #'
 #' Prints a compact end-of-run digest of everything worth attention that
@@ -74,6 +127,16 @@ record_summary <- function(event) {
 #'   step), `depth = 2` the message plus its immediate parent, and so on.
 #'   `NULL` (the default) prints the full breadcrumb. Affects printing only; the
 #'   returned entries always carry the full `path`.
+#' @param gap Number of blank lines printed between the last log line and the
+#'   digest; `0` prints the digest flush against the tree. Defaults to the
+#'   `logtree.summary_gap` option, or `1` when that is unset or `NULL`.
+#' @param rule Divider drawn above the digest. `TRUE` draws a [cli::rule()]
+#'   labelled with the digest header, so the counts become the rule's title
+#'   instead of a separate line; `FALSE` draws no rule and keeps the plain
+#'   header line; a character string draws the rule with that title and prints
+#'   the header line below it. The rule's line character follows the active
+#'   theme (ASCII under [logtree_theme()]`("ascii")`). Defaults to the
+#'   `logtree.summary_rule` option, or `TRUE` when that is unset or `NULL`.
 #' @return The recorded entries, invisibly: a list of records, each a list with
 #'   `kind`, `status`, `msg`, `path` (character vector), and `elapsed`.
 #' @seealso [with_logging()], [logtree_reset()]
@@ -86,7 +149,19 @@ record_summary <- function(event) {
 #' }
 #' f()
 #' logtree_summary()
-logtree_summary <- function(filter = NULL, depth = NULL) {
+#'
+#' # Flush against the tree, with a titled divider.
+#' logtree_summary(gap = 0, rule = "Run report")
+#'
+#' # Set the layout once for the whole session.
+#' options(logtree.summary_gap = 2, logtree.summary_rule = FALSE)
+#' logtree_summary()
+#' options(logtree.summary_gap = NULL, logtree.summary_rule = NULL)
+logtree_summary <- function(filter = NULL, depth = NULL,
+                            gap = getOption("logtree.summary_gap", 1L),
+                            rule = getOption("logtree.summary_rule", TRUE)) {
+  gap  <- validate_gap(gap)
+  rule <- validate_rule(rule)
   if (!is.null(depth)) {
     if (!is.numeric(depth) || length(depth) != 1L || is.na(depth) ||
         depth < 1 || depth != as.integer(depth)) {
@@ -100,7 +175,7 @@ logtree_summary <- function(filter = NULL, depth = NULL) {
     entries <- entries[keep]
   }
   if (length(entries) == 0L) {
-    cat("Summary: nothing to report\n")
+    print_summary_header("Summary: nothing to report", gap, rule)
     return(invisible(entries))
   }
   statuses <- vapply(entries, function(e) e$status, character(1))
@@ -117,7 +192,9 @@ logtree_summary <- function(filter = NULL, depth = NULL) {
     if (n_interrupted > 0L) sprintf("%d interrupted", n_interrupted),
     if (n_pinned      > 0L) sprintf("%d pinned", n_pinned)
   )
-  cat("Summary: ", paste(parts, collapse = ", "), "\n", sep = "")
+  print_summary_header(
+    paste0("Summary: ", paste(parts, collapse = ", ")), gap, rule
+  )
   # depth (when set) keeps only the trailing `depth` breadcrumb nodes.
   clip <- function(nodes) if (is.null(depth)) nodes else utils::tail(nodes, depth)
   for (e in entries) {

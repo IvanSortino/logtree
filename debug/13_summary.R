@@ -92,3 +92,34 @@ cat("-- depth = 2 (message + parent) --\n")
 logtree_summary(depth = 2)
 cat("-- full (default) --\n")
 logtree_summary()
+
+# ---------------------------------------------------------------------------
+# G. Layout: the digest is divided from the log lines by a blank gap plus a cli
+#    rule labelled with the counts. `gap` sets the number of blank lines and
+#    `rule` the divider (TRUE / FALSE / a custom title); both default to the
+#    logtree.summary_gap / logtree.summary_rule options.
+section("G. divider layout: gap + rule")
+logtree_reset()
+deploy <- function() {
+  log_step("Deploy")
+  log_warn("stale cache on node 3")
+  log_error("health check failed on node 7")
+}
+deploy()
+
+cat("-- default: one blank line + rule carrying the header --\n")
+logtree_summary()
+
+cat("\n-- gap = 3, wider separation --\n")
+logtree_summary(gap = 3)
+
+cat("\n-- rule = FALSE: flush plain header, as before --\n")
+logtree_summary(gap = 0, rule = FALSE)
+
+cat("\n-- rule = \"Run report\": custom title, header below it --\n")
+logtree_summary(rule = "Run report")
+
+cat("\n-- set the layout once for the session, via options --\n")
+options(logtree.summary_gap = 2, logtree.summary_rule = "Nightly build")
+logtree_summary()
+options(logtree.summary_gap = NULL, logtree.summary_rule = NULL)

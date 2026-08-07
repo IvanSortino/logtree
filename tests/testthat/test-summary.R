@@ -111,7 +111,7 @@ test_that("logtree_summary() prints a header with counts and returns entries inv
   }
   capture.output(f())
 
-  out <- capture.output(res <- logtree_summary())
+  out <- capture.output(res <- logtree_summary(gap = 0, rule = FALSE))
   expect_match(out[[1]], "^Summary: ")
   expect_match(out[[1]], "1 error")
   expect_match(out[[1]], "1 warning")
@@ -221,7 +221,7 @@ test_that("an empty summary prints nothing-to-report", {
   }
   capture.output(f())
 
-  out <- capture.output(res <- logtree_summary())
+  out <- capture.output(res <- logtree_summary(gap = 0, rule = FALSE))
   expect_match(out, "nothing to report")
   expect_length(res, 0L)
 })
@@ -253,7 +253,7 @@ test_that("filter filters the digest to a single status", {
   }
   capture.output(f())
 
-  out <- capture.output(res <- logtree_summary(filter = "error"))
+  out <- capture.output(res <- logtree_summary(filter = "error", gap = 0, rule = FALSE))
   expect_match(out[[1]], "1 error")
   expect_false(any(grepl("warning", out)))
   expect_length(res, 1L)
@@ -296,7 +296,7 @@ test_that("filter with no matching status reports nothing", {
   }
   capture.output(f())
 
-  out <- capture.output(res <- logtree_summary(filter = "error"))
+  out <- capture.output(res <- logtree_summary(filter = "error", gap = 0, rule = FALSE))
   expect_match(out, "nothing to report")
   expect_length(res, 0L)
 })
@@ -322,6 +322,120 @@ test_that("logtree_summary() prints outcome words for non-leaf step entries", {
   out <- capture.output(logtree_summary())
   expect_true(any(grepl("Warned  completed with warning", out)))
   expect_true(any(grepl("Failed  failed", out)))
+})
+
+# --- Divider layout --------------------------------------------------------
+
+# One warning, so every divider test below has a digest to print.
+local_warned_run <- function() {
+  f <- function() {
+    log_step("Task")
+    log_warn("careful")
+  }
+  capture.output(f())
+  invisible(NULL)
+}
+
+test_that("the digest is set off by a blank gap and a rule carrying the header", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out <- cli::ansi_strip(capture.output(logtree_summary()))
+  expect_identical(out[[1]], "")
+  expect_match(out[[2]], "Summary: 1 warning")
+  # The header is the rule's label, not a line of its own.
+  expect_length(grep("^Summary: ", out), 0L)
+})
+
+test_that("gap sets the number of blank lines above the digest", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out0 <- cli::ansi_strip(capture.output(logtree_summary(gap = 0)))
+  expect_false(identical(out0[[1]], ""))
+
+  out2 <- cli::ansi_strip(capture.output(logtree_summary(gap = 2)))
+  expect_identical(out2[1:2], c("", ""))
+  expect_match(out2[[3]], "Summary: 1 warning")
+})
+
+test_that("rule = FALSE keeps the plain header line, gap still applies", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out <- cli::ansi_strip(capture.output(logtree_summary(rule = FALSE)))
+  expect_identical(out[[1]], "")
+  expect_identical(out[[2]], "Summary: 1 warning")
+})
+
+test_that("NULL means the shipped default, not 'off'", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  # An option set to NULL is still *set*, so getOption()'s fallback never
+  # fires and NULL reaches the argument -- clearing an option must land back
+  # on the default layout rather than erroring or dropping the divider.
+  out <- cli::ansi_strip(capture.output(logtree_summary(gap = NULL, rule = NULL)))
+  expect_identical(out[[1]], "")
+  expect_match(out[[2]], "Summary: 1 warning")
+})
+
+test_that("a character rule titles the divider and keeps the header below it", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out <- cli::ansi_strip(capture.output(
+    logtree_summary(gap = 0, rule = "Run report")
+  ))
+  expect_match(out[[1]], "Run report")
+  expect_identical(out[[2]], "Summary: 1 warning")
+})
+
+test_that("the divider defaults come from options", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  withr::local_options(logtree.summary_gap = 0, logtree.summary_rule = FALSE)
+  out <- cli::ansi_strip(capture.output(logtree_summary()))
+  expect_identical(out[[1]], "Summary: 1 warning")
+})
+
+test_that("the rule's line character follows the active theme", {
+  expect_identical(summary_rule_line(theme = glyphs_ascii), "-")
+  expect_identical(summary_rule_line(theme = glyphs_unicode), 1L)
+
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out <- cli::ansi_strip(capture.output(logtree_summary(gap = 0)))
+  expect_match(out[[1]], "---")
+})
+
+test_that("gap and rule reject malformed values", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  expect_error(logtree_summary(gap = -1), "non-negative whole number")
+  expect_error(logtree_summary(gap = 1.5), "non-negative whole number")
+  expect_error(logtree_summary(gap = "1"), "non-negative whole number")
+  expect_error(logtree_summary(gap = NA), "non-negative whole number")
+  expect_error(logtree_summary(rule = NA), "TRUE, FALSE, or a single title")
+  expect_error(logtree_summary(rule = c("a", "b")), "TRUE, FALSE, or a single title")
+  expect_error(logtree_summary(rule = 1), "TRUE, FALSE, or a single title")
 })
 
 test_that("logtree_summary() reports an interrupted step as 'did not complete'", {

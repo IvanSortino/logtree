@@ -4,7 +4,12 @@
 \alias{logtree_summary}
 \title{Report a digest of notable events}
 \usage{
-logtree_summary(filter = NULL, depth = NULL)
+logtree_summary(
+  filter = NULL,
+  depth = NULL,
+  gap = getOption("logtree.summary_gap", 1L),
+  rule = getOption("logtree.summary_rule", TRUE)
+)
 }
 \arguments{
 \item{filter}{Optional character vector of statuses to include, e.g.
@@ -19,6 +24,18 @@ breadcrumb nodes are printed. The message counts as the terminal node, so
 step), \code{depth = 2} the message plus its immediate parent, and so on.
 \code{NULL} (the default) prints the full breadcrumb. Affects printing only; the
 returned entries always carry the full \code{path}.}
+
+\item{gap}{Number of blank lines printed between the last log line and the
+digest; \code{0} prints the digest flush against the tree. Defaults to the
+\code{logtree.summary_gap} option, or \code{1} when that is unset or \code{NULL}.}
+
+\item{rule}{Divider drawn above the digest. \code{TRUE} draws a \code{\link[cli:rule]{cli::rule()}}
+labelled with the digest header, so the counts become the rule's title
+instead of a separate line; \code{FALSE} draws no rule and keeps the plain
+header line; a character string draws the rule with that title and prints
+the header line below it. The rule's line character follows the active
+theme (ASCII under \code{\link[=logtree_theme]{logtree_theme()}}\code{("ascii")}). Defaults to the
+\code{logtree.summary_rule} option, or \code{TRUE} when that is unset or \code{NULL}.}
 }
 \value{
 The recorded entries, invisibly: a list of records, each a list with
@@ -46,6 +63,14 @@ f <- function() {
 }
 f()
 logtree_summary()
+
+# Flush against the tree, with a titled divider.
+logtree_summary(gap = 0, rule = "Run report")
+
+# Set the layout once for the whole session.
+options(logtree.summary_gap = 2, logtree.summary_rule = FALSE)
+logtree_summary()
+options(logtree.summary_gap = NULL, logtree.summary_rule = NULL)
 }
 \seealso{
 \code{\link[=with_logging]{with_logging()}}, \code{\link[=logtree_reset]{logtree_reset()}}
