@@ -6,10 +6,10 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 | Function | Params |
 |---|---|
-| `log_step` `[export]` | `msg, glyph = NULL, group = NULL, close = FALSE` |
-| `log_open` `[export]` | `msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE` |
+| `log_step` `[export]` | `msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE, key = NULL` |
+| `log_open` `[export]` | `msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE, key = NULL` |
 | `log_close` `[export]` | `id = NULL, status = NULL` |
-| `push_step` | `label, glyph = NULL, group = NULL, parent = NULL` |
+| `push_step` | `label, glyph = NULL, group = NULL, parent = NULL, key = NULL, srcref = NULL` |
 | `close_step` | `id, silent = FALSE` |
 | `close_current_section_silent` | *(none)* |
 | `finalize_step` | `id, sentinel` |
@@ -26,10 +26,20 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `open_or_reuse_group` | `name, value` |
 | `elevate_group_status` | `id, status` |
 | `tree_col_width` | `theme = the$theme` |
+| `wrap_message` | `msg, width` |
+| `hard_wrap` | `x, width` |
+| `compose_line` | `head, msg, cols, cont, theme = the$theme` |
+| `compose_flat_line` | `glyph, msg, theme = the$theme` |
+| `rails` | `n, theme = the$theme, color = TRUE` |
+| `glyph_gutter` | `theme = the$theme` |
 | `rail_unit` | `theme = the$theme, color = TRUE` |
 | `connector_str` | `key, theme = the$theme, color = TRUE` |
 | `pad_custom_glyph` | `glyph, theme = the$theme` |
 | `format_open` | `entry, theme = the$theme, color = TRUE` |
+| `close_text_template` | `status, theme = the$theme` |
+| `expand_close_text` | `template, entry, elapsed` |
+| `format_elapsed_field` | `seconds, theme = the$theme, color = TRUE, gate = TRUE` |
+| `close_message` | `entry, status, theme = the$theme, color = TRUE` |
 | `format_close` | `entry, theme = the$theme, color = TRUE` |
 | `format_leaf` | `status, msg, depth, theme = the$theme, color = TRUE, corner = FALSE` |
 | `format_group_header` | `entry, theme = the$theme, color = TRUE` |
@@ -38,22 +48,22 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 | Function | Params |
 |---|---|
-| `log_debug` `[export]` | `msg, close = FALSE` |
-| `log_info` `[export]` | `msg, close = FALSE` |
-| `log_success` `[export]` | `msg, close = FALSE` |
-| `log_warn` `[export]` | `msg, close = FALSE` |
-| `log_error` `[export]` | `msg, close = FALSE` |
+| `log_debug` `[export]` | `msg, close = FALSE, summary = NA` |
+| `log_info` `[export]` | `msg, close = FALSE, summary = NA` |
+| `log_success` `[export]` | `msg, close = FALSE, summary = NA` |
+| `log_warn` `[export]` | `msg, close = FALSE, summary = NA` |
+| `log_error` `[export]` | `msg, close = FALSE, summary = NA` |
 | `status_severity` | `status` |
 | `nearest_open_step` | *(none)* |
 | `elevate_current_step` | `new_status` |
 | `should_emit_leaf` | `status` |
-| `emit_leaf` | `status, msg, close = FALSE` |
+| `emit_leaf` | `status, msg, close = FALSE, summary = NA` |
 
 ## Run wrapper (R/run.R)
 
 | Function | Params |
 |---|---|
-| `with_logging` `[export]` | `expr, summary = TRUE` |
+| `with_logging` `[export]` | `expr, summary = TRUE, global = FALSE` |
 | `mark_open_steps` | `status` |
 | `print_run_summary` | `status, elapsed` |
 | `global_error_action` | `cnd, summary` |
@@ -71,18 +81,21 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 | Function | Params |
 |---|---|
-| `logtree_theme` `[export]` | `theme = NULL, overrides = list(), compact = FALSE, glyph_gap = NULL` |
+| `logtree_theme` `[export]` | `theme = NULL, overrides = list(), compact = FALSE, glyph_gap = NULL, wrap = NULL` |
 | `logtree_threshold` `[export]` | `level = c("debug", "info", "warn", "error")` |
 | `theme_preset` | `name` |
 | `resolve_compact` | `x` |
 | `resolve_glyph_gap` | `x` |
+| `resolve_wrap` | `x` |
 | `apply_compact` | `level` |
 | `apply_overrides` | `overrides` |
+| `theme_field` | `slot, field, default, theme = the$theme` |
 | `theme_slot_width` | `theme = the$theme` |
 | `close_glyph_key` | `status, theme = the$theme` |
 | `theme_col_gap` | `theme = the$theme` |
 | `theme_glyph_gap` | `theme = the$theme` |
 | `glyph_pad` | `theme = the$theme` |
+| `theme_wrap_width` | `theme = the$theme` |
 | `colorize` | `text, color, enabled = TRUE` |
 | `theme_glyph` | `key, theme = the$theme, color = TRUE` |
 | `theme_connector` | `key, theme = the$theme, color = TRUE` |
@@ -94,7 +107,6 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `logtree_summary` `[export]` | `filter = NULL, depth = NULL, gap = NULL, rule = NULL` |
 | `covers` | `anc, desc` |
 | `record_summary` | `event` |
-| `theme_field` | `slot, field, default, theme = the$theme` |
 | `resolve_gap` | `gap, theme = the$theme` |
 | `resolve_rule` | `rule, theme = the$theme` |
 | `format_crumb` | `nodes, plain_last = FALSE, theme = the$theme, color = TRUE` |
@@ -128,8 +140,11 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 ## Data objects (not functions, R/glyphs.R)
 
-`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji` — named lists keyed by glyph/status, no params.
+`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji`, `glyphs_minimal`, `glyphs_ci` — named lists
+keyed by glyph/status, no params. `theme_presets` — the character vector of preset names
+`logtree_theme()` matches against.
 
 ---
 
-**Totals:** 16 exported fns, 59 internal fns, 1 pkg hook, 3 data objects.
+**Totals:** 16 exported fns, 74 internal fns, 1 pkg hook, 10 package-level data
+objects (the 5 glyph presets among them).
