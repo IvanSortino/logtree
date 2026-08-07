@@ -96,8 +96,8 @@ logtree_summary()
 # ---------------------------------------------------------------------------
 # G. Layout: the digest is divided from the log lines by a blank gap plus a cli
 #    rule labelled with the counts. `gap` sets the number of blank lines and
-#    `rule` the divider (TRUE / FALSE / a custom title); both default to the
-#    logtree.summary_gap / logtree.summary_rule options.
+#    `rule` the divider (TRUE / FALSE / a custom title) for one call; both
+#    default to the active theme's `summary` slot (see H).
 section("G. divider layout: gap + rule")
 logtree_reset()
 deploy <- function() {
@@ -119,7 +119,32 @@ logtree_summary(gap = 0, rule = FALSE)
 cat("\n-- rule = \"Run report\": custom title, header below it --\n")
 logtree_summary(rule = "Run report")
 
-cat("\n-- set the layout once for the session, via options --\n")
-options(logtree.summary_gap = 2, logtree.summary_rule = "Nightly build")
+# ---------------------------------------------------------------------------
+# H. Every knob of the digest's appearance lives in the active theme, so it is
+#    set once through logtree_theme() -- the same entry point as the tree's own
+#    glyphs and colors. The `summary` slot holds the divider (gap / rule /
+#    line), the `crumb` slot the breadcrumb separator and the emphasis that
+#    sets the path apart from the message.
+section("H. customising the digest through the theme")
+logtree_reset()
+deploy()
+
+cat("-- default (unicode): bold path, dim separator --\n")
 logtree_summary()
-options(logtree.summary_gap = NULL, logtree.summary_rule = NULL)
+
+cat("\n-- a different separator symbol --\n")
+logtree_theme(list(crumb = list(glyph = " / ")))
+logtree_summary()
+
+cat("\n-- separator and path styling of your own --\n")
+logtree_theme(list(
+  crumb = list(glyph = " » ", color = "silver", path_color = c("cyan", "bold"))
+))
+logtree_summary()
+
+cat("\n-- and the divider, set once instead of per call --\n")
+logtree_theme(list(summary = list(gap = 2, rule = "Nightly build")))
+logtree_summary()
+
+# A preset swap resets every override, the divider and breadcrumb included.
+logtree_theme("unicode")

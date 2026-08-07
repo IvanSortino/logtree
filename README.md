@@ -162,8 +162,10 @@ error, warning, and pinned leaf since the last reset – so you see *what*
 went wrong without scrolling back through the tree. `filter` restricts
 by status; `depth` trims each breadcrumb to its `N` deepest nodes. The
 digest is set off from the tree by a blank gap and a `cli` rule labelled
-with its counts; `gap` and `rule` (or the `logtree.summary_gap` /
-`logtree.summary_rule` options) control that divider.
+with its counts, and its breadcrumbs emphasise the path so it reads
+apart from the message. Both come from the active theme –
+`logtree_theme(list(crumb = ..., summary = ...))` – and
+`logtree_summary(gap =, rule =)` overrides the divider for one call.
 
 ``` r
 logtree_reset()
@@ -194,8 +196,8 @@ with_logging(release(), summary = FALSE)
 logtree_summary()
 #> 
 #> ── Summary: 1 error, 1 warning ─────────────────────────────────────────────────
-#> ⚠ Release v2.1 > Apply migration > table lock held 800ms
-#> ✖ Release v2.1 > Apply migration > constraint violation on users.email
+#> ⚠ Release v2.1 › Apply migration › table lock held 800ms
+#> ✖ Release v2.1 › Apply migration › constraint violation on users.email
 ```
 
 ## Grouping

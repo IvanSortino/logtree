@@ -4,12 +4,7 @@
 \alias{logtree_summary}
 \title{Report a digest of notable events}
 \usage{
-logtree_summary(
-  filter = NULL,
-  depth = NULL,
-  gap = getOption("logtree.summary_gap", 1L),
-  rule = getOption("logtree.summary_rule", TRUE)
-)
+logtree_summary(filter = NULL, depth = NULL, gap = NULL, rule = NULL)
 }
 \arguments{
 \item{filter}{Optional character vector of statuses to include, e.g.
@@ -26,16 +21,15 @@ step), \code{depth = 2} the message plus its immediate parent, and so on.
 returned entries always carry the full \code{path}.}
 
 \item{gap}{Number of blank lines printed between the last log line and the
-digest; \code{0} prints the digest flush against the tree. Defaults to the
-\code{logtree.summary_gap} option, or \code{1} when that is unset or \code{NULL}.}
+digest; \code{0} prints the digest flush against the tree. \code{NULL} (the default)
+takes the active theme's \code{summary$gap} (\code{1} in every built-in preset).}
 
 \item{rule}{Divider drawn above the digest. \code{TRUE} draws a \code{\link[cli:rule]{cli::rule()}}
 labelled with the digest header, so the counts become the rule's title
 instead of a separate line; \code{FALSE} draws no rule and keeps the plain
 header line; a character string draws the rule with that title and prints
-the header line below it. The rule's line character follows the active
-theme (ASCII under \code{\link[=logtree_theme]{logtree_theme()}}\code{("ascii")}). Defaults to the
-\code{logtree.summary_rule} option, or \code{TRUE} when that is unset or \code{NULL}.}
+the header line below it. \code{NULL} (the default) takes the active theme's
+\code{summary$rule} (\code{TRUE} in every built-in preset).}
 }
 \value{
 The recorded entries, invisibly: a list of records, each a list with
@@ -54,6 +48,12 @@ Unlike scrolling the live tree, the digest surfaces breakage even when no
 from their close lines. Ordinary \code{info} / \code{success} lines are excluded unless
 logged with \code{summary = TRUE}; a warning or error can be excluded with
 \code{summary = FALSE}.
+
+The digest's appearance comes from the active theme, so it is customised
+through \code{\link[=logtree_theme]{logtree_theme()}} like everything else: the \code{crumb} slot sets the
+breadcrumb separator and the emphasis on the path nodes, the \code{summary} slot
+the divider (\code{gap}, \code{rule}, \code{line}). \code{gap} and \code{rule} below override the
+theme for a single call.
 }
 \examples{
 logtree_reset()
@@ -67,10 +67,13 @@ logtree_summary()
 # Flush against the tree, with a titled divider.
 logtree_summary(gap = 0, rule = "Run report")
 
-# Set the layout once for the whole session.
-options(logtree.summary_gap = 2, logtree.summary_rule = FALSE)
+# Set the layout and the breadcrumb symbol once, on the theme.
+logtree_theme(list(
+  summary = list(gap = 2, rule = FALSE),
+  crumb   = list(glyph = " / ")
+))
 logtree_summary()
-options(logtree.summary_gap = NULL, logtree.summary_rule = NULL)
+logtree_theme("unicode")
 }
 \seealso{
 \code{\link[=with_logging]{with_logging()}}, \code{\link[=logtree_reset]{logtree_reset()}}

@@ -41,7 +41,9 @@ apply_compact <- function(level) {
 #'   `theme` after it is resolved. Each entry may specify `glyph`, `width`,
 #'   and/or `color`; unspecified fields are kept from the existing entry. The
 #'   `group` slot also accepts `bracket` (logical, default `FALSE`): when
-#'   `TRUE` the header name is wrapped in `< >`.
+#'   `TRUE` the header name is wrapped in `< >`. The two non-glyph slots
+#'   `crumb` and `summary` carry [logtree_summary()]'s appearance -- see the
+#'   slot table below.
 #' @param compact Density of the tree's per-level indentation. `FALSE` (the
 #'   default) keeps the normal spacing (three columns per level in the unicode
 #'   theme); `"medium"` drops the trailing gap after each connector (two columns
@@ -71,6 +73,8 @@ apply_compact <- function(level) {
 #' | `branch` | child connector: the "tee" drawn before every child line | `glyph`, `color` |
 #' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
 #' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
+#' | `crumb` | [logtree_summary()] breadcrumb: the separator between path nodes | `glyph`, `color`, `path_color` |
+#' | `summary` | [logtree_summary()] divider above the digest | `gap`, `rule`, `line` |
 #'
 #' `success` and `done` are separate slots that merely *look* the same by
 #' default (every preset ships the same tick in both): `success` styles the
@@ -87,6 +91,10 @@ apply_compact <- function(level) {
 #' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `done`, `warning`, `error`, `interrupted`). |
 #' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. See [cli::combine_ansi_styles()]. |
 #' | `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`; default `FALSE`. |
+#' | `path_color` | `character` or `NULL` | `crumb` slot only. Styles the breadcrumb's path nodes, setting them apart from a leaf's message (which stays unstyled). Same accepted values as `color`; `"bold"` in the unicode and emoji presets, `NULL` in ascii. |
+#' | `gap` | `integer(1)` | `summary` slot only. Blank lines printed above the digest; `0` prints it flush against the tree. |
+#' | `rule` | `logical(1)` or `character(1)` | `summary` slot only. `TRUE` draws a [cli::rule()] labelled with the digest header, `FALSE` draws none, a string sets a custom title. |
+#' | `line` | `integer(1)` or `character(1)` | `summary` slot only. The rule's line, passed to [cli::rule()]'s `line`: a line type (`1`-`8`, `"double"`, ...) or the string to repeat (`"-"` in the ascii preset). |
 #' @export
 #' @examples
 #' logtree_theme("ascii")
@@ -95,6 +103,9 @@ apply_compact <- function(level) {
 #' # The close ("Done") tick is its own slot, restyled independently:
 #' logtree_theme(overrides = list(done = list(glyph = "=", color = "silver")))
 #' logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
+#' logtree_theme(overrides = list(crumb = list(glyph = " / ", path_color = "cyan")))
+#' logtree_theme(overrides = list(summary = list(gap = 2, rule = "Run report")))
+#' logtree_theme("unicode")
 #' logtree_theme("unicode", compact = "medium")
 #' logtree_theme("unicode", compact = "tight")
 #' logtree_theme("unicode")

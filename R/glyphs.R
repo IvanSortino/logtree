@@ -11,6 +11,13 @@
 # U+2502 = BOX DRAWINGS LIGHT VERTICAL (rail)
 # U+2514 = BOX DRAWINGS LIGHT UP AND RIGHT (tree corner)
 # U+2699 = GEAR (unicode debug glyph)
+# U+203A = SINGLE RIGHT-POINTING ANGLE QUOTATION MARK (breadcrumb separator)
+#
+# Beyond the glyph slots, each preset carries two non-glyph slots used only by
+# logtree_summary(): `crumb` (breadcrumb separator + the styling that sets the
+# path apart from the message) and `summary` (the digest's divider layout).
+# They live in the theme so there is one place to customise appearance --
+# logtree_theme() -- rather than a second, options-based channel.
 
 glyphs_unicode <- list(
   step        = list(glyph = "\u25b6", width = 1L, color = "cyan"),
@@ -27,7 +34,9 @@ glyphs_unicode <- list(
   group       = list(glyph = "\u25a3", color = "magenta", bracket = FALSE),
   branch      = list(glyph = "\u251c\u2500", color = "dim"),
   corner      = list(glyph = "\u2514\u2500", color = "dim"),
-  pipe        = list(glyph = "\u2502", color = "dim")
+  pipe        = list(glyph = "\u2502", color = "dim"),
+  crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
+  summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
 
 glyphs_ascii <- list(
@@ -45,7 +54,11 @@ glyphs_ascii <- list(
   # of a group instead (see design doc section 4.1).
   branch      = list(glyph = "|-", color = NULL),
   corner      = list(glyph = "|-", color = NULL),
-  pipe        = list(glyph = "|", color = NULL)
+  pipe        = list(glyph = "|", color = NULL),
+  # Plain ASCII throughout, colorless like every other slot of this preset --
+  # which is what makes ascii output stable and easy to pattern-match in tests.
+  crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
+  summary     = list(gap = 1L, rule = TRUE, line = "-")
 )
 
 # U+1F539 = SMALL BLUE DIAMOND        U+1F4A1 = ELECTRIC LIGHT BULB
@@ -67,5 +80,7 @@ glyphs_emoji <- list(
   # Tree connectors stay box-drawing even under the emoji preset.
   branch      = list(glyph = "\u251c\u2500", color = "dim"),
   corner      = list(glyph = "\u2514\u2500", color = "dim"),
-  pipe        = list(glyph = "\u2502", color = "dim")
+  pipe        = list(glyph = "\u2502", color = "dim"),
+  crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
+  summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )

@@ -374,15 +374,12 @@ test_that("rule = FALSE keeps the plain header line, gap still applies", {
   expect_identical(out[[2]], "Summary: 1 warning")
 })
 
-test_that("NULL means the shipped default, not 'off'", {
+test_that("NULL means 'take the theme's value', not 'off'", {
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
   local_warned_run()
 
-  # An option set to NULL is still *set*, so getOption()'s fallback never
-  # fires and NULL reaches the argument -- clearing an option must land back
-  # on the default layout rather than erroring or dropping the divider.
   out <- cli::ansi_strip(capture.output(logtree_summary(gap = NULL, rule = NULL)))
   expect_identical(out[[1]], "")
   expect_match(out[[2]], "Summary: 1 warning")
@@ -401,28 +398,111 @@ test_that("a character rule titles the divider and keeps the header below it", {
   expect_identical(out[[2]], "Summary: 1 warning")
 })
 
-test_that("the divider defaults come from options", {
+test_that("the divider defaults come from the theme's summary slot", {
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
   local_warned_run()
 
-  withr::local_options(logtree.summary_gap = 0, logtree.summary_rule = FALSE)
+  logtree_theme(list(summary = list(gap = 0, rule = FALSE)))
   out <- cli::ansi_strip(capture.output(logtree_summary()))
   expect_identical(out[[1]], "Summary: 1 warning")
+
+  # An explicit argument overrides the theme for that one call.
+  out2 <- cli::ansi_strip(capture.output(logtree_summary(gap = 1, rule = TRUE)))
+  expect_identical(out2[[1]], "")
+  expect_match(out2[[2]], "-- Summary: 1 warning --")
 })
 
-test_that("the rule's line character follows the active theme", {
-  expect_identical(summary_rule_line(theme = glyphs_ascii), "-")
-  expect_identical(summary_rule_line(theme = glyphs_unicode), 1L)
-
+test_that("a theme with no summary/crumb slots falls back to the defaults", {
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
   local_warned_run()
+
+  # A hand-rolled preset predating these slots must still render.
+  the$theme[["summary"]] <- NULL
+  the$theme[["crumb"]]   <- NULL
+  out <- cli::ansi_strip(capture.output(logtree_summary()))
+  expect_identical(out[[1]], "")
+  expect_match(out[[2]], "Summary: 1 warning")
+  expect_identical(out[[3]], "! Task > careful")
+})
+
+test_that("the rule's line character comes from the theme", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  expect_identical(glyphs_ascii$summary$line, "-")
+  expect_identical(glyphs_unicode$summary$line, 1L)
 
   out <- cli::ansi_strip(capture.output(logtree_summary(gap = 0)))
   expect_match(out[[1]], "---")
+
+  logtree_theme(list(summary = list(line = "=")))
+  out2 <- cli::ansi_strip(capture.output(logtree_summary(gap = 0)))
+  expect_match(out2[[1]], "===")
+})
+
+# --- Breadcrumb ------------------------------------------------------------
+
+test_that("format_crumb joins nodes with the theme's separator", {
+  theme <- list(crumb = list(glyph = " / ", color = NULL, path_color = NULL))
+  expect_identical(
+    format_crumb(c("A", "B", "msg"), plain_last = TRUE, theme = theme),
+    "A / B / msg"
+  )
+  expect_identical(format_crumb(character(0), theme = theme), "")
+  expect_identical(format_crumb("solo", theme = theme), "solo")
+})
+
+test_that("format_crumb emphasises the path but not a leaf's message", {
+  testthat::local_reproducible_output(crayon = TRUE)
+  theme <- list(crumb = list(glyph = " > ", color = "dim", path_color = "bold"))
+
+  styled <- format_crumb(c("A", "msg"), plain_last = TRUE, theme = theme)
+  expect_identical(cli::ansi_strip(styled), "A > msg")
+  expect_true(cli::ansi_has_any(styled))
+  # The path node is styled, the terminal message is left bare.
+  expect_true(endsWith(styled, "msg"))
+  # Step entries have no message, so every node is emphasised.
+  expect_false(endsWith(format_crumb(c("A", "B"), theme = theme), "B"))
+
+  # color = FALSE strips all of it.
+  expect_identical(
+    format_crumb(c("A", "msg"), plain_last = TRUE, theme = theme, color = FALSE),
+    "A > msg"
+  )
+})
+
+test_that("the breadcrumb separator is customisable through the theme", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  pipeline <- function() {
+    log_step("Extract")
+    log_step("Transform")
+    log_error("schema mismatch")
+  }
+  capture.output(pipeline())
+
+  logtree_theme(list(crumb = list(glyph = " -> ")))
+  out <- cli::ansi_strip(capture.output(logtree_summary(gap = 0, rule = FALSE)))
+  expect_true(any(grepl("Extract -> Transform -> schema mismatch", out, fixed = TRUE)))
+})
+
+test_that("the built-in presets carry crumb and summary slots", {
+  for (preset in list(glyphs_unicode, glyphs_ascii, glyphs_emoji)) {
+    expect_named(preset$crumb, c("glyph", "color", "path_color"))
+    expect_named(preset$summary, c("gap", "rule", "line"))
+  }
+  # The unicode/emoji presets emphasise the path; ascii stays colorless like
+  # every other slot of that preset.
+  expect_identical(glyphs_unicode$crumb$path_color, "bold")
+  expect_null(glyphs_ascii$crumb$path_color)
 })
 
 test_that("gap and rule reject malformed values", {

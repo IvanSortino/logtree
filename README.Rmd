@@ -139,9 +139,10 @@ When a run ends, `logtree_summary()` prints a breadcrumb digest of every
 error, warning, and pinned leaf since the last reset -- so you see *what* went
 wrong without scrolling back through the tree. `filter` restricts by status;
 `depth` trims each breadcrumb to its `N` deepest nodes. The digest is set off
-from the tree by a blank gap and a `cli` rule labelled with its counts; `gap`
-and `rule` (or the `logtree.summary_gap` / `logtree.summary_rule` options)
-control that divider.
+from the tree by a blank gap and a `cli` rule labelled with its counts, and its
+breadcrumbs emphasise the path so it reads apart from the message. Both come
+from the active theme -- `logtree_theme(list(crumb = ..., summary = ...))` --
+and `logtree_summary(gap =, rule =)` overrides the divider for one call.
 
 ```{r summary}
 logtree_reset()

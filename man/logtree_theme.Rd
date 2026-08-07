@@ -20,7 +20,9 @@ in the package documentation).}
 \code{theme} after it is resolved. Each entry may specify \code{glyph}, \code{width},
 and/or \code{color}; unspecified fields are kept from the existing entry. The
 \code{group} slot also accepts \code{bracket} (logical, default \code{FALSE}): when
-\code{TRUE} the header name is wrapped in \verb{< >}.}
+\code{TRUE} the header name is wrapped in \verb{< >}. The two non-glyph slots
+\code{crumb} and \code{summary} carry \code{\link[=logtree_summary]{logtree_summary()}}'s appearance -- see the
+slot table below.}
 
 \item{compact}{Density of the tree's per-level indentation. \code{FALSE} (the
 default) keeps the normal spacing (three columns per level in the unicode
@@ -55,6 +57,8 @@ kept from the active theme.
    \code{branch} \tab child connector: the "tee" drawn before every child line \tab \code{glyph}, \code{color} \cr
    \code{corner} \tab close-line connector: the "elbow" drawn on a step's own close line \tab \code{glyph}, \code{color} \cr
    \code{pipe} \tab vertical rail carried down the left of nested lines \tab \code{glyph}, \code{color} \cr
+   \code{crumb} \tab \code{\link[=logtree_summary]{logtree_summary()}} breadcrumb: the separator between path nodes \tab \code{glyph}, \code{color}, \code{path_color} \cr
+   \code{summary} \tab \code{\link[=logtree_summary]{logtree_summary()}} divider above the digest \tab \code{gap}, \code{rule}, \code{line} \cr
 }
 
 
@@ -71,6 +75,10 @@ only ever governs the clean close.
    \code{width} \tab \code{integer(1)} \tab Rendered display width of \code{glyph} (\code{1} for normal, \code{2} for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (\code{step}, \code{info}, \code{debug}, \code{success}, \code{done}, \code{warning}, \code{error}, \code{interrupted}). \cr
    \code{color} \tab \code{character} or \code{NULL} \tab One or more cli styles, or \code{NULL} for no styling. Named colors (\code{"red"}, \code{"cyan"}, \code{"silver"}, ...), bright variants (\code{"br_red"}), backgrounds (\code{"bg_blue"}), text styles (\code{"bold"}, \code{"italic"}, \code{"dim"}), or a hex string (\code{"#ff8800"}). A character vector combines styles, e.g. \code{c("red", "bold")}. See \code{\link[cli:combine_ansi_styles]{cli::combine_ansi_styles()}}. \cr
    \code{bracket} \tab \code{logical(1)} \tab \code{group} slot only. \code{TRUE} wraps the header name in \verb{< >}; default \code{FALSE}. \cr
+   \code{path_color} \tab \code{character} or \code{NULL} \tab \code{crumb} slot only. Styles the breadcrumb's path nodes, setting them apart from a leaf's message (which stays unstyled). Same accepted values as \code{color}; \code{"bold"} in the unicode and emoji presets, \code{NULL} in ascii. \cr
+   \code{gap} \tab \code{integer(1)} \tab \code{summary} slot only. Blank lines printed above the digest; \code{0} prints it flush against the tree. \cr
+   \code{rule} \tab \code{logical(1)} or \code{character(1)} \tab \code{summary} slot only. \code{TRUE} draws a \code{\link[cli:rule]{cli::rule()}} labelled with the digest header, \code{FALSE} draws none, a string sets a custom title. \cr
+   \code{line} \tab \code{integer(1)} or \code{character(1)} \tab \code{summary} slot only. The rule's line, passed to \code{\link[cli:rule]{cli::rule()}}'s \code{line}: a line type (\code{1}-\code{8}, \code{"double"}, ...) or the string to repeat (\code{"-"} in the ascii preset). \cr
 }
 }
 \examples{
@@ -80,6 +88,9 @@ logtree_theme(overrides = list(success = list(glyph = "*")))
 # The close ("Done") tick is its own slot, restyled independently:
 logtree_theme(overrides = list(done = list(glyph = "=", color = "silver")))
 logtree_theme(overrides = list(group = list(glyph = "#", bracket = TRUE)))
+logtree_theme(overrides = list(crumb = list(glyph = " / ", path_color = "cyan")))
+logtree_theme(overrides = list(summary = list(gap = 2, rule = "Run report")))
+logtree_theme("unicode")
 logtree_theme("unicode", compact = "medium")
 logtree_theme("unicode", compact = "tight")
 logtree_theme("unicode")
