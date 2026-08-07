@@ -71,15 +71,18 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 | Function | Params |
 |---|---|
-| `logtree_theme` `[export]` | `theme = NULL, overrides = list(), compact = FALSE` |
+| `logtree_theme` `[export]` | `theme = NULL, overrides = list(), compact = FALSE, glyph_gap = NULL` |
 | `logtree_threshold` `[export]` | `level = c("debug", "info", "warn", "error")` |
 | `theme_preset` | `name` |
 | `resolve_compact` | `x` |
+| `resolve_glyph_gap` | `x` |
 | `apply_compact` | `level` |
 | `apply_overrides` | `overrides` |
 | `theme_slot_width` | `theme = the$theme` |
 | `close_glyph_key` | `status, theme = the$theme` |
 | `theme_col_gap` | `theme = the$theme` |
+| `theme_glyph_gap` | `theme = the$theme` |
+| `glyph_pad` | `theme = the$theme` |
 | `colorize` | `text, color, enabled = TRUE` |
 | `theme_glyph` | `key, theme = the$theme, color = TRUE` |
 | `theme_connector` | `key, theme = the$theme, color = TRUE` |

@@ -205,6 +205,24 @@ logtree_theme("unicode")
 | `color` | `character` / `NULL` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. |
 | `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`. |
 
+### Density and spacing
+
+Two arguments control horizontal space, independently of any glyph. `compact`
+sets the per-level tree column: `"medium"` drops the trailing gap after each
+connector, `"tight"` also slims the connectors to one character. `glyph_gap`
+sets the space between a line's status glyph and its message -- `1` by
+default, `0` for the tightest look, `2` or more for a roomier message column.
+
+```{r}
+logtree_theme("unicode", compact = "tight", glyph_gap = 0)
+pipeline()
+logtree_theme("unicode")
+```
+
+Both ride the active theme and are cleared by the next preset swap
+(`logtree_theme("unicode")`). Neither reaches file sinks, which render through
+the ascii preset with its built-in spacing.
+
 ## Output sinks
 
 The console sink is always on. `logtree_sink_file()` adds a plain-text or

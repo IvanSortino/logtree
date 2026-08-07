@@ -10,7 +10,7 @@ mark_open_steps <- function(status) {
 
 print_run_summary <- function(status, elapsed) {
   label <- if (identical(status, "error")) "Run failed" else "Run complete"
-  cat(theme_glyph(status), " ", label, " in ", format_elapsed(elapsed), "\n", sep = "")
+  cat(theme_glyph(status), glyph_pad(), label, " in ", format_elapsed(elapsed), "\n", sep = "")
 }
 
 # The action run by the global (top-level) error handler installed via

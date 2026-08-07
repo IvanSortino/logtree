@@ -466,6 +466,10 @@ log_close <- function(id = NULL, status = NULL) {
 # unit for an *open* ancestor pads the pipe glyph out to that same width
 # so verticals line up under the connector above them.
 #
+# The single space between the glyph and the message is itself themeable
+# (`glyph_gap`), so every formatter below spaces that column through
+# glyph_pad() rather than a hard-coded " ".
+#
 # These functions are pure (theme/color passed in, string returned) so the
 # same layout math backs every sink: the console sink uses the active
 # theme with color, the plain-text file sink always uses the ascii theme
@@ -499,7 +503,7 @@ format_open <- function(entry, theme = the$theme, color = TRUE) {
     paste0(strrep(rail_unit(theme, color), max(d - 2L, 0L)), connector_str("branch", theme, color))
   }
   glyph <- if (is.null(entry$glyph)) theme_glyph("step", theme, color) else pad_custom_glyph(entry$glyph, theme)
-  paste0(prefix, glyph, " ", entry$label)
+  paste0(prefix, glyph, glyph_pad(theme), entry$label)
 }
 
 format_close <- function(entry, theme = the$theme, color = TRUE) {
@@ -507,7 +511,7 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
   prefix <- paste0(strrep(rail_unit(theme, color), max(d - 1L, 0L)), connector_str("corner", theme, color))
   status <- resolved_status(entry$status)
   glyph  <- theme_glyph(close_glyph_key(status, theme), theme, color)
-  paste0(prefix, glyph, " Done  ", format_elapsed(entry$elapsed))
+  paste0(prefix, glyph, glyph_pad(theme), "Done  ", format_elapsed(entry$elapsed))
 }
 
 format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
@@ -521,7 +525,7 @@ format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
   } else {
     paste0(strrep(rail_unit(theme, color), max(depth - 1L, 0L)), connector_str(connector, theme, color))
   }
-  paste0(prefix, theme_glyph(status, theme, color), " ", msg)
+  paste0(prefix, theme_glyph(status, theme, color), glyph_pad(theme), msg)
 }
 
 format_group_header <- function(entry, theme = the$theme, color = TRUE) {
@@ -532,7 +536,7 @@ format_group_header <- function(entry, theme = the$theme, color = TRUE) {
     paste0(strrep(rail_unit(theme, color), max(d - 2L, 0L)), connector_str("branch", theme, color))
   }
   g     <- theme$group
-  mark  <- if (!is.null(g$glyph) && nzchar(g$glyph)) paste0(g$glyph, " ") else ""
+  mark  <- if (!is.null(g$glyph) && nzchar(g$glyph)) paste0(g$glyph, glyph_pad(theme)) else ""
   col   <- if (is.null(g)) "cyan" else g$color
   label <- if (isTRUE(g$bracket)) paste0("< ", entry$name, " >") else entry$name
   paste0(prefix, colorize(paste0(mark, label), col, color))

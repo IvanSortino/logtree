@@ -1,3 +1,15 @@
+# logtree (development version)
+
+* `logtree_theme()` gains `glyph_gap`, the number of spaces between a line's
+  status glyph and its message: `0` butts the message against the glyph for a
+  minimal look, `2` or more airs the message column out. It applies to every
+  line kind (step open, `Done` close, leaf, group header, and the
+  `with_logging()` run-summary line) so the message column stays aligned, and
+  composes with `compact`, which tunes the other horizontal column. Like
+  `compact`, it rides the active console theme and is cleared by a preset swap;
+  file sinks keep their built-in spacing. The default of one space leaves
+  existing output byte-for-byte unchanged.
+
 # logtree 0.2.0
 
 * New `done` theme slot: a step's own `Done` line (a clean close) is styled
