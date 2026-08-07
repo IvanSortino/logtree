@@ -31,6 +31,20 @@ resolve_glyph_gap <- function(x) {
   as.integer(x)
 }
 
+# Resolve the `wrap` argument of logtree_theme() to NULL (leave as is), a
+# logical, or a positive integer column count. TRUE is kept as a logical rather
+# than resolved to a number here, so the width is measured at render time and a
+# terminal resized mid-run is picked up without re-setting the theme.
+resolve_wrap <- function(x) {
+  if (is.null(x)) return(NULL)
+  if (is.logical(x) && length(x) == 1L && !is.na(x)) return(x)
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) || x < 1) {
+    stop("`wrap` must be TRUE, FALSE, or a single positive number of columns.",
+         call. = FALSE)
+  }
+  as.integer(x)
+}
+
 # Mutate the active theme in place for a compact density. "medium" drops the
 # trailing gap after each connector (col_gap 0); "tight" also slims the
 # branch/corner connectors to a single character. Cleared by a later preset
@@ -172,7 +186,7 @@ apply_overrides <- function(overrides) {
 #' logtree_theme(glyph_gap = 2)   # roomier message column
 #' logtree_theme("unicode")       # back to the built-in single space
 logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
-                          glyph_gap = NULL) {
+                          glyph_gap = NULL, wrap = NULL) {
   if (is.character(theme)) {
     theme <- match.arg(theme, theme_presets)
     the$theme <- theme_preset(theme)
@@ -195,6 +209,11 @@ logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
   # set here, carried by the theme object, cleared by the next preset swap.
   glyph_gap <- resolve_glyph_gap(glyph_gap)
   if (!is.null(glyph_gap)) the$theme$glyph_gap <- glyph_gap
+
+  # So does the wrap width -- the third scalar carried by the theme object
+  # rather than an override slot.
+  wrap <- resolve_wrap(wrap)
+  if (!is.null(wrap)) the$theme$wrap <- wrap
 
   apply_overrides(overrides)
 
@@ -271,6 +290,17 @@ theme_glyph_gap <- function(theme = the$theme) {
 
 glyph_pad <- function(theme = the$theme) {
   strrep(" ", theme_glyph_gap(theme))
+}
+
+# Column budget a rendered line is wrapped to, or NA when wrapping is off (the
+# default, and always the case for file sinks, which render through the ascii
+# preset). TRUE measures the console at render time rather than at the time the
+# theme was set, so resizing a terminal mid-run is picked up on its own.
+theme_wrap_width <- function(theme = the$theme) {
+  w <- theme$wrap
+  if (is.null(w) || isFALSE(w)) return(NA_integer_)
+  if (isTRUE(w)) return(as.integer(cli::console_width()))
+  as.integer(w)
 }
 
 colorize <- function(text, color, enabled = TRUE) {

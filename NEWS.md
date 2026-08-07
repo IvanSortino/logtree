@@ -1,5 +1,19 @@
 # logtree (development version)
 
+* `logtree_theme()` gains `wrap`, which caps a rendered line at a column budget
+  instead of letting a long message run off the right edge. `FALSE` (the
+  default) never wraps, `TRUE` wraps at `cli::console_width()` measured at
+  render time -- so resizing a terminal mid-run is picked up on its own -- and a
+  number pins a fixed width. Continuation lines indent to the message column
+  and carry the rails down, so a wrapped message still reads as one node of the
+  tree: after a branch connector the rail continues, after a corner it does
+  not. A token with no break opportunity (a long path, a URL) is split by
+  display width rather than left to overflow, and a budget narrower than the
+  tree is deep degrades to no wrapping rather than to an unusable one-column
+  line. It covers every line logtree renders, including the
+  `logtree_summary()` digest and the `with_logging()` run-summary line. File
+  sinks are never wrapped -- a file has no width to wrap to.
+
 * New `"ci"` theme preset: `logtree_theme("ci")` renders bracketed word glyphs
   -- `[step]`, `[info]`, `[debug]`, `[ok]`, `[done]`, `[warn]`, `[fail]`,
   `[break]` -- over pure-ASCII connectors with no colour in any slot, so a

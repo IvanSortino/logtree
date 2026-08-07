@@ -479,6 +479,91 @@ tree_col_width <- function(theme = the$theme) {
   nchar(theme$branch$glyph) + theme_col_gap(theme)
 }
 
+# --- Wrapping (logtree_theme(wrap = )) --------------------------------------
+#
+# A long message used to run straight off the right edge of the terminal. With
+# a wrap width set, it is word-wrapped instead and its continuation lines are
+# indented to the message column, with the rails carried down so the tree
+# stays readable.
+#
+# Formatters keep returning ONE string, now possibly containing embedded
+# newlines. That is what lets every sink stay untouched: console_sink() and
+# both file sinks already cat() whatever they are handed.
+
+# Greedy word wrap of `msg` to `width` display columns, one element per line.
+# A width below 1 -- a tree deeper than the terminal is wide -- degrades to no
+# wrapping at all, which is far more usable than a one-column line.
+wrap_message <- function(msg, width) {
+  if (is.na(width) || width < 1L) return(msg)
+  if (cli::ansi_nchar(msg, type = "width") <= width) return(msg)
+  lines <- cli::ansi_strwrap(msg, width = width)
+  if (length(lines) == 0L) return(msg)
+  unlist(lapply(lines, hard_wrap, width = width), use.names = FALSE)
+}
+
+# Break a token that has no space to break at and is still wider than the
+# column -- a long path, a URL, a stack frame. Walks display widths rather than
+# characters so a wide (CJK / emoji) cell cannot straddle the edge. Styling is
+# dropped from such a token, since splitting inside an ANSI run is not safe;
+# that only affects messages the caller styled itself, and only the overlong
+# ones.
+hard_wrap <- function(x, width) {
+  if (cli::ansi_nchar(x, type = "width") <= width) return(x)
+  chars <- strsplit(cli::ansi_strip(x), "", fixed = TRUE)[[1L]]
+  widths <- nchar(chars, type = "width")
+  out   <- character(0)
+  start <- 1L
+  used  <- 0L
+  for (i in seq_along(chars)) {
+    if (used + widths[[i]] > width && i > start) {
+      out   <- c(out, paste(chars[start:(i - 1L)], collapse = ""))
+      start <- i
+      used  <- 0L
+    }
+    used <- used + widths[[i]]
+  }
+  c(out, paste(chars[start:length(chars)], collapse = ""))
+}
+
+# Assemble one rendered line from a fully-rendered `head` (rails + connector +
+# glyph + gap) and its message.
+#
+# `cols` is the head's display width. It is computed by the caller from depth
+# and the theme's declared glyph widths, never measured: ansi_nchar() cannot
+# size an emoji cell, which is the very reason each glyph declares its own
+# `width` (design doc section 4.2).
+#
+# `cont` is the head that continuation lines get -- the same rails, with the
+# connector and glyph columns blanked -- so wrapped text lines up under the
+# first line's message rather than restarting at the left margin.
+compose_line <- function(head, msg, cols, cont, theme = the$theme) {
+  width <- theme_wrap_width(theme)
+  if (is.na(width)) return(paste0(head, msg))
+  parts <- wrap_message(msg, width - cols)
+  if (length(parts) < 2L) return(paste0(head, msg))
+  paste(c(paste0(head, parts[[1L]]), paste0(cont, parts[-1L])), collapse = "\n")
+}
+
+# `n` levels' worth of vertical rail, for an ancestor chain that is still open.
+rails <- function(n, theme = the$theme, color = TRUE) {
+  strrep(rail_unit(theme, color), max(n, 0L))
+}
+
+# Width of the glyph column plus the gap after it: what a continuation line
+# must skip to land on the message column.
+glyph_gutter <- function(theme = the$theme) {
+  theme_slot_width(theme) + theme_glyph_gap(theme)
+}
+
+# A line that carries a status glyph but no position in the tree: the
+# logtree_summary() digest entries and the with_logging() run-summary line.
+# Same message column and same wrapping as a tree line, minus the rails.
+compose_flat_line <- function(glyph, msg, theme = the$theme) {
+  gutter <- glyph_gutter(theme)
+  compose_line(paste0(glyph, glyph_pad(theme)), msg, gutter,
+               strrep(" ", gutter), theme)
+}
+
 rail_unit <- function(theme = the$theme, color = TRUE) {
   w <- tree_col_width(theme)
   pipe_glyph <- theme$pipe$glyph
@@ -497,13 +582,20 @@ pad_custom_glyph <- function(glyph, theme = the$theme) {
 
 format_open <- function(entry, theme = the$theme, color = TRUE) {
   d <- entry$depth
-  prefix <- if (d == 1L) {
-    ""
-  } else {
-    paste0(strrep(rail_unit(theme, color), max(d - 2L, 0L)), connector_str("branch", theme, color))
+  # An opening line sits one level shallower than its own children, so its
+  # continuation carries the rails down to d - 1: after a branch connector the
+  # vertical rail continues, since more siblings may still follow.
+  prefix <- if (d == 1L) "" else {
+    paste0(rails(d - 2L, theme, color), connector_str("branch", theme, color))
   }
+  cont  <- if (d == 1L) "" else rails(d - 1L, theme, color)
   glyph <- if (is.null(entry$glyph)) theme_glyph("step", theme, color) else pad_custom_glyph(entry$glyph, theme)
-  paste0(prefix, glyph, glyph_pad(theme), entry$label)
+  gutter <- glyph_gutter(theme)
+  compose_line(
+    paste0(prefix, glyph, glyph_pad(theme)), entry$label,
+    max(d - 1L, 0L) * tree_col_width(theme) + gutter,
+    paste0(cont, strrep(" ", gutter)), theme
+  )
 }
 
 # The word a close line prints before its elapsed time. Read from the closing
@@ -572,40 +664,72 @@ close_message <- function(entry, status, theme = the$theme, color = TRUE) {
 }
 
 format_close <- function(entry, theme = the$theme, color = TRUE) {
-  d <- entry$depth
-  prefix <- paste0(strrep(rail_unit(theme, color), max(d - 1L, 0L)), connector_str("corner", theme, color))
+  d      <- entry$depth
+  tcw    <- tree_col_width(theme)
+  base   <- rails(d - 1L, theme, color)
+  prefix <- paste0(base, connector_str("corner", theme, color))
+  # Nothing follows a corner at its own column, so the continuation blanks that
+  # column out instead of carrying a rail down it.
+  cont   <- paste0(base, strrep(" ", tcw))
   status <- resolved_status(entry$status)
   glyph  <- theme_glyph(close_glyph_key(status, theme), theme, color)
   msg    <- close_message(entry, status, theme, color)
   # A theme that drops both the word and the time leaves a glyph-only close
   # line; skip the gap too rather than trailing a space off the end of it.
-  paste0(prefix, glyph, if (nzchar(msg)) glyph_pad(theme) else "", msg)
+  if (!nzchar(msg)) return(paste0(prefix, glyph))
+  gutter <- glyph_gutter(theme)
+  compose_line(
+    paste0(prefix, glyph, glyph_pad(theme)), msg,
+    d * tcw + gutter, paste0(cont, strrep(" ", gutter)), theme
+  )
 }
 
 format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
                         corner = FALSE) {
   # A `corner = TRUE` leaf is the terminal line of its section (the `close =`
   # force-close): it takes the corner connector instead of branch, standing in
-  # for the suppressed close line.
-  connector <- if (isTRUE(corner)) "corner" else "branch"
-  prefix <- if (depth == 0L) {
-    ""
+  # for the suppressed close line -- and, like a close line, nothing follows it
+  # at that column, so its continuation blanks the column rather than railing it.
+  tcw  <- tree_col_width(theme)
+  base <- rails(depth - 1L, theme, color)
+  if (depth == 0L) {
+    prefix <- ""
+    cont   <- ""
+  } else if (isTRUE(corner)) {
+    prefix <- paste0(base, connector_str("corner", theme, color))
+    cont   <- paste0(base, strrep(" ", tcw))
   } else {
-    paste0(strrep(rail_unit(theme, color), max(depth - 1L, 0L)), connector_str(connector, theme, color))
+    prefix <- paste0(base, connector_str("branch", theme, color))
+    cont   <- rails(depth, theme, color)
   }
-  paste0(prefix, theme_glyph(status, theme, color), glyph_pad(theme), msg)
+  gutter <- glyph_gutter(theme)
+  compose_line(
+    paste0(prefix, theme_glyph(status, theme, color), glyph_pad(theme)), msg,
+    depth * tcw + gutter, paste0(cont, strrep(" ", gutter)), theme
+  )
 }
 
 format_group_header <- function(entry, theme = the$theme, color = TRUE) {
   d <- entry$depth
-  prefix <- if (d == 1L) {
-    ""
-  } else {
-    paste0(strrep(rail_unit(theme, color), max(d - 2L, 0L)), connector_str("branch", theme, color))
+  prefix <- if (d == 1L) "" else {
+    paste0(rails(d - 2L, theme, color), connector_str("branch", theme, color))
   }
+  cont  <- if (d == 1L) "" else rails(d - 1L, theme, color)
   g     <- theme$group
-  mark  <- if (!is.null(g$glyph) && nzchar(g$glyph)) paste0(g$glyph, glyph_pad(theme)) else ""
+  has   <- !is.null(g$glyph) && nzchar(g$glyph)
+  mark  <- if (has) paste0(g$glyph, glyph_pad(theme)) else ""
   col   <- if (is.null(g)) "cyan" else g$color
   label <- if (isTRUE(g$bracket)) paste0("< ", entry$name, " >") else entry$name
-  paste0(prefix, colorize(paste0(mark, label), col, color))
+  # A group's marker is not a status glyph -- it carries no declared `width`,
+  # so its column is the marker plus the gap, not glyph_gutter().
+  gutter <- if (has) nchar(g$glyph) + theme_glyph_gap(theme) else 0L
+  cols   <- max(d - 1L, 0L) * tree_col_width(theme) + gutter
+  width  <- theme_wrap_width(theme)
+  parts  <- if (is.na(width)) label else wrap_message(label, width - cols)
+  # The marker and the name are coloured as one run, so the header reads as a
+  # single object rather than a glyph next to some text.
+  first <- paste0(prefix, colorize(paste0(mark, parts[[1L]]), col, color))
+  if (length(parts) < 2L) return(first)
+  rest <- paste0(cont, strrep(" ", gutter), colorize(parts[-1L], col, color))
+  paste(c(first, rest), collapse = "\n")
 }
