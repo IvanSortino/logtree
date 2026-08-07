@@ -1,5 +1,14 @@
 # logtree (development version)
 
+* New `"minimal"` theme preset: `logtree_theme("minimal")` draws no tree
+  connectors at all -- `branch`, `corner` and `pipe` are empty, so depth is
+  carried by indentation alone (two columns per level) and the output stays
+  legible when pasted somewhere box-drawing characters do not survive. It also
+  ships a lighter glyph vocabulary, dimmed elapsed times, no group marker, and
+  wordless close lines, so a closing step is a tick and a time. The trade is
+  deliberate and worth knowing: `info`, `debug` and `interrupted` all render
+  the middle dot and are told apart by colour alone.
+
 * New `elapsed` theme slot controls the time column on close lines, with five
   fields: `show = FALSE` drops it entirely, `min` hides anything faster than a
   threshold (`logtree_theme(list(elapsed = list(min = 0.1)))` silences the
