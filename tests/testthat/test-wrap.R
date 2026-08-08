@@ -204,8 +204,48 @@ test_that("group headers wrap under their marker, not under the name", {
   lines <- strsplit(out, "\n", fixed = TRUE)[[1L]]
   expect_true(length(lines) > 1L)
   expect_match(lines[[1L]], "^\\|- # ")
-  # The marker column is blanked on the continuation.
-  expect_match(lines[[2L]], "^\\|    \\S")
+  # The marker column rails on the continuation: the group's members hang
+  # from that column, so the wrapped name stays connected to them.
+  expect_match(lines[[2L]], "^\\|  \\| \\S")
+})
+
+test_that("an open line rails its own glyph column, a leaf does not", {
+  withr::defer(logtree_theme("unicode"))
+  logtree_theme("ascii", wrap = 34)
+  long <- "alpha beta gamma delta epsilon zeta eta theta"
+
+  # A step's glyph sits at the column its children's connectors will take, so
+  # the continuation rails it -- the wrapped label reads as one node with the
+  # children below it. A depth-1 root has no connector of its own, and this is
+  # the only rail it has to give.
+  root <- format_open(list(depth = 1L, label = long, glyph = NULL,
+                           status = "running"), color = FALSE)
+  expect_match(strsplit(root, "\n", fixed = TRUE)[[1L]][[2L]], "^\\| \\S")
+
+  deep <- format_open(list(depth = 2L, label = long, glyph = NULL,
+                           status = "running"), color = FALSE)
+  # Its own branch connector rails (column 0) and so does its glyph (column 3).
+  expect_match(strsplit(deep, "\n", fixed = TRUE)[[1L]][[2L]], "^\\|  \\| \\S")
+
+  # Nothing ever nests under a leaf, so its glyph column stays blank.
+  leaf <- format_leaf("info", long, 2L, color = FALSE)
+  expect_match(strsplit(leaf, "\n", fixed = TRUE)[[1L]][[2L]], "^\\|  \\|    \\S")
+})
+
+test_that("a group header with no marker leaves its column blank", {
+  # The ascii preset carries `group = list(glyph = "")`: the name starts at
+  # the very column the members' connectors take, so there is no column to
+  # rail without shifting the text off its own margin.
+  withr::defer(logtree_theme("unicode"))
+  logtree_theme("ascii", wrap = 30)
+
+  out <- format_group_header(
+    list(depth = 1L, name = "A very long suite name that will not fit"),
+    color = FALSE
+  )
+  lines <- strsplit(out, "\n", fixed = TRUE)[[1L]]
+  expect_true(length(lines) > 1L)
+  expect_match(lines[[2L]], "^\\S")
 })
 
 test_that("the emoji preset wraps on declared widths, not measured ones", {
