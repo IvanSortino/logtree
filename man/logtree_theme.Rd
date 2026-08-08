@@ -79,10 +79,14 @@ alone.
 
 Continuation lines indent to the message column and carry the rails down,
 so a wrapped message still reads as one node of the tree: after a branch
-connector the vertical rail continues, after a corner it does not. A token
-with no break opportunity -- a long path, a URL -- is split by display
-width rather than left to overflow, and a budget narrower than the tree is
-deep degrades to no wrapping rather than to an unusable one-column line.
+connector the vertical rail continues, after a corner it does not. A
+step-open line (and a group header) also rails its own glyph column,
+which is where its children hang -- on a depth-1 root that is the only
+rail there is. A leaf's glyph column stays blank: nothing nests under a
+leaf. A token with no break opportunity -- a long path, a URL -- is split
+by display width rather than left to overflow, and a budget narrower than
+the tree is deep degrades to no wrapping rather than to an unusable
+one-column line.
 It applies to every line logtree renders, including the
 \code{\link[=logtree_summary]{logtree_summary()}} digest and the \code{\link[=with_logging]{with_logging()}} run-summary line.
 

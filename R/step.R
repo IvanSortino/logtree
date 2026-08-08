@@ -612,6 +612,20 @@ own_rail <- function(key, theme = the$theme, color = TRUE) {
   colorize(raw, theme$pipe$color, color)
 }
 
+# A pipe rail padded out to the glyph column's own width: the segment an
+# *open* line's glyph column collapses to on its wrapped continuation rows.
+# An open line's glyph sits at exactly the column its children's connectors
+# take, so the rail runs from the wrapped label straight down into the first
+# child -- and, failing children, into the step's own close line, which is
+# always there. Leaf and close lines never use it: nothing nests under them.
+# A group header passes its own marker width for `w`, that column being where
+# the group's members hang.
+glyph_rail <- function(theme = the$theme, color = TRUE, w = glyph_gutter(theme)) {
+  pipe_glyph <- theme$pipe$glyph
+  raw <- paste0(pipe_glyph, strrep(" ", max(w - nchar(pipe_glyph), 0L)))
+  colorize(raw, theme$pipe$color, color)
+}
+
 pad_custom_glyph <- function(glyph, theme = the$theme) {
   w <- theme_slot_width(theme)
   paste0(glyph, strrep(" ", max(w - 1L, 0L)))
@@ -621,7 +635,9 @@ format_open <- function(entry, theme = the$theme, color = TRUE) {
   d <- entry$depth
   # An opening line sits one level shallower than its own children, so its
   # continuation carries the rails down to d - 1: after a branch connector the
-  # vertical rail continues, since more siblings may still follow.
+  # vertical rail continues, since more siblings may still follow. Its own
+  # glyph column rails too (glyph_rail), since that is where its children
+  # hang -- which is also the only rail a depth-1 root has to give.
   prefix <- if (d == 1L) "" else {
     paste0(rails(d - 2L, theme, color), connector_str("branch", theme, color))
   }
@@ -631,7 +647,7 @@ format_open <- function(entry, theme = the$theme, color = TRUE) {
     paste0(prefix, glyph, glyph_pad(theme)), entry$label,
     cols = max(d - 1L, 0L) * tree_col_width(theme) + glyph_gutter(theme),
     cont = paste0(if (d == 1L) "" else rails(d - 1L, theme, color),
-                  strrep(" ", glyph_gutter(theme))),
+                  glyph_rail(theme, color)),
     theme = theme
   )
 }
@@ -793,7 +809,12 @@ format_group_header <- function(entry, theme = the$theme, color = TRUE) {
   parts  <- wrap_message(label, width - cols)
   first  <- paste0(prefix, colorize(paste0(mark, parts[[1L]]), col, color))
   if (length(parts) < 2L) return(first)
+  # The marker column rails on the continuation for the same reason a step's
+  # glyph column does: the group's members hang from it. A theme with no
+  # marker at all (`group = list(glyph = "")`) has no column to spare -- the
+  # name itself starts where the members' connectors will -- so it stays blank.
   cont <- if (d == 1L) "" else rails(d - 1L, theme, color)
-  rest <- paste0(cont, strrep(" ", gutter), colorize(parts[-1L], col, color))
+  mark_cont <- if (gutter > 0L) glyph_rail(theme, color, gutter) else ""
+  rest <- paste0(cont, mark_cont, colorize(parts[-1L], col, color))
   paste(c(first, rest), collapse = "\n")
 }

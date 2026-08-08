@@ -8,7 +8,10 @@
 # Continuation lines indent to the message column and carry the rails down, so
 # a wrapped message still reads as one node of the tree. After a branch
 # connector the rail continues (more siblings may follow); after a corner it
-# does not, since nothing comes below it at that column.
+# does not, since nothing comes below it at that column. A step-open line and
+# a group header also rail their own glyph/marker column -- that is where
+# their children hang -- while a leaf leaves it blank, nothing being nested
+# under a leaf. Section I walks the three cases side by side.
 #
 #   source("debug/22_message_wrapping.R")
 devtools::load_all()
@@ -112,6 +115,41 @@ with_logging(tree(), summary = FALSE)
 cat("\n-- ", path, " (one line per event) --\n", sep = "")
 cat(readLines(path), sep = "\n")
 cat("\n")
+
+# Which column a continuation rails is decided by what can appear below it.
+# An open line's glyph column is exactly where its children's connectors land,
+# so it rails and the wrapped label stays tied to the subtree under it -- on a
+# depth-1 root, that is the only rail the line has. A leaf's glyph column
+# rails nothing (a leaf has no children) and a corner's column rails nothing
+# either (the section is over), so both stay blank.
+section("I. an open line rails its glyph column, a leaf does not")
+logtree_reset()
+logtree_theme("unicode", wrap = 42,
+              overrides = list(done = list(text = "finished the whole of this step")))
+ruler(42)
+rails_demo <- function() {
+  log_step("root step whose label is long enough to wrap")
+  middle <- function() {
+    log_step("middle step whose label also has to wrap")
+    log_info("a leaf message long enough to need a second line")
+  }
+  middle()
+}
+with_logging(rails_demo(), summary = FALSE)
+cat("\n\033[2m",
+    "  root/middle continuations rail (children hang there);\n",
+    "  the leaf's and the close lines' do not.\033[0m\n", sep = "")
+
+# The group marker column behaves the same way: members hang from it, so the
+# wrapped name rails down into them. A preset with no marker at all (ascii,
+# minimal) has no column to spare -- the name starts where the members'
+# connectors will -- so its continuation stays flush instead.
+section("J. a group's marker column rails into its members")
+logtree_reset()
+logtree_theme("unicode", wrap = 38)
+ruler(38)
+runner()
+logtree_reset()
 
 logtree_theme("unicode")
 logtree_reset()
