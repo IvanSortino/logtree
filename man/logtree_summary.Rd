@@ -45,7 +45,10 @@ so the digest agrees with the tree. Useful when the tree was quiet and the
 digest is where you want the locations, or the reverse. Note this can only
 narrow or reshape what was \emph{captured}: capture is decided while the run
 happens, so with the theme's slot off for the run there is nothing for
-\code{trace = TRUE} here to print.}
+\code{trace = TRUE} here to print. To get the quiet-tree-annotated-digest
+combination, ask for capture during the run and print nothing:
+\code{logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))}, then
+\code{logtree_summary(trace = TRUE)}.}
 }
 \value{
 The recorded entries, invisibly: a list of records, each a list with

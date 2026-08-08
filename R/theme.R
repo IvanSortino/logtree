@@ -212,7 +212,7 @@ apply_overrides <- function(overrides) {
 #' | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color`, `text` |
 #' | `group` | group header marker | `glyph`, `color`, `bracket` |
 #' | `elapsed` | the elapsed-time column printed on every close line | `show`, `min`, `color`, `slow`, `slow_color` |
-#' | `trace` | the optional call-site column: where in your code a line came from | `show`, `format`, `color` |
+#' | `trace` | the optional call-site column: where in your code a line came from | `show`, `capture`, `format`, `color` |
 #' | `branch` | child connector: the "tee" drawn before every child line | `glyph`, `color` |
 #' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
 #' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
@@ -264,6 +264,13 @@ apply_overrides <- function(overrides) {
 #' degrades to no column at all. Set `options(keep.source = TRUE)` at the top of
 #' a script if you want locations under `Rscript`.
 #'
+#' Capturing and printing are separate: `show` decides what a line *prints*,
+#' `capture = TRUE` decides that call sites are *recorded* whatever `show`
+#' prints. `list(trace = list(show = FALSE, capture = TRUE))` therefore leaves
+#' the tree exactly as it was while giving the digest and any `"json"` sink
+#' locations to work with. The order matters -- capture happens as the run
+#' unfolds, so a call site not recorded then cannot be recovered afterwards.
+#'
 #' Two places outside the tree also report call sites when the slot is on:
 #' [logtree_summary()]'s digest lines, which apply the same status filter as the
 #' tree does, and the `fn` / `file` / `line` fields of a `"json"` sink (which
@@ -281,6 +288,7 @@ apply_overrides <- function(overrides) {
 #' | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its elapsed time; `""` drops it, leaving the glyph and the time. Two placeholders are expanded: `{label}` (the closing step's own label, or a group's name) and `{elapsed}` (the formatted time). A template that places `{elapsed}` itself owns that column, so the time is not appended after it a second time. |
 #' | `show` | `logical(1)`, or `character` on `trace` | On `elapsed`: `FALSE` drops the elapsed-time column entirely, default `TRUE`. On `trace`: `FALSE` (the default in every preset) off entirely; `TRUE` every line that can carry a call site; `"problems"` a shorthand for `c("warning", "error", "interrupted")`; or a vector of statuses naming exactly what to annotate -- `"running"` (open lines), `"info"`, `"debug"`, `"success"`, `"warning"`, `"error"` (leaves of that status) and `"interrupted"` (a close line whose step unwound). `show = "error"` is errors without their warnings. An ordinary close line never carries one whatever the set: its site is its own open line's. Unknown tokens are dropped, and anything unrecognised reads as `FALSE`. |
 #' | `format` | `character(1)` | `trace` slot only. Template for the call-site column over three placeholders: `{fn}` (the enclosing function's name), `{file}` and `{line}` (where the log call sits). Default `"{file}:{line} {fn}()"`. A whitespace-separated run whose placeholders are *all* unavailable is dropped whole, so the default degrades to `load_data()` rather than printing `NA` -- see the note on source references below. |
+#' | `capture` | `logical(1)` | `trace` slot only. `TRUE` records a call site on every line even where `show` prints none, for "record, print later": a quiet console whose [logtree_summary()] digest or `"json"` sink still carries locations. Default `FALSE` in every preset. It only ever adds -- a `show` that asks for a column already implies capture, and `capture = FALSE` never takes that away. This is the one part of the feature that cannot be decided after the fact: a call site not recorded while the run happened is gone, because the frame stack it came from has unwound. |
 #' | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds -- `min = 0.1` silences the `0.00s` noise on trivial steps. Default `0` (show everything). |
 #' | `slow` | `numeric(1)` or `NULL` | `elapsed` slot only. Times at or over this many seconds count as slow and are styled with `slow_color` instead of `color`. `NULL` (the default) means nothing is ever flagged. |
 #' | `slow_color` | `character` or `NULL` | `elapsed` slot only. Styles applied to a slow time in place of `color`. Same accepted values as `color`; `"yellow"` in the unicode, emoji and minimal presets, `NULL` in the colourless ascii and ci presets. |
@@ -318,6 +326,8 @@ apply_overrides <- function(overrides) {
 #' logtree_theme(list(trace = list(show = "problems")))
 #' logtree_theme(list(trace = list(show = TRUE)))
 #' logtree_theme(list(trace = list(show = "error")))          # errors only
+#' # Record call sites but print none: the digest can still show them.
+#' logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))
 #' logtree_theme(list(trace = list(show = c("error", "interrupted"))))
 #' logtree_theme(list(trace = list(show = TRUE, format = "{fn}()")))
 #' logtree_theme(list(trace = list(format = "{file}:{line}", color = "silver")))

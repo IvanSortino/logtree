@@ -52,14 +52,28 @@ resolve_trace_show <- function(theme = the$theme) {
 # Is any trace wanted at all? The gate on every capture site, and the reason
 # the default path costs one list lookup rather than a frame walk.
 #
-# Note this is deliberately NOT a pure function of the theme, unlike
-# resolve_trace_show() above: a file sink registered with an explicit
-# `trace = ` wants call sites even when the console column is off, so it has to
-# be able to switch capture on by itself. The split is worth keeping straight --
-# resolve_trace_show() decides what a *line* renders, trace_enabled() decides
-# whether anything is *captured* at all.
+# Capture and rendering are separate stages, and the split is the thing to keep
+# straight: resolve_trace_show() decides what a *line* renders, this decides
+# whether anything is *recorded* in the first place. Only the second can be
+# changed after the fact -- a call site not captured while the run happened
+# cannot be recovered later, because the frame stack it came from is gone. That
+# is why logtree_summary(trace = ) can narrow a digest but never populate one.
+#
+# Three things can ask for capture, hence not a pure function of the theme:
+#
+#   * `show` -- rendering implies recording.
+#   * `capture` -- the slot's own switch, for "record call sites, print none":
+#     a quiet console with an annotated digest, or a JSON sink carrying
+#     locations the terminal never showed.
+#   * a file sink registered with an explicit `trace = `, which wants call
+#     sites even when the console column is off.
+#
+# It only ever adds: `capture = FALSE` (the default in every preset) does not
+# take capture away from a `show` that asked for it.
 trace_enabled <- function(theme = the$theme) {
-  !isFALSE(resolve_trace_show(theme)) || the$trace_sinks > 0L
+  !isFALSE(resolve_trace_show(theme)) ||
+    isTRUE(theme_field("trace", "capture", FALSE, theme)) ||
+    the$trace_sinks > 0L
 }
 
 # The file and line of a call, or NA for all fields when no source reference is

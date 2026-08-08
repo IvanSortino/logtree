@@ -177,7 +177,10 @@ print_summary_header <- function(header, gap, rule) {
 #'   digest is where you want the locations, or the reverse. Note this can only
 #'   narrow or reshape what was *captured*: capture is decided while the run
 #'   happens, so with the theme's slot off for the run there is nothing for
-#'   `trace = TRUE` here to print.
+#'   `trace = TRUE` here to print. To get the quiet-tree-annotated-digest
+#'   combination, ask for capture during the run and print nothing:
+#'   `logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))`, then
+#'   `logtree_summary(trace = TRUE)`.
 #' @return The recorded entries, invisibly: a list of records, each a list with
 #'   `kind`, `status`, `msg`, `path` (character vector), `elapsed`, and `trace`
 #'   (the call site: a list of `fn`, `file` and `line`, or `NULL` when the

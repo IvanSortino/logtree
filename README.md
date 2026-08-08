@@ -262,6 +262,18 @@ only wherever you read them; `logtree_summary(trace = )` pins the
 digest’s column for a single call when you want it to disagree with the
 tree.
 
+Recording and printing are separate, and only printing can be decided
+afterwards – a call site not captured during the run is gone.
+`capture = TRUE` records on every line whatever `show` prints, so a tree
+that stays quiet can still hand locations to the digest or a `"json"`
+sink:
+
+``` r
+logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))
+job()                            # tree unchanged, no call sites printed
+logtree_summary(trace = TRUE)    # ... but the digest has them
+```
+
 The example above pins `format = "{fn}()"` because `{file}` and `{line}`
 come from R’s source references, and those exist only when code was
 parsed with `keep.source = TRUE` – true interactively and under

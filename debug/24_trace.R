@@ -6,6 +6,9 @@
 #             interrupted steps; or a vector of the statuses themselves --
 #             "running" (open lines), "info"/"debug"/"success"/"warning"/
 #             "error" (leaves) and "interrupted" (a step that unwound)
+#   capture -- FALSE (default); TRUE records a call site on every line even
+#             where `show` prints none, so a quiet tree can still hand the
+#             digest and a json sink locations (section F4)
 #   format -- a template over {fn}, {file} and {line}, default
 #             "{file}:{line} {fn}()"
 #   color  -- cli styles: one vector for the whole column, or a named list
@@ -129,6 +132,7 @@ logtree_theme("unicode")
 # digest narrows to the error -- and the pin lasts exactly one call, so the
 # second digest is back to following the theme.
 section("F3. logtree_summary(trace = ) -- pinned for a single call")
+
 logtree_reset()
 logtree_theme("unicode", overrides = list(trace = list(show = TRUE)))
 with_logging(tree(), summary = FALSE)
@@ -138,6 +142,21 @@ cat("\n-- trace = FALSE --\n")
 logtree_summary(trace = FALSE)
 cat("\n-- no argument: back to the theme --\n")
 logtree_summary()
+logtree_theme("unicode")
+
+# --- F4. capture without printing --------------------------------------------
+# `trace = ` on the digest can only narrow what was *captured*, and capture is
+# decided while the run happens -- a call site not recorded then is gone, the
+# frame stack it came from having unwound. `capture = TRUE` is how you ask for
+# recording without printing: the tree below is byte-identical to section A,
+# and the digest still has locations to show.
+section("F4. capture = TRUE, show = FALSE -- quiet tree, annotated digest")
+logtree_reset()
+logtree_theme("unicode", overrides = list(trace = list(show = FALSE,
+                                                      capture = TRUE)))
+with_logging(tree(), summary = FALSE)
+cat("\n-- the digest, asking for what the tree recorded but never printed --\n")
+logtree_summary(trace = TRUE)
 logtree_theme("unicode")
 
 # --- G. degradation ----------------------------------------------------------

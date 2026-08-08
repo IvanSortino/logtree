@@ -68,7 +68,8 @@ glyphs_unicode <- list(
   corner      = list(glyph = "\u2514\u2500", color = "dim"),
   pipe        = list(glyph = "\u2502", color = "dim"),
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = "yellow"),
-  trace       = list(show = FALSE, format = trace_format, color = trace_colors),
+  trace       = list(show = FALSE, capture = FALSE, format = trace_format,
+                     color = trace_colors),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
@@ -94,7 +95,8 @@ glyphs_ascii <- list(
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = NULL),
   # Plain ASCII throughout, colorless like every other slot of this preset --
   # which is what makes ascii output stable and easy to pattern-match in tests.
-  trace       = list(show = FALSE, format = trace_format, color = NULL),
+  trace       = list(show = FALSE, capture = FALSE, format = trace_format,
+                     color = NULL),
   crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
   summary     = list(gap = 1L, rule = TRUE, line = "-")
 )
@@ -120,7 +122,8 @@ glyphs_emoji <- list(
   corner      = list(glyph = "\u2514\u2500", color = "dim"),
   pipe        = list(glyph = "\u2502", color = "dim"),
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = "yellow"),
-  trace       = list(show = FALSE, format = trace_format, color = trace_colors),
+  trace       = list(show = FALSE, capture = FALSE, format = trace_format,
+                     color = trace_colors),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
@@ -155,7 +158,8 @@ glyphs_minimal <- list(
   corner      = list(glyph = "", color = NULL),
   pipe        = list(glyph = "", color = NULL),
   elapsed     = list(show = TRUE, min = 0, color = "dim", slow = NULL, slow_color = "yellow"),
-  trace       = list(show = FALSE, format = trace_format, color = trace_colors),
+  trace       = list(show = FALSE, capture = FALSE, format = trace_format,
+                     color = trace_colors),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L),
   # Two spaces per level. With empty connectors this scalar is the entire
@@ -188,7 +192,8 @@ glyphs_ci <- list(
   corner      = list(glyph = "\\-", color = NULL),
   pipe        = list(glyph = "|",  color = NULL),
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = NULL),
-  trace       = list(show = FALSE, format = trace_format, color = NULL),
+  trace       = list(show = FALSE, capture = FALSE, format = trace_format,
+                     color = NULL),
   crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
   summary     = list(gap = 1L, rule = TRUE, line = "-")
 )

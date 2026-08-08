@@ -99,7 +99,14 @@ rule that is not membership: an ordinary close line never carries a trace (its
 site is its own open line's), only an interrupted one. `logtree_summary(trace =)`
 swaps just that slot for one call via `digest_theme()` (`R/summary.R`), the same
 shape as `text_sink_theme()` — it can only narrow what was already captured,
-since capture is decided at log time. **`{file}`/`{line}` require `keep.source`**, absent
+since capture is decided at log time.
+
+**Capture and render are separate stages, and only render can be decided after
+the fact** (the frame stack is gone by then). `trace_enabled()` is the capture
+gate and three things can open it: a non-`FALSE` `show`, the slot's own
+`capture = TRUE` (for "record, print none" — quiet tree, annotated digest or
+JSON sink), or a sink registered with `trace =` (`the$trace_sinks`). It only
+ever adds: `capture = FALSE` never removes the capture a `show` implied. **`{file}`/`{line}` require `keep.source`**, absent
 under plain `Rscript`, so `expand_trace_text()` drops any template run whose
 placeholders are all unavailable rather than rendering `NA`.
 

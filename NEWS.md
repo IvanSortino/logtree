@@ -16,8 +16,12 @@
   `logtree_summary(trace = )` pins the digest's column for a single call the way
   `gap` and `rule` already pin its layout -- for when the tree was quiet and the
   digest is where you want the locations, or the reverse. It can only narrow or
-  reshape what was captured, since capture is decided while the run happens. The
-  column's
+  reshape what was captured, since capture is decided while the run happens --
+  which is what the slot's `capture` field is for: `list(trace = list(show =
+  FALSE, capture = TRUE))` records a call site on every line while printing
+  none, so a tree that stays exactly as quiet as it was can still hand locations
+  to the digest or a `"json"` sink. It only ever adds; a `show` that asks for a
+  column already implies capture. The column's
   content is a template over `{fn}`, `{file}` and `{line}` (default
   `"{file}:{line} {fn}()"`), styled by the slot's `color` -- which takes a
   `list(base=, location=, fn=)` so the parts can be told apart, as the presets

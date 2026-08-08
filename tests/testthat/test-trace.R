@@ -628,6 +628,70 @@ test_that("logtree_summary(trace = ) pins the digest's column for one call", {
   expect_equal(sum(grepl("pipeline.R", out, fixed = TRUE)), 2L)
 })
 
+test_that("capture = TRUE records call sites the tree never prints", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  withr::defer(logtree_theme(list(trace = list(capture = FALSE))))
+  logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))
+  freeze_srcref("pipeline.R", 20L)
+
+  expect_true(trace_enabled())
+
+  job <- function() {
+    log_step("Job")
+    log_error("no numeric columns")
+  }
+  out <- capture.output(job())
+
+  # The tree is untouched: show = FALSE still prints no column.
+  expect_false(any(grepl("pipeline.R", out, fixed = TRUE)))
+  # But the entry carries the call site, so the digest can ask for it.
+  digest <- capture.output(logtree_summary(trace = TRUE))
+  expect_true(any(grepl("no numeric columns  pipeline.R:20 job()", digest,
+                        fixed = TRUE)))
+})
+
+test_that("capture only ever adds", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  withr::defer(logtree_theme(list(trace = list(capture = FALSE))))
+
+  # The default: capture follows show.
+  logtree_theme(list(trace = list(show = FALSE, capture = FALSE)))
+  expect_false(trace_enabled())
+  # capture = FALSE must not take capture away from a show that asked for it --
+  # rendering implies recording.
+  logtree_theme(list(trace = list(show = "error", capture = FALSE)))
+  expect_true(trace_enabled())
+  # Anything other than TRUE reads as off, like the slot's other fields.
+  logtree_theme(list(trace = list(show = FALSE, capture = "yes")))
+  expect_false(trace_enabled())
+})
+
+test_that("a json sink carries call sites a quiet console captured", {
+  skip_if_not_installed("jsonlite")
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_reset_sinks()
+  withr::defer(logtree_theme(list(trace = list(capture = FALSE))))
+  logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))
+  freeze_srcref("demo.R", 7L)
+
+  path <- tempfile(fileext = ".ndjson")
+  logtree_sink_file(path, format = "json")
+  f <- function() log_info("reading")
+  out <- capture.output(f())
+
+  # The JSON sink is ungated by `show`, so `capture` is all it needs.
+  rec <- jsonlite::fromJSON(readLines(path)[[1]])
+  expect_equal(rec$fn, "f")
+  expect_equal(rec$file, "demo.R")
+  expect_false(any(grepl("demo.R", out, fixed = TRUE)))
+})
+
 test_that("a digest cannot invent call sites that were never captured", {
   logtree_reset()
   withr::defer(logtree_reset())

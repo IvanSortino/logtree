@@ -119,7 +119,7 @@ kept from the active theme.
    \code{interrupted} \tab abnormal-exit (dimmed) glyph \tab \code{glyph}, \code{width}, \code{color}, \code{text} \cr
    \code{group} \tab group header marker \tab \code{glyph}, \code{color}, \code{bracket} \cr
    \code{elapsed} \tab the elapsed-time column printed on every close line \tab \code{show}, \code{min}, \code{color}, \code{slow}, \code{slow_color} \cr
-   \code{trace} \tab the optional call-site column: where in your code a line came from \tab \code{show}, \code{format}, \code{color} \cr
+   \code{trace} \tab the optional call-site column: where in your code a line came from \tab \code{show}, \code{capture}, \code{format}, \code{color} \cr
    \code{branch} \tab child connector: the "tee" drawn before every child line \tab \code{glyph}, \code{color} \cr
    \code{corner} \tab close-line connector: the "elbow" drawn on a step's own close line \tab \code{glyph}, \code{color} \cr
    \code{pipe} \tab vertical rail carried down the left of nested lines \tab \code{glyph}, \code{color} \cr
@@ -171,6 +171,13 @@ are all unavailable -- so the default format degrades from
 degrades to no column at all. Set \code{options(keep.source = TRUE)} at the top of
 a script if you want locations under \code{Rscript}.
 
+Capturing and printing are separate: \code{show} decides what a line \emph{prints},
+\code{capture = TRUE} decides that call sites are \emph{recorded} whatever \code{show}
+prints. \code{list(trace = list(show = FALSE, capture = TRUE))} therefore leaves
+the tree exactly as it was while giving the digest and any \code{"json"} sink
+locations to work with. The order matters -- capture happens as the run
+unfolds, so a call site not recorded then cannot be recovered afterwards.
+
 Two places outside the tree also report call sites when the slot is on:
 \code{\link[=logtree_summary]{logtree_summary()}}'s digest lines, which apply the same status filter as the
 tree does, and the \code{fn} / \code{file} / \code{line} fields of a \code{"json"} sink (which
@@ -186,6 +193,7 @@ console's.
    \code{text} \tab \code{character(1)} \tab Close-line status slots only (\code{done}, \code{warning}, \code{error}, \code{interrupted}). The word a close line prints before its elapsed time; \code{""} drops it, leaving the glyph and the time. Two placeholders are expanded: \code{{label}} (the closing step's own label, or a group's name) and \code{{elapsed}} (the formatted time). A template that places \code{{elapsed}} itself owns that column, so the time is not appended after it a second time. \cr
    \code{show} \tab \code{logical(1)}, or \code{character} on \code{trace} \tab On \code{elapsed}: \code{FALSE} drops the elapsed-time column entirely, default \code{TRUE}. On \code{trace}: \code{FALSE} (the default in every preset) off entirely; \code{TRUE} every line that can carry a call site; \code{"problems"} a shorthand for \code{c("warning", "error", "interrupted")}; or a vector of statuses naming exactly what to annotate -- \code{"running"} (open lines), \code{"info"}, \code{"debug"}, \code{"success"}, \code{"warning"}, \code{"error"} (leaves of that status) and \code{"interrupted"} (a close line whose step unwound). \code{show = "error"} is errors without their warnings. An ordinary close line never carries one whatever the set: its site is its own open line's. Unknown tokens are dropped, and anything unrecognised reads as \code{FALSE}. \cr
    \code{format} \tab \code{character(1)} \tab \code{trace} slot only. Template for the call-site column over three placeholders: \code{{fn}} (the enclosing function's name), \code{{file}} and \code{{line}} (where the log call sits). Default \code{"{file}:{line} {fn}()"}. A whitespace-separated run whose placeholders are \emph{all} unavailable is dropped whole, so the default degrades to \code{load_data()} rather than printing \code{NA} -- see the note on source references below. \cr
+   \code{capture} \tab \code{logical(1)} \tab \code{trace} slot only. \code{TRUE} records a call site on every line even where \code{show} prints none, for "record, print later": a quiet console whose \code{\link[=logtree_summary]{logtree_summary()}} digest or \code{"json"} sink still carries locations. Default \code{FALSE} in every preset. It only ever adds -- a \code{show} that asks for a column already implies capture, and \code{capture = FALSE} never takes that away. This is the one part of the feature that cannot be decided after the fact: a call site not recorded while the run happened is gone, because the frame stack it came from has unwound. \cr
    \code{min} \tab \code{numeric(1)} \tab \code{elapsed} slot only. Hide times below this many seconds -- \code{min = 0.1} silences the \verb{0.00s} noise on trivial steps. Default \code{0} (show everything). \cr
    \code{slow} \tab \code{numeric(1)} or \code{NULL} \tab \code{elapsed} slot only. Times at or over this many seconds count as slow and are styled with \code{slow_color} instead of \code{color}. \code{NULL} (the default) means nothing is ever flagged. \cr
    \code{slow_color} \tab \code{character} or \code{NULL} \tab \code{elapsed} slot only. Styles applied to a slow time in place of \code{color}. Same accepted values as \code{color}; \code{"yellow"} in the unicode, emoji and minimal presets, \code{NULL} in the colourless ascii and ci presets. \cr
@@ -224,6 +232,8 @@ logtree_theme(list(elapsed = list(show = FALSE)))
 logtree_theme(list(trace = list(show = "problems")))
 logtree_theme(list(trace = list(show = TRUE)))
 logtree_theme(list(trace = list(show = "error")))          # errors only
+# Record call sites but print none: the digest can still show them.
+logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))
 logtree_theme(list(trace = list(show = c("error", "interrupted"))))
 logtree_theme(list(trace = list(show = TRUE, format = "{fn}()")))
 logtree_theme(list(trace = list(format = "{file}:{line}", color = "silver")))
