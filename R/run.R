@@ -16,9 +16,13 @@ print_run_summary <- function(status, elapsed) {
   # gate = FALSE: this line reads "Run complete in <time>", so it takes the
   # `elapsed` slot's colouring but never its hiding rules -- a suppressed time
   # would leave the sentence hanging.
+  # Stamped like any other live line: this one is printed as the run ends, so
+  # "now" is the truth about it. The logtree_summary() digest is the opposite
+  # case and carries no stamp -- it replays events that happened earlier.
   cat(compose_flat_line(
         theme_glyph(status),
-        paste0(label, " in ", format_elapsed_field(elapsed, gate = FALSE))
+        paste0(label, " in ", format_elapsed_field(elapsed, gate = FALSE)),
+        stamp = wall_clock()
       ), "\n", sep = "")
 }
 

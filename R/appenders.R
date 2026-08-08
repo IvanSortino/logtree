@@ -44,51 +44,78 @@ emit <- function(event) {
 }
 
 console_sink <- function(event) {
+  ts <- event$ts
   line <- switch(event$kind,
-    open        = format_open(event$entry),
-    close       = format_close(event$entry),
-    group       = format_group_header(event$entry),
-    group_close = format_close(event$entry),
+    open        = format_open(event$entry, stamp = ts),
+    close       = format_close(event$entry, stamp = ts),
+    group       = format_group_header(event$entry, stamp = ts),
+    group_close = format_close(event$entry, stamp = ts),
     leaf        = format_leaf(event$status, event$label, event$depth,
                               corner = isTRUE(event$terminal),
-                              trace = event$trace)
+                              trace = event$trace, stamp = ts)
   )
   cat(line, "\n", sep = "")
 }
 
 # The theme a text sink renders through: always the ascii preset, but with the
-# trace column resolved per-event rather than taken from the preset.
+# trace and timestamp columns resolved per-event rather than taken from the
+# preset.
 #
-# The preset ships `show = FALSE` like every other, so without this a text sink
-# would silently disagree with a console that has trace switched on. `trace =
-# NULL` (the default) means "whatever the console is doing", read at render time
-# so enabling trace mid-run reaches the file too; an explicit value pins the sink
-# independently. The common case -- trace off -- returns the preset untouched
-# rather than copying a 17-element list per event.
-text_sink_theme <- function(trace) {
+# The preset ships both off like every other, so without this a text sink would
+# silently disagree with a console that has one of them switched on. `NULL` (the
+# default for both) means "whatever the console is doing", read at render time so
+# switching a column on mid-run reaches the file too; an explicit value pins the
+# sink independently. The common case -- both off -- returns the preset untouched
+# rather than copying an 18-element list per event.
+text_sink_theme <- function(trace, timestamp = NULL) {
   show <- if (is.null(trace)) resolve_trace_show(the$theme) else trace
-  if (isFALSE(show)) return(glyphs_ascii)
+  fmt  <- if (is.null(timestamp)) {
+    timestamp_format(the$theme)
+  } else if (isFALSE(timestamp)) {
+    NULL
+  } else {
+    timestamp
+  }
+  if (isFALSE(show) && is.null(fmt)) return(glyphs_ascii)
   theme <- glyphs_ascii
-  theme$trace$show <- show
+  if (!isFALSE(show)) theme$trace$show <- show
+  if (!is.null(fmt))  theme$timestamp$format <- fmt
   theme
 }
 
-file_text_sink <- function(path, trace = NULL) {
+file_text_sink <- function(path, trace = NULL, timestamp = NULL) {
   force(path)
   force(trace)
+  force(timestamp)
   function(event) {
     # Always plain ASCII, no ANSI -- independent of the active console
     # theme (design doc section 6).
-    theme <- text_sink_theme(trace)
+    theme <- text_sink_theme(trace, timestamp)
+    ts    <- event$ts
     line <- switch(event$kind,
-      open        = format_open(event$entry, theme = theme, color = FALSE),
-      close       = format_close(event$entry, theme = theme, color = FALSE),
-      group       = format_group_header(event$entry, theme = theme, color = FALSE),
-      group_close = format_close(event$entry, theme = theme, color = FALSE),
-      leaf        = format_leaf(event$status, event$label, event$depth, theme = theme, color = FALSE, corner = isTRUE(event$terminal), trace = event$trace)
+      open        = format_open(event$entry, theme = theme, color = FALSE, stamp = ts),
+      close       = format_close(event$entry, theme = theme, color = FALSE, stamp = ts),
+      group       = format_group_header(event$entry, theme = theme, color = FALSE, stamp = ts),
+      group_close = format_close(event$entry, theme = theme, color = FALSE, stamp = ts),
+      leaf        = format_leaf(event$status, event$label, event$depth, theme = theme, color = FALSE, corner = isTRUE(event$terminal), trace = event$trace, stamp = ts)
     )
     cat(line, "\n", file = path, append = TRUE, sep = "")
   }
+}
+
+# Normalise logtree_sink_file(timestamp = ) to NULL (follow the console theme)
+# or a format string. FALSE also lands on NULL, which is the same thing at
+# render time -- text_sink_theme() has already made the "follow" decision by
+# then, so the two only differ before it.
+resolve_sink_timestamp <- function(x) {
+  if (is.null(x)) return(NULL)
+  if (isFALSE(x)) return(FALSE)
+  if (isTRUE(x)) return(default_timestamp_format)
+  if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
+    stop("`timestamp` must be NULL, TRUE, FALSE, or a single strftime format string.",
+         call. = FALSE)
+  }
+  x
 }
 
 esc_json_string <- function(x) {
@@ -235,6 +262,12 @@ file_json_sink <- function(path) {
 #' @param path File path to append rendered log lines to.
 #' @param format `"text"` for a plain ASCII tree (no ANSI, independent of
 #'   the active console theme) or `"json"` for one NDJSON object per event.
+#' @param timestamp Whether this sink prints the wall-clock column (see the
+#'   `timestamp` slot in [logtree_theme()]). `NULL` (the default) follows the
+#'   active console theme, read afresh for each event; `FALSE` pins it off;
+#'   `TRUE` turns it on with a date-and-time format suited to a file that
+#'   outlives the session (`"%Y-%m-%d %H:%M:%S"`); a `strftime` format string
+#'   pins that format. Text sinks only: a `"json"` sink always carries `ts`.
 #' @param threshold Minimum leaf level this file records: one of `"debug"`,
 #'   `"info"`, `"warn"`, `"error"`. `NULL` (the default) follows the global
 #'   [logtree_threshold()]. This is per sink, so a `"debug"` file can record
@@ -263,13 +296,17 @@ file_json_sink <- function(path) {
 #'
 #' # A debug-level record on disk while the console stays at "info".
 #' logtree_sink_file(tempfile(), format = "json", threshold = "debug")
+#'
+#' # A file that stamps every line with the date and time.
+#' logtree_sink_file(tempfile(), format = "text", timestamp = TRUE)
 logtree_sink_file <- function(path, format = c("text", "json"), trace = NULL,
-                              threshold = NULL) {
+                              timestamp = NULL, threshold = NULL) {
   format <- match.arg(format)
   sink_fn <- if (identical(format, "json")) {
     file_json_sink(path)
   } else {
-    file_text_sink(path, trace = trace)
+    file_text_sink(path, trace = trace,
+                   timestamp = resolve_sink_timestamp(timestamp))
   }
   # A sink asking for trace in its own right has to switch *capture* on, or it
   # would render a column that was never populated. See trace_enabled().

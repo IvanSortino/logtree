@@ -120,6 +120,7 @@ kept from the active theme.
    \code{group} \tab group header marker \tab \code{glyph}, \code{color}, \code{bracket} \cr
    \code{elapsed} \tab the elapsed-time column printed on every close line \tab \code{show}, \code{min}, \code{color}, \code{slow}, \code{slow_color} \cr
    \code{trace} \tab the optional call-site column: where in your code a line came from \tab \code{show}, \code{capture}, \code{format}, \code{color} \cr
+   \code{timestamp} \tab the optional wall-clock column printed in front of every line \tab \code{format}, \code{color} \cr
    \code{branch} \tab child connector: the "tee" drawn before every child line \tab \code{glyph}, \code{color} \cr
    \code{corner} \tab close-line connector: the "elbow" drawn on a step's own close line \tab \code{glyph}, \code{color} \cr
    \code{pipe} \tab vertical rail carried down the left of nested lines \tab \code{glyph}, \code{color} \cr
@@ -178,6 +179,22 @@ the tree exactly as it was while giving the digest and any \code{"json"} sink
 locations to work with. The order matters -- capture happens as the run
 unfolds, so a call site not recorded then cannot be recovered afterwards.
 
+The \code{timestamp} slot is off in every preset for a different reason: a tree
+read as it happens does not need to be told the time, and a column that is not
+there is one the message has room for. It is the log read \emph{afterwards} that
+wants it -- lining a run up against a monitoring graph, another service's log,
+or a report that something broke at about half past two. Switch it on with
+\code{list(timestamp = list(format = "\%H:\%M:\%S"))}.
+
+The column is padded to a fixed width measured from a rendered sample, not
+from the format string, so a format whose width varies with the value (a bare
+\code{"\%-d \%b"}) cannot shear the tree from one line to the next. It counts against
+the wrapping budget like any other column, and a wrapped message's
+continuation rows carry a \emph{blank} column rather than a repeated time -- one
+event happened once. \code{\link[=logtree_summary]{logtree_summary()}}'s digest carries no timestamp at all:
+it replays events that already happened, so stamping those lines with the time
+the digest was printed would be a lie.
+
 Two places outside the tree also report call sites when the slot is on:
 \code{\link[=logtree_summary]{logtree_summary()}}'s digest lines, which apply the same status filter as the
 tree does, and the \code{fn} / \code{file} / \code{line} fields of a \code{"json"} sink (which
@@ -192,7 +209,7 @@ console's.
    \code{color} \tab \code{character}, \code{NULL}, or a named \code{list} on \code{trace} \tab One or more cli styles, or \code{NULL} for no styling. Named colors (\code{"red"}, \code{"cyan"}, \code{"silver"}, ...), bright variants (\code{"br_red"}), backgrounds (\code{"bg_blue"}), text styles (\code{"bold"}, \code{"italic"}, \code{"dim"}), or a hex string (\code{"#ff8800"}). A character vector combines styles, e.g. \code{c("red", "bold")}. On the \code{elapsed} slot it styles the time itself. On \code{trace} it also accepts a named list styling the parts of the column separately: \code{location} for a \code{{file}}/\code{{line}} run (the separator between them included -- the location is one thing, styled and linked whole), \code{fn} for the function name, and \code{base} for everything else, which in the default format is the \verb{()}. That is what the coloured presets ship: all of it dim, with the location in silver and \code{fn} in cyan, so the two read apart. A plain character vector on \code{trace} styles the whole column. \code{NULL} in the colourless ascii and ci presets. See \code{\link[cli:combine_ansi_styles]{cli::combine_ansi_styles()}}. \cr
    \code{text} \tab \code{character(1)} \tab Close-line status slots only (\code{done}, \code{warning}, \code{error}, \code{interrupted}). The word a close line prints before its elapsed time; \code{""} drops it, leaving the glyph and the time. Two placeholders are expanded: \code{{label}} (the closing step's own label, or a group's name) and \code{{elapsed}} (the formatted time). A template that places \code{{elapsed}} itself owns that column, so the time is not appended after it a second time. \cr
    \code{show} \tab \code{logical(1)}, or \code{character} on \code{trace} \tab On \code{elapsed}: \code{FALSE} drops the elapsed-time column entirely, default \code{TRUE}. On \code{trace}: \code{FALSE} (the default in every preset) off entirely; \code{TRUE} every line that can carry a call site; \code{"problems"} a shorthand for \code{c("warning", "error", "interrupted")}; or a vector of statuses naming exactly what to annotate -- \code{"running"} (open lines), \code{"info"}, \code{"debug"}, \code{"success"}, \code{"warning"}, \code{"error"} (leaves of that status) and \code{"interrupted"} (a close line whose step unwound). \code{show = "error"} is errors without their warnings. An ordinary close line never carries one whatever the set: its site is its own open line's. Unknown tokens are dropped, and anything unrecognised reads as \code{FALSE}. \cr
-   \code{format} \tab \code{character(1)} \tab \code{trace} slot only. Template for the call-site column over three placeholders: \code{{fn}} (the enclosing function's name), \code{{file}} and \code{{line}} (where the log call sits). Default \code{"{file}:{line} {fn}()"}. A whitespace-separated run whose placeholders are \emph{all} unavailable is dropped whole, so the default degrades to \code{load_data()} rather than printing \code{NA} -- see the note on source references below. \cr
+   \code{format} \tab \code{character(1)} \tab On \code{trace}: a template for the call-site column over three placeholders: \code{{fn}} (the enclosing function's name), \code{{file}} and \code{{line}} (where the log call sits). Default \code{"{file}:{line} {fn}()"}. A whitespace-separated run whose placeholders are \emph{all} unavailable is dropped whole, so the default degrades to \code{load_data()} rather than printing \code{NA} -- see the note on source references below. On \code{timestamp}: a \link{strftime} format such as \code{"\%H:\%M:\%S"} or \code{"\%Y-\%m-\%d \%H:\%M:\%S"}, or \code{NULL} (the default in every preset) for no column at all. \cr
    \code{capture} \tab \code{logical(1)} \tab \code{trace} slot only. \code{TRUE} records a call site on every line even where \code{show} prints none, for "record, print later": a quiet console whose \code{\link[=logtree_summary]{logtree_summary()}} digest or \code{"json"} sink still carries locations. Default \code{FALSE} in every preset. It only ever adds -- a \code{show} that asks for a column already implies capture, and \code{capture = FALSE} never takes that away. This is the one part of the feature that cannot be decided after the fact: a call site not recorded while the run happened is gone, because the frame stack it came from has unwound. \cr
    \code{min} \tab \code{numeric(1)} \tab \code{elapsed} slot only. Hide times below this many seconds -- \code{min = 0.1} silences the \verb{0.00s} noise on trivial steps. Default \code{0} (show everything). \cr
    \code{slow} \tab \code{numeric(1)} or \code{NULL} \tab \code{elapsed} slot only. Times at or over this many seconds count as slow and are styled with \code{slow_color} instead of \code{color}. \code{NULL} (the default) means nothing is ever flagged. \cr
@@ -238,6 +255,12 @@ logtree_theme(list(trace = list(show = c("error", "interrupted"))))
 logtree_theme(list(trace = list(show = TRUE, format = "{fn}()")))
 logtree_theme(list(trace = list(format = "{file}:{line}", color = "silver")))
 logtree_theme(list(trace = list(show = FALSE)))  # back off again
+
+# The wall-clock column: off by default, in front of every line when on.
+logtree_theme(list(timestamp = list(format = "\%H:\%M:\%S")))
+logtree_theme(list(timestamp = list(format = "\%Y-\%m-\%d \%H:\%M:\%S",
+                                    color = "silver")))
+logtree_theme(list(timestamp = list(format = NULL)))   # back off again
 
 # Naming one swaps the whole preset, clearing every override above.
 logtree_theme("unicode")

@@ -13,18 +13,23 @@
 # U+2699 = GEAR (unicode debug glyph)
 # U+203A = SINGLE RIGHT-POINTING ANGLE QUOTATION MARK (breadcrumb separator)
 #
-# Beyond the glyph slots, each preset carries four non-glyph slots: `elapsed`
+# Beyond the glyph slots, each preset carries five non-glyph slots: `elapsed`
 # (how a close line's time column is gated and styled), `trace` (the optional
-# call-site column), plus `crumb` (breadcrumb separator + the styling that sets
-# the path apart from the message) and `summary` (the digest's divider layout),
-# the last two used only by logtree_summary(). They live in the theme so there
-# is one place to customise appearance -- logtree_theme() -- rather than a
-# second, options-based channel.
+# call-site column), `timestamp` (the optional wall-clock column), plus `crumb`
+# (breadcrumb separator + the styling that sets the path apart from the message)
+# and `summary` (the digest's divider layout), the last two used only by
+# logtree_summary(). They live in the theme so there is one place to customise
+# appearance -- logtree_theme() -- rather than a second, options-based channel.
 #
 # `trace` ships `show = FALSE` in every preset: capturing a call site costs a
 # frame walk and a srcref lookup per logged line, so it is opt-in and the
 # default path pays nothing. Its `format` is deliberately ASCII-only, like any
 # other default that lands in package source.
+#
+# `timestamp` ships `format = NULL` in every preset, which is off: a live tree
+# read as it happens does not need to be told the time, and every column that
+# is not there is one the message has room for. It is the log read afterwards
+# that wants it, which is why it costs nothing until asked for.
 #
 # The `done` slot also carries `text`, the word a close line prints before its
 # elapsed time. It is read per status (falling back to `done`'s, then to
@@ -50,6 +55,11 @@ trace_colors <- list(
 # clickable) down the page.
 trace_format <- "{file}:{line} {fn}()"
 
+# What `timestamp = TRUE` on a file sink means. A file outlives the session that
+# wrote it, so the date belongs in it -- unlike an interactive console, where
+# "%H:%M:%S" is usually enough and is what you would set by hand.
+default_timestamp_format <- "%Y-%m-%d %H:%M:%S"
+
 glyphs_unicode <- list(
   step        = list(glyph = "\u25b6", width = 1L, color = "cyan"),
   info        = list(glyph = "\u2139", width = 1L, color = "blue"),
@@ -70,6 +80,7 @@ glyphs_unicode <- list(
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = "yellow"),
   trace       = list(show = FALSE, capture = FALSE, format = trace_format,
                      color = trace_colors),
+  timestamp   = list(format = NULL, color = "silver"),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
@@ -97,6 +108,7 @@ glyphs_ascii <- list(
   # which is what makes ascii output stable and easy to pattern-match in tests.
   trace       = list(show = FALSE, capture = FALSE, format = trace_format,
                      color = NULL),
+  timestamp   = list(format = NULL, color = NULL),
   crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
   summary     = list(gap = 1L, rule = TRUE, line = "-")
 )
@@ -124,6 +136,7 @@ glyphs_emoji <- list(
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = "yellow"),
   trace       = list(show = FALSE, capture = FALSE, format = trace_format,
                      color = trace_colors),
+  timestamp   = list(format = NULL, color = "silver"),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
@@ -160,6 +173,7 @@ glyphs_minimal <- list(
   elapsed     = list(show = TRUE, min = 0, color = "dim", slow = NULL, slow_color = "yellow"),
   trace       = list(show = FALSE, capture = FALSE, format = trace_format,
                      color = trace_colors),
+  timestamp   = list(format = NULL, color = "dim"),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L),
   # Two spaces per level. With empty connectors this scalar is the entire
@@ -194,6 +208,7 @@ glyphs_ci <- list(
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = NULL),
   trace       = list(show = FALSE, capture = FALSE, format = trace_format,
                      color = NULL),
+  timestamp   = list(format = NULL, color = NULL),
   crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
   summary     = list(gap = 1L, rule = TRUE, line = "-")
 )
