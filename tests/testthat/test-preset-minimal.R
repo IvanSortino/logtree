@@ -73,6 +73,26 @@ test_that("minimal tells info, debug and interrupted apart by colour alone", {
                          glyphs_minimal$interrupted$color))
 })
 
+test_that("compact tightens minimal without flattening it", {
+  withr::defer(logtree_theme("unicode"))
+
+  # minimal has no connector glyphs, so col_gap *is* its whole indentation.
+  # Zeroing it the way compact does for other presets would render every depth
+  # at the left margin, turning the tree into a flat list.
+  # A list, not c(): c("medium", "tight", TRUE) would coerce TRUE to "TRUE".
+  for (level in list("medium", "tight", TRUE)) {
+    logtree_theme("minimal", compact = level)
+    expect_equal(tree_col_width(), 1L)
+
+    entry <- function(d) list(depth = d, label = "step", glyph = NULL,
+                              status = "running", elapsed = 0.5)
+    rendered <- vapply(1:3, function(d) format_open(entry(d), color = FALSE),
+                       character(1))
+    # Each level is still indented one column further than the last.
+    expect_equal(rendered, c("▸ step", " ▸ step", "  ▸ step"))
+  }
+})
+
 test_that("swapping away from minimal clears its col_gap", {
   withr::defer(logtree_theme("unicode"))
 

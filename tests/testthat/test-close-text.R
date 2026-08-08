@@ -59,6 +59,25 @@ test_that("expand_close_text substitutes {label} and {elapsed}", {
   expect_equal(expand_close_text("[{label}]", bare, "0.50s"), "[]")
 })
 
+test_that("a substituted value is data, never rescanned as a template", {
+  # Placeholders are expanded in ONE pass. Two sequential gsub()s would let a
+  # step labelled "{elapsed}" have its own label reinterpreted, printing the
+  # time where the label belongs -- log data must not steer the template.
+  entry <- close_entry(label = "{elapsed}")
+  expect_equal(expand_close_text("{label}", entry, "0.50s"), "{elapsed}")
+  expect_equal(expand_close_text("[{label}]", entry, "0.50s"), "[{elapsed}]")
+
+  withr::defer(logtree_theme("unicode"))
+  logtree_theme("ascii", overrides = list(done = list(text = "{label}")))
+  # ... and the time is still appended once, not twice.
+  expect_equal(close_message(entry, "success"), "{elapsed}  0.50s")
+})
+
+test_that("a label with regex or backreference syntax survives intact", {
+  entry <- close_entry(label = "a\\1b $x [0-9]+")
+  expect_equal(expand_close_text("{label}", entry, "0.50s"), "a\\1b $x [0-9]+")
+})
+
 test_that("close_message joins the word and the time only when both are there", {
   withr::defer(logtree_theme("unicode"))
   logtree_theme("ascii")

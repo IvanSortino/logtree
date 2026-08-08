@@ -56,6 +56,12 @@ apply_compact <- function(level) {
       the$theme[[key]]$glyph <- substring(the$theme[[key]]$glyph, 1L, 1L)
     }
   }
+  # A preset with no connector glyph at all -- `minimal` -- carries its entire
+  # indentation in col_gap, so zeroing it would leave a per-level column of
+  # zero: every depth would render at the left margin and the tree would read
+  # as a flat list. Compact is meant to tighten the tree, never to erase it, so
+  # keep one column per level for connectorless themes.
+  if (!nzchar(the$theme$branch$glyph)) the$theme$col_gap <- 1L
   invisible(NULL)
 }
 
