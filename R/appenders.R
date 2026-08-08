@@ -11,6 +11,9 @@
 # marked and stays quiet.
 emit <- function(event) {
   record_summary(event)
+  # After record_summary(), never before: muting silences output, it does not
+  # stop the run being remembered (R/state.R).
+  if (isTRUE(the$muted)) return(invisible(NULL))
   # Stamp the event once, here, rather than letting each sink call Sys.time()
   # for itself: two sinks recording the same event must agree about when it
   # happened, and a run replayed from a file must line up with one replayed

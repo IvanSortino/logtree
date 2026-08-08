@@ -74,6 +74,81 @@ format_elapsed <- function(seconds) {
   sprintf("%dm %02ds", minutes, secs)
 }
 
+# --- Mute ------------------------------------------------------------------
+#
+# `the$muted` is checked in emit() *after* record_summary(), which is the whole
+# design in one line: muting is about output, not about memory. A muted run
+# still knows what went wrong and can still be asked at the end.
+#
+# It is checked in emit() rather than implemented by unregistering sinks,
+# because unregistering loses the configuration and this does not -- and because
+# step bookkeeping must be untouched either way: the stack still pushes and pops
+# while muted, or depth would desync the moment logging came back.
+#
+# Like sinks, and for the same reason, it is not cleared by logtree_reset().
+
+#' Silence logtree's output
+#'
+#' Stops every sink -- console, files, and any of your own -- from receiving
+#' events, without unregistering them. This is what a library that logs with
+#' logtree reaches for to keep its own test suite quiet, and what a script
+#' reaches for around a noisy section.
+#'
+#' Three things muting deliberately does *not* do:
+#'
+#' * It does not stop the run being *recorded*. Warnings and errors still reach
+#'   the [logtree_summary()] digest, so a muted run can still be asked what went
+#'   wrong at the end -- and `logtree_summary()` still prints when you call it,
+#'   since that output is one you asked for rather than one that happened to you.
+#'   The [with_logging()] run-summary line, which you did not ask for, is
+#'   silenced.
+#' * It does not disturb step bookkeeping. Steps still open and close while
+#'   muted, so depth is still correct when output comes back.
+#' * It does not survive... anything, actually: like registered sinks, and
+#'   unlike the open-step stack, the mute flag is left alone by
+#'   [logtree_reset()]. Unmute explicitly.
+#'
+#' The `logtree.silent` option sets the initial state when the package is
+#' loaded, for silencing logtree from an `.Rprofile` or a test setup file; after
+#' that these functions are in charge, so a later `options(logtree.silent = )`
+#' has no effect.
+#'
+#' @return The previous muted state (`TRUE`/`FALSE`), invisibly, so a caller can
+#'   restore whatever it found.
+#' @seealso [logtree_sink_remove()] for taking a sink off altogether.
+#' @export
+#' @examples
+#' logtree_reset()
+#' was <- logtree_mute()
+#'
+#' f <- function() {
+#'   log_step("Load data")
+#'   log_warn("coerced 3 rows")
+#' }
+#' invisible(f())          # prints nothing
+#'
+#' logtree_unmute()
+#' # ... but the run was still recorded:
+#' length(logtree_summary())
+logtree_mute <- function() {
+  was <- isTRUE(the$muted)
+  the$muted <- TRUE
+  invisible(was)
+}
+
+#' @rdname logtree_mute
+#' @export
+#' @examples
+#'
+#' # Restore whatever was in force before, rather than assuming it was off.
+#' was <- logtree_mute()
+#' if (!was) logtree_unmute()
+logtree_unmute <- function() {
+  was <- isTRUE(the$muted)
+  the$muted <- FALSE
+  invisible(was)
+}
+
 #' Reset internal logtree state
 #'
 #' Clears the open-step stack and resets the internal id counter. Mainly

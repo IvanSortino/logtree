@@ -47,8 +47,10 @@ sink_admits_leaf <- function(status, threshold) {
 }
 
 # Would this leaf reach *any* sink? Cheap: the registry is a handful of entries,
-# and the alternative is rendering a line nobody is listening for.
+# and the alternative is rendering a line nobody is listening for. A muted run
+# reaches none of them, which is what makes muting cheaper than it looks.
 any_sink_admits <- function(status) {
+  if (isTRUE(the$muted)) return(FALSE)
   for (sink in the$sinks) {
     if (sink_admits_leaf(status, sink$threshold)) return(TRUE)
   }

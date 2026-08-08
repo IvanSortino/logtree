@@ -9,6 +9,9 @@ mark_open_steps <- function(status) {
 }
 
 print_run_summary <- function(status, elapsed) {
+  # Output nobody asked for, so muting takes it -- unlike logtree_summary(),
+  # which prints because it was called (R/state.R).
+  if (isTRUE(the$muted)) return(invisible(NULL))
   label <- if (identical(status, "error")) "Run failed" else "Run complete"
   # gate = FALSE: this line reads "Run complete in <time>", so it takes the
   # `elapsed` slot's colouring but never its hiding rules -- a suppressed time
