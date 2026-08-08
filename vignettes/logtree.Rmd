@@ -315,12 +315,14 @@ logtree renders, including the `logtree_summary()` digest and the
 
 ### Density and spacing
 
-`compact` and `glyph_gap` control horizontal space, independently of any glyph.
-`compact` sets the per-level tree column: `"medium"` drops the trailing gap
-after each connector, `"tight"` also slims the connectors to one character.
-`glyph_gap` sets the space between a line's status glyph and its message -- `1`
-by default, `0` for the tightest look, `2` or more for a roomier message
-column.
+Three arguments control horizontal space, independently of any glyph, each
+governing one column of a rendered line:
+
+| Argument | The gap it sets |
+| -------- | --------------- |
+| `compact` | the per-level tree column: `"medium"` drops the trailing gap after each connector, `"tight"` also slims the connectors to one character |
+| `connector_gap` | a *leaf or close* line's own connector, to its status glyph |
+| `glyph_gap` | the status glyph, to the message text -- `1` by default, `0` for the tightest look, `2` or more for a roomier message column |
 
 ```{r}
 logtree_theme("unicode", compact = "tight", glyph_gap = 0)
@@ -328,9 +330,22 @@ pipeline()
 logtree_theme("unicode")
 ```
 
-These two and `wrap` are *scalars* carried on the theme, not override slots:
+`connector_gap` is unset by default and tracks `col_gap`, so every preset and
+every `compact` density renders as it always has. Setting it lets the two
+diverge -- which is what it is for: `compact = "tight"` keeps every rail column
+flush while leaf and close glyphs still get air. It never touches a step's
+*open* line or a group header, since those are rail columns rather than the
+glyph's own approach, and it does not compound with depth.
+
+```{r}
+logtree_theme("unicode", compact = "tight", connector_gap = 1)
+pipeline()
+logtree_theme("unicode")
+```
+
+These three and `wrap` are *scalars* carried on the theme, not override slots:
 they are set through `logtree_theme()`'s own arguments rather than through
-`overrides`. All three ride the active theme and are cleared by the next preset
+`overrides`. All four ride the active theme and are cleared by the next preset
 swap (`logtree_theme("unicode")`). None of them reaches file sinks, which render
 through the ascii preset with its built-in spacing.
 
