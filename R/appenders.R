@@ -17,8 +17,15 @@ emit <- function(event) {
   # from memory.
   event$ts <- wall_clock()
   problems <- character(0)
+  is_leaf  <- identical(event$kind, "leaf")
   for (id in names(the$sinks)) {
-    fn <- the$sinks[[id]]$fn
+    sink <- the$sinks[[id]]
+    # Verbosity gates leaf lines, and it gates them *per sink*: a file recording
+    # at "debug" no longer drags the console down to debug with it. Step
+    # open/close and group lines are never gated -- hiding those would break the
+    # tree rather than quieten it.
+    if (is_leaf && !sink_admits_leaf(event$status, sink$threshold)) next
+    fn <- sink$fn
     tryCatch(fn(event), error = function(e) {
       if (!id %in% the$sink_failed) {
         the$sink_failed  <- c(the$sink_failed, id)
@@ -110,6 +117,7 @@ json_scalar <- function(x) {
 record_proto <- function() {
   list(
     ts        = as.POSIXct(numeric(0), tz = "", origin = "1970-01-01"),
+    run_id    = character(0),
     level     = character(0),
     id        = integer(0),
     parent_id = integer(0),
@@ -147,6 +155,7 @@ event_record <- function(event) {
 
   list(
     ts        = event$ts,
+    run_id    = the$run_id,
     level     = event$kind,
     id        = if (is_leaf) event$id else event$entry$id,
     parent_id = if (is_leaf) event$parent_id else event$entry$parent_id,
@@ -160,6 +169,11 @@ event_record <- function(event) {
   )
 }
 
+# The timestamp format a "json" sink writes: ISO-8601 to the millisecond, with
+# the UTC offset. A bare epoch number is what this used to be, and no log
+# aggregator can do anything with that without being told what it is.
+json_ts_format <- "%Y-%m-%dT%H:%M:%OS3%z"
+
 # Hand-rolled scalar encoder for this one fixed, known event schema --
 # avoids adding jsonlite to Imports for a shape this small (design doc
 # section 6).
@@ -172,7 +186,8 @@ event_record <- function(event) {
 to_json_line <- function(record) {
   paste0(
     "{",
-    "\"ts\":", json_scalar(as.numeric(record$ts)), ",",
+    "\"ts\":", json_scalar(format(record$ts, json_ts_format)), ",",
+    "\"run_id\":", json_scalar(record$run_id), ",",
     "\"level\":", json_scalar(record$level), ",",
     "\"id\":", json_scalar(record$id), ",",
     "\"parent_id\":", json_scalar(record$parent_id), ",",
@@ -198,13 +213,30 @@ file_json_sink <- function(path) {
 #' Add a file sink
 #'
 #' Registers an additional output destination. Every logged event fans out
-#' to the console sink (always on) and every registered file sink, so
-#' console, text-file, and NDJSON outputs can all run simultaneously
-#' (design doc section 6).
+#' to the console sink and every registered file sink, so console, text-file,
+#' and NDJSON outputs can all run simultaneously (design doc section 6).
+#'
+#' A `"json"` sink writes one NDJSON object per event, with these fields:
+#'
+#' | Field | What it holds |
+#' | ----- | ------------- |
+#' | `ts` | when the event was emitted, ISO-8601 to the millisecond with UTC offset |
+#' | `run_id` | identifies the run, so one run's lines can be picked out of a shared file |
+#' | `level` | event kind: `"open"`, `"close"`, `"group"`, `"group_close"`, `"leaf"` |
+#' | `id`, `parent_id`, `depth` | the node's identity and place in the tree |
+#' | `label` | a step's label, a group's name, or a leaf's message |
+#' | `elapsed` | seconds, on close lines only; `null` elsewhere |
+#' | `status` | a leaf's status, `"step"`/`"group"` on an opening line, or the resolved status on a close |
+#' | `fn`, `file`, `line` | the call site, when the `trace` theme slot recorded one; `null` otherwise |
 #'
 #' @param path File path to append rendered log lines to.
 #' @param format `"text"` for a plain ASCII tree (no ANSI, independent of
 #'   the active console theme) or `"json"` for one NDJSON object per event.
+#' @param threshold Minimum leaf level this file records: one of `"debug"`,
+#'   `"info"`, `"warn"`, `"error"`. `NULL` (the default) follows the global
+#'   [logtree_threshold()]. This is per sink, so a `"debug"` file can record
+#'   everything while the console stays at `"info"` -- or an `"error"` file can
+#'   keep only what went wrong. Step open/close lines are never gated.
 #' @param trace Whether this sink prints the call-site column (see the `trace`
 #'   slot in [logtree_theme()]). `NULL` (the default) follows the active console
 #'   theme, read afresh for each event, so switching trace on reaches the file
@@ -225,7 +257,11 @@ file_json_sink <- function(path) {
 #'
 #' # A file that records call sites even with the console column off.
 #' logtree_sink_file(tempfile(), format = "text", trace = TRUE)
-logtree_sink_file <- function(path, format = c("text", "json"), trace = NULL) {
+#'
+#' # A debug-level record on disk while the console stays at "info".
+#' logtree_sink_file(tempfile(), format = "json", threshold = "debug")
+logtree_sink_file <- function(path, format = c("text", "json"), trace = NULL,
+                              threshold = NULL) {
   format <- match.arg(format)
   sink_fn <- if (identical(format, "json")) {
     file_json_sink(path)
@@ -236,6 +272,7 @@ logtree_sink_file <- function(path, format = c("text", "json"), trace = NULL) {
   # would render a column that was never populated. See trace_enabled().
   invisible(register_sink(
     sink_fn,
-    trace = !is.null(trace) && !isFALSE(trace)
+    threshold = threshold,
+    trace     = !is.null(trace) && !isFALSE(trace)
   ))
 }

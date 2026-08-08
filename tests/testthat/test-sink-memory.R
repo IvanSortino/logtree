@@ -77,7 +77,7 @@ test_that("the memory sink records the same time the JSON sink writes", {
   from_memory <- logtree_sink_memory_events(h)$ts[[1]]
   from_json   <- jsonlite::fromJSON(readLines(path)[[1]])$ts
   # Stamped once in emit() and handed to both sinks, so they cannot disagree.
-  expect_equal(as.numeric(from_memory), from_json)
+  expect_equal(format(from_memory, json_ts_format), from_json)
 })
 
 test_that("the memory sink keeps the last `max` events", {

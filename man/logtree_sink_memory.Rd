@@ -4,12 +4,17 @@
 \alias{logtree_sink_memory}
 \title{Collect logged events in memory}
 \usage{
-logtree_sink_memory(max = 1000)
+logtree_sink_memory(max = 1000, threshold = NULL)
 }
 \arguments{
 \item{max}{Maximum number of events to keep. Once the buffer is full the
 oldest events are dropped, so what you read back is always the most recent
 \code{max}. Default \code{1000}.}
+
+\item{threshold}{Minimum leaf level to collect, as in \code{\link[=logtree_sink]{logtree_sink()}}.
+\code{NULL} (the default) follows the global \code{\link[=logtree_threshold]{logtree_threshold()}}; pass
+\code{"debug"} to collect everything a run logged regardless of what the console
+was set to show.}
 }
 \value{
 The sink's id, invisibly -- pass it to

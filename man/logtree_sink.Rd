@@ -4,11 +4,16 @@
 \alias{logtree_sink}
 \title{Register a sink of your own}
 \usage{
-logtree_sink(fn)
+logtree_sink(fn, threshold = NULL)
 }
 \arguments{
 \item{fn}{A function of one argument, called with each emitted event. Its
 return value is ignored.}
+
+\item{threshold}{Minimum leaf level this sink receives: one of \code{"debug"},
+\code{"info"}, \code{"warn"}, \code{"error"}. \code{NULL} (the default) follows the global
+\code{\link[=logtree_threshold]{logtree_threshold()}}, read afresh for each event. Step open/close lines are
+never gated, whatever the threshold.}
 }
 \value{
 The sink's id, invisibly -- pass it to \code{\link[=logtree_sink_remove]{logtree_sink_remove()}}.
@@ -41,7 +46,12 @@ invisible(f())
 seen
 
 logtree_sink_remove(h)
+
+# A sink that only ever hears about failures.
+h <- logtree_sink(function(event) invisible(NULL), threshold = "error")
+logtree_sink_remove(h)
 }
 \seealso{
-\code{\link[=logtree_sinks]{logtree_sinks()}}, \code{\link[=logtree_sink_remove]{logtree_sink_remove()}}, \code{\link[=logtree_sink_file]{logtree_sink_file()}}
+\code{\link[=logtree_sinks]{logtree_sinks()}}, \code{\link[=logtree_sink_remove]{logtree_sink_remove()}}, \code{\link[=logtree_sink_file]{logtree_sink_file()}},
+\code{\link[=logtree_sink_memory]{logtree_sink_memory()}}
 }

@@ -66,7 +66,8 @@ test_that("json sink produces one parseable NDJSON object per event", {
 
   parsed <- lapply(lines, function(l) jsonlite::fromJSON(l))
   for (p in parsed) {
-    expect_true(all(c("ts", "level", "id", "parent_id", "depth", "label", "elapsed", "status") %in% names(p)))
+    expect_true(all(c("ts", "run_id", "level", "id", "parent_id", "depth",
+                      "label", "elapsed", "status") %in% names(p)))
   }
 
   levels <- vapply(parsed, function(p) p$level, character(1))

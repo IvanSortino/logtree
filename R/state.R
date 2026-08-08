@@ -22,6 +22,18 @@ the$trace_sinks <- character(0)
 # *is* cleared by logtree_reset(): it is noise suppression, not configuration.
 the$sink_failed <- character(0)
 
+# Identifies one run in structured output: every record a "json" sink writes
+# carries it, so the lines belonging to a single run can be picked out of a log
+# file that many runs appended to. Set at load, and refreshed at each boundary
+# where a new run plainly starts -- a with_logging() call, or a logtree_reset().
+#
+# Built from the wall clock and the process id rather than drawn at random, on
+# purpose: sampling would consume the user's RNG stream, and a logger has no
+# business perturbing a reproducible script's random numbers.
+new_run_id <- function() {
+  sprintf("%s-%d", format(wall_clock(), "%Y%m%dT%H%M%OS3"), Sys.getpid())
+}
+
 # with_logging(global = TRUE) installs a session-persistent global calling
 # handler. These track whether it is installed, the global handlers that were
 # in force before (restored on reset), and when it was installed (for the
@@ -82,6 +94,7 @@ logtree_reset <- function() {
   the$next_id     <- 1L
   the$summary     <- list()
   the$sink_failed <- character(0)
+  the$run_id      <- new_run_id()
   # Tear down any global handler installed by with_logging(global = TRUE),
   # restoring whatever global handlers were in force beforehand. Guarded:
   # globalCallingHandlers() errors if condition handlers are on the stack

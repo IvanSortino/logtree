@@ -403,11 +403,20 @@ logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
 #' `"debug"`, `log_info()` and `log_success()` count as `"info"`, `log_warn()`
 #' as `"warn"`, `log_error()` as `"error"`. Step open/close lines always
 #' render regardless of verbosity, since hiding them would break the tree
-#' structure. Suppressed `log_warn()`/`log_error()` calls still elevate the
-#' enclosing step's close glyph -- verbosity only hides the leaf line's own text.
+#' structure.
+#'
+#' This is the *default* for every sink; a sink registered with its own
+#' `threshold` ignores it (see [logtree_sink_file()] and [logtree_sink()]), which
+#' is what lets a debug-level log file coexist with an ordinary console.
+#'
+#' Verbosity governs rendering only, never what the run remembers. A suppressed
+#' `log_warn()`/`log_error()` still elevates the enclosing step's close glyph,
+#' and still reaches the [logtree_summary()] digest -- what is hidden is the leaf
+#' line's own text, not the fact that it happened.
 #'
 #' @param level One of `"debug"`, `"info"`, `"warn"`, `"error"` (case-insensitive).
 #' @return `NULL`, invisibly.
+#' @seealso [logtree_sink_file()] and [logtree_sink()] for per-sink thresholds.
 #' @export
 #' @examples
 #' logtree_threshold("info")

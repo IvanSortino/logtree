@@ -19,12 +19,18 @@ covers <- function(anc, desc) {
 #     already-buffered entry sits at or below its path (dedup: keeps one entry
 #     per failure at its deepest point). Closes fire deepest-first, so the
 #     deeper entry is always buffered before the shallower ancestor arrives.
+
+# Does the digest want a leaf of this status, logged with this `summary`
+# argument? `TRUE` pins it, `FALSE` excludes it, `NA` (the default) records only
+# warnings and errors. Shared with emit_leaf() (R/leaves.R), which asks the same
+# question one step earlier to decide whether the leaf is worth building at all.
+summary_keeps <- function(status, summary) {
+  isTRUE(summary) || (is.na(summary) && status %in% c("warning", "error"))
+}
+
 record_summary <- function(event) {
   if (identical(event$kind, "leaf")) {
-    sm <- event$summary
-    keep <- isTRUE(sm) ||
-      (is.na(sm) && event$status %in% c("warning", "error"))
-    if (!keep) return(invisible(NULL))
+    if (!summary_keeps(event$status, event$summary)) return(invisible(NULL))
     the$summary[[length(the$summary) + 1L]] <- list(
       kind = "leaf", status = event$status, msg = event$label,
       path = current_path(), elapsed = NA_real_, trace = event$trace

@@ -32,12 +32,12 @@ new_sink_id <- function() {
 #
 # `store` is the backing environment of a memory sink, parked here so it is
 # dropped along with the sink rather than kept alive by the closure alone.
-register_sink <- function(fn, trace = FALSE, store = NULL) {
+register_sink <- function(fn, threshold = NULL, trace = FALSE, store = NULL) {
   if (!is.function(fn)) {
     stop("`fn` must be a function taking one argument (the event).", call. = FALSE)
   }
   id <- new_sink_id()
-  the$sinks[[id]] <- list(fn = fn)
+  the$sinks[[id]] <- list(fn = fn, threshold = resolve_threshold(threshold))
   if (isTRUE(trace)) the$trace_sinks <- c(the$trace_sinks, id)
   if (!is.null(store)) the$sink_stores[[id]] <- store
   id
@@ -63,8 +63,13 @@ register_sink <- function(fn, trace = FALSE, store = NULL) {
 #'
 #' @param fn A function of one argument, called with each emitted event. Its
 #'   return value is ignored.
+#' @param threshold Minimum leaf level this sink receives: one of `"debug"`,
+#'   `"info"`, `"warn"`, `"error"`. `NULL` (the default) follows the global
+#'   [logtree_threshold()], read afresh for each event. Step open/close lines are
+#'   never gated, whatever the threshold.
 #' @return The sink's id, invisibly -- pass it to [logtree_sink_remove()].
-#' @seealso [logtree_sinks()], [logtree_sink_remove()], [logtree_sink_file()]
+#' @seealso [logtree_sinks()], [logtree_sink_remove()], [logtree_sink_file()],
+#'   [logtree_sink_memory()]
 #' @export
 #' @examples
 #' logtree_reset()
@@ -76,8 +81,12 @@ register_sink <- function(fn, trace = FALSE, store = NULL) {
 #' seen
 #'
 #' logtree_sink_remove(h)
-logtree_sink <- function(fn) {
-  invisible(register_sink(fn))
+#'
+#' # A sink that only ever hears about failures.
+#' h <- logtree_sink(function(event) invisible(NULL), threshold = "error")
+#' logtree_sink_remove(h)
+logtree_sink <- function(fn, threshold = NULL) {
+  invisible(register_sink(fn, threshold = threshold))
 }
 
 #' Collect logged events in memory
@@ -94,6 +103,10 @@ logtree_sink <- function(fn) {
 #' @param max Maximum number of events to keep. Once the buffer is full the
 #'   oldest events are dropped, so what you read back is always the most recent
 #'   `max`. Default `1000`.
+#' @param threshold Minimum leaf level to collect, as in [logtree_sink()].
+#'   `NULL` (the default) follows the global [logtree_threshold()]; pass
+#'   `"debug"` to collect everything a run logged regardless of what the console
+#'   was set to show.
 #' @return The sink's id, invisibly -- pass it to
 #'   [logtree_sink_memory_events()] to read the buffer, and to
 #'   [logtree_sink_remove()] to stop collecting.
@@ -113,7 +126,7 @@ logtree_sink <- function(fn) {
 #' events[, c("level", "label", "status")]
 #'
 #' logtree_sink_remove(h)
-logtree_sink_memory <- function(max = 1000) {
+logtree_sink_memory <- function(max = 1000, threshold = NULL) {
   if (!is.numeric(max) || length(max) != 1L || is.na(max) || max < 1) {
     stop("`max` must be a single positive number of events.", call. = FALSE)
   }
@@ -130,7 +143,7 @@ logtree_sink_memory <- function(max = 1000) {
     if (n > max) store$events <- store$events[seq.int(n - max + 1L, n)]
     invisible(NULL)
   }
-  invisible(register_sink(fn, store = store))
+  invisible(register_sink(fn, threshold = threshold, store = store))
 }
 
 #' Read a memory sink's collected events

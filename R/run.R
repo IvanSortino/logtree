@@ -49,6 +49,7 @@ global_error_action <- function(cnd, summary) {
 # query form used for the snapshot is always safe.
 install_global_logging <- function(summary) {
   if (isTRUE(the$global_installed)) return(invisible(NULL))
+  the$run_id <- new_run_id()
   prev <- globalCallingHandlers()
   globalCallingHandlers(error = function(cnd) global_error_action(cnd, summary))
   the$global_installed <- TRUE
@@ -116,7 +117,10 @@ with_logging <- function(expr, summary = TRUE, global = FALSE) {
     }
     return(install_global_logging(summary))
   }
-  run_start <- now()
+  # A new run: structured output gets a fresh id, so the records belonging to
+  # this call can be told apart in a log file many runs have appended to.
+  the$run_id <- new_run_id()
+  run_start  <- now()
   result <- tryCatch(
     withCallingHandlers(
       expr,
