@@ -1,6 +1,31 @@
+# Fan one event out to every registered sink, in registration order
+# (R/sinks.R holds the registry itself).
+#
+# A sink that throws must not take the rest of the fanout down with it: the
+# logger is a witness to what went wrong, not a new source of failures. So each
+# call is wrapped, the offender is skipped, and a warning naming it is raised
+# once -- the id is marked in `the$sink_failed` *before* the warning goes out,
+# and the warning itself only after the loop. That ordering is what keeps this
+# terminating under with_logging(warnings = TRUE), where the warning is routed
+# back into a leaf and re-enters emit(): the second pass finds the sink already
+# marked and stays quiet.
 emit <- function(event) {
   record_summary(event)
-  for (sink in the$sinks) sink(event)
+  problems <- character(0)
+  for (id in names(the$sinks)) {
+    fn <- the$sinks[[id]]$fn
+    tryCatch(fn(event), error = function(e) {
+      if (!id %in% the$sink_failed) {
+        the$sink_failed  <- c(the$sink_failed, id)
+        problems[[id]]  <<- conditionMessage(e)
+      }
+    })
+  }
+  for (id in names(problems)) {
+    warning(sprintf("logtree sink '%s' threw and was skipped: %s", id, problems[[id]]),
+            call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 console_sink <- function(event) {
@@ -151,7 +176,10 @@ file_json_sink <- function(path) {
 #'   too; `FALSE`, `TRUE` or `"problems"` pins this sink independently of the
 #'   console. Text sinks only: a `"json"` sink always carries the `fn`, `file`
 #'   and `line` fields, `null` when there is no call site to report.
-#' @return `NULL`, invisibly.
+#' @return The sink's id, invisibly -- pass it to [logtree_sink_remove()] to
+#'   stop writing to this file.
+#' @seealso [logtree_sink()] for a sink of your own, [logtree_sinks()] and
+#'   [logtree_sink_remove()] for the registry.
 #' @export
 #' @examples
 #' logtree_reset()
@@ -171,9 +199,8 @@ logtree_sink_file <- function(path, format = c("text", "json"), trace = NULL) {
   }
   # A sink asking for trace in its own right has to switch *capture* on, or it
   # would render a column that was never populated. See trace_enabled().
-  if (!is.null(trace) && !isFALSE(trace)) {
-    the$trace_sinks <- the$trace_sinks + 1L
-  }
-  the$sinks[[length(the$sinks) + 1L]] <- sink_fn
-  invisible(NULL)
+  invisible(register_sink(
+    sink_fn,
+    trace = !is.null(trace) && !isFALSE(trace)
+  ))
 }

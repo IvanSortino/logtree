@@ -20,7 +20,8 @@ console. Text sinks only: a \code{"json"} sink always carries the \code{fn}, \co
 and \code{line} fields, \code{null} when there is no call site to report.}
 }
 \value{
-\code{NULL}, invisibly.
+The sink's id, invisibly -- pass it to \code{\link[=logtree_sink_remove]{logtree_sink_remove()}} to
+stop writing to this file.
 }
 \description{
 Registers an additional output destination. Every logged event fans out
@@ -37,4 +38,8 @@ with_logging({
 
 # A file that records call sites even with the console column off.
 logtree_sink_file(tempfile(), format = "text", trace = TRUE)
+}
+\seealso{
+\code{\link[=logtree_sink]{logtree_sink()}} for a sink of your own, \code{\link[=logtree_sinks]{logtree_sinks()}} and
+\code{\link[=logtree_sink_remove]{logtree_sink_remove()}} for the registry.
 }

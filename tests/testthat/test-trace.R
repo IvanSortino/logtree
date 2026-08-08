@@ -155,9 +155,9 @@ test_that("a leaf traces to its own enclosing function, not to emit_leaf", {
   local_reset_sinks()
 
   seen <- list()
-  the$sinks <- c(the$sinks, list(function(event) {
+  logtree_sink(function(event) {
     if (identical(event$kind, "leaf")) seen[[length(seen) + 1L]] <<- event
-  }))
+  })
 
   parse_rows <- function() {
     log_info("1200 rows")
@@ -182,7 +182,7 @@ test_that("a verbosity-suppressed leaf captures nothing", {
   logtree_threshold("info")   # debug is below the gate
 
   seen <- 0L
-  the$sinks <- c(the$sinks, list(function(event) seen <<- seen + 1L))
+  logtree_sink(function(event) seen <<- seen + 1L)
 
   f <- function() log_debug("cache miss")
   invisible(capture.output(f()))
@@ -541,7 +541,9 @@ test_that("the JSON sink always carries fn/file/line, null when absent", {
 
   # Trace on: populated.
   logtree_reset()
-  the$sinks <- list(console_sink)
+  # Drop the json sink registered above; the second half of this test wants a
+  # file of its own, with trace on this time.
+  logtree_sink_remove(setdiff(logtree_sinks(), "console"))
   local_trace(TRUE)
   freeze_srcref("demo.R", 7L)
   on <- tempfile(fileext = ".ndjson")

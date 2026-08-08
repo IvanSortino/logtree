@@ -199,19 +199,12 @@ cat("\n")
 # A quiet console with a log file that still records call sites: the sink's own
 # `trace =` switches capture on by itself.
 #
-# Sinks are additive and deliberately NOT cleared by logtree_reset(), and there
-# is as yet no logtree_sink_remove() (debug/feature-plan.md item 4). A demo with
-# more than one sink section therefore has to reach into internals to unregister
-# the previous one -- the same `logtree:::the` poking 14_srckey_replay.R does.
-# Note the local binding: `logtree:::the$x <- v` is a complex assignment, which R
-# rewrites into a call needing `logtree` as an ordinary object, so it fails with
-# "object 'logtree' not found". Bind the environment first, then assign through
-# it -- environments are reference semantics, so it is the same state object.
-# Do not copy this into real code.
+# Sinks are additive and deliberately NOT cleared by logtree_reset(), so a demo
+# with more than one sink section has to unregister the previous one itself --
+# logtree_sink_remove() (see debug/26_sink_registry.R), which also takes back
+# the capture the sink's `trace =` switched on.
 drop_sinks <- function() {
-  st <- logtree:::the
-  st$sinks       <- list(logtree:::console_sink)
-  st$trace_sinks <- 0L
+  logtree_sink_remove(setdiff(logtree_sinks(), "console"))
 }
 
 section("I. trace = TRUE on the sink only -- console stays clean")
