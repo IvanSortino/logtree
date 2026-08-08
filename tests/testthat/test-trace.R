@@ -95,17 +95,33 @@ test_that("call_fn_name handles plain calls, odd calls, and NULL", {
   expect_true(is.na(call_fn_name(quote((function() 1)()))))
 })
 
-test_that("resolve_trace_show normalises to FALSE, TRUE or \"problems\"", {
+test_that("resolve_trace_show normalises to FALSE or a set of statuses", {
   th <- glyphs_ascii
   th$trace$show <- FALSE
   expect_false(resolve_trace_show(th))
+  # The two shorthands are resolved away here, which is what lets every
+  # downstream decision be a single membership test.
   th$trace$show <- TRUE
-  expect_true(resolve_trace_show(th))
+  expect_equal(resolve_trace_show(th), trace_statuses)
   th$trace$show <- "problems"
-  expect_equal(resolve_trace_show(th), "problems")
+  expect_equal(resolve_trace_show(th), c("warning", "error", "interrupted"))
+  # TRUE has to stay a strict superset of "problems".
+  expect_true(all(c("warning", "error", "interrupted") %in% trace_statuses))
+
+  th$trace$show <- c("error", "interrupted")
+  expect_equal(resolve_trace_show(th), c("error", "interrupted"))
+  # Unknown tokens are dropped rather than passed through to the membership
+  # test, where they would silently match nothing.
+  th$trace$show <- c("error", "oops")
+  expect_equal(resolve_trace_show(th), "error")
+
   # Anything unrecognised reads as off, matching how the elapsed slot's fields
   # are checked defensively at use rather than validated when set.
   th$trace$show <- "problem"
+  expect_false(resolve_trace_show(th))
+  th$trace$show <- character(0)
+  expect_false(resolve_trace_show(th))
+  th$trace$show <- NA_character_
   expect_false(resolve_trace_show(th))
   th$trace$show <- 3
   expect_false(resolve_trace_show(th))
@@ -340,6 +356,67 @@ test_that("show = \"problems\" traces only what went wrong", {
   expect_equal(format_close(entry, color = FALSE), "|- ! Done  0.50s")
 })
 
+test_that("a status vector traces exactly the statuses it names", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_trace("error")
+
+  tr <- test_trace()
+  # The whole point of the vector form: errors without their warnings.
+  expect_equal(format_leaf("error", "bad row", 1L, color = FALSE, trace = tr),
+               "|- x bad row  pipeline.R:12 load_data()")
+  expect_equal(format_leaf("warning", "coerced", 1L, color = FALSE, trace = tr),
+               "|- ! coerced")
+
+  # "interrupted" is not implied by "error": an unwound step is its own status.
+  entry <- list(depth = 1L, label = "Pipeline", glyph = NULL,
+                status = "interrupted", elapsed = 0.5, trace = tr)
+  expect_no_match(format_close(entry, color = FALSE), "pipeline.R", fixed = TRUE)
+
+  local_trace(c("error", "interrupted"))
+  expect_match(format_close(entry, color = FALSE),
+               "pipeline\\.R:12 load_data\\(\\)$")
+})
+
+test_that("statuses map onto the line kinds that can report them", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  tr    <- test_trace()
+  entry <- list(depth = 1L, label = "Pipeline", glyph = NULL,
+                status = "running", elapsed = 0.5, trace = tr)
+
+  # "running" is what an open line reports, so it is the token that turns open
+  # lines on -- and it says nothing about leaves.
+  local_trace("running")
+  expect_equal(format_open(entry, color = FALSE),
+               "> Pipeline  pipeline.R:12 load_data()")
+  expect_equal(format_leaf("info", "reading", 1L, color = FALSE, trace = tr),
+               "|- i reading")
+
+  # A clean close stays clean even when its status is named: its site is its
+  # own open line's, two rows up.
+  local_trace(c("running", "success"))
+  entry$status <- "success"
+  expect_equal(format_close(entry, color = FALSE), "|- + Done  0.50s")
+  expect_equal(format_leaf("success", "ok", 1L, color = FALSE, trace = tr),
+               "|- + ok  pipeline.R:12 load_data()")
+})
+
+test_that("a set naming nothing real is off, like any unrecognised show", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_trace("errors")  # plural: not the status vocabulary
+
+  expect_false(trace_enabled())
+  expect_equal(format_leaf("error", "bad row", 1L, color = FALSE,
+                           trace = test_trace()),
+               "|- x bad row")
+})
+
 test_that("show = TRUE is a superset of \"problems\"", {
   logtree_reset()
   withr::defer(logtree_reset())
@@ -495,6 +572,30 @@ test_that("digest lines carry the call site", {
 
   expect_true(any(grepl("coerced 3 rows  pipeline.R:20 parse_rows()", out,
                         fixed = TRUE)))
+})
+
+test_that("the digest applies the same status filter as the tree", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_trace("error")
+  freeze_srcref("pipeline.R", 20L)
+
+  job <- function() {
+    log_step("Job")
+    log_warn("coerced 3 rows")
+    log_error("no numeric columns")
+  }
+  invisible(capture.output(job()))
+  out <- capture.output(logtree_summary())
+
+  # show = "error" means errors only wherever you read it, digest included --
+  # the point of naming statuses rather than taking a bundle.
+  expect_true(any(grepl("no numeric columns  pipeline.R:20 job()", out,
+                        fixed = TRUE)))
+  warn_line <- grep("coerced 3 rows", out, fixed = TRUE, value = TRUE)
+  expect_length(warn_line, 1L)
+  expect_false(any(grepl("pipeline.R", warn_line, fixed = TRUE)))
 })
 
 test_that("digest entries expose the trace in the returned records", {

@@ -837,29 +837,25 @@ trace_styles <- function(theme = the$theme) {
 # the column is hidden, so callers join their columns conditionally -- the same
 # contract as format_elapsed_field() above.
 #
-# `show` decides which line kinds carry it:
+# resolve_trace_show() has already turned `show` into a set of statuses, so the
+# policy here is one membership test against the status this line reports:
+# "running" for an open line, the line's own status otherwise. `TRUE` names
+# every status and so stays a strict superset of `"problems"` -- turning the
+# column up must never take a line away that the quieter setting was showing.
 #
-#   FALSE        nothing (the default in every preset).
-#   "problems"   warning/error leaves, plus interrupted close lines. That last
-#                case is the only line kind where nothing else carries a
-#                location -- a step whose frame unwound with no with_logging()
-#                handler has no accompanying leaf to hang it on.
-#   TRUE         everything "problems" shows, plus every open line and every
-#                other leaf. Ordinary close lines stay out either way: their
-#                site is their own open line's, two rows up.
-#
-# TRUE is deliberately a superset of "problems" -- turning the column up should
-# never take a line away that the quieter setting was showing.
+# The one rule that is not membership: an ordinary close line never carries a
+# trace, whatever the set, because its site is its own open line's, two rows up.
+# An *interrupted* close is the exception, and the only line kind where nothing
+# else carries a location -- a step whose frame unwound with no with_logging()
+# handler has no accompanying leaf to hang it on.
 format_trace_field <- function(trace, kind, status = NULL, theme = the$theme,
                                color = TRUE) {
   if (is.null(trace)) return("")
   show <- resolve_trace_show(theme)
   if (isFALSE(show)) return("")
-  problem <- (identical(kind, "leaf") && !is.null(status) &&
-                status %in% c("warning", "error")) ||
-    (identical(kind, "close") && identical(status, "interrupted"))
-  wanted <- problem || (isTRUE(show) && kind %in% c("open", "leaf"))
-  if (!wanted) return("")
+  if (identical(kind, "close") && !identical(status, "interrupted")) return("")
+  line_status <- if (identical(kind, "open")) "running" else status
+  if (is.null(line_status) || !(line_status %in% show)) return("")
   render_trace_text(trace, theme, color)
 }
 
@@ -875,14 +871,17 @@ render_trace_text <- function(trace, theme = the$theme, color = TRUE) {
 
 # The trace column for a logtree_summary() digest line.
 #
-# The digest holds only notable events -- warnings, errors, steps that ended
-# badly, plus anything explicitly pinned with summary = TRUE -- so there is no
-# per-kind policy to apply the way there is for a tree line: every entry in it
-# is already the kind of thing you want a call site for. Any non-FALSE `show`
-# prints it, which means `"problems"` and `TRUE` behave identically here.
-format_trace_digest <- function(trace, theme = the$theme, color = TRUE) {
+# The same status filter as a tree line, minus the per-kind rules: a digest
+# entry has no connectors and no close line of its own, so its own status is
+# the whole question. `show = "error"` therefore means errors only wherever you
+# read it -- in the tree and in the digest alike -- which is the point of naming
+# statuses rather than picking a bundle.
+format_trace_digest <- function(trace, status = NULL, theme = the$theme,
+                                color = TRUE) {
   if (is.null(trace)) return("")
-  if (isFALSE(resolve_trace_show(theme))) return("")
+  show <- resolve_trace_show(theme)
+  if (isFALSE(show)) return("")
+  if (is.null(status) || !(status %in% show)) return("")
   render_trace_text(trace, theme, color)
 }
 

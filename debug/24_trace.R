@@ -1,8 +1,11 @@
 # Call-site trace: the `trace` theme slot annotates log lines with where in
 # your code they came from.
 #
-#   show   -- FALSE (default) off entirely; "problems" only on warnings, errors
-#             and interrupted steps; TRUE on every open line and leaf too
+#   show   -- FALSE (default) off entirely; TRUE on every line that can carry a
+#             call site; "problems" shorthand for warnings, errors and
+#             interrupted steps; or a vector of the statuses themselves --
+#             "running" (open lines), "info"/"debug"/"success"/"warning"/
+#             "error" (leaves) and "interrupted" (a step that unwound)
 #   format -- a template over {fn}, {file} and {line}, default
 #             "{file}:{line} {fn}()"
 #   color  -- cli styles: one vector for the whole column, or a named list
@@ -64,7 +67,23 @@ run_section("A. default -- trace off, output unchanged")
 run_section("B. show = \"problems\" -- only where something went wrong",
             overrides = list(trace = list(show = "problems")))
 
-run_section("C. show = TRUE -- every open line and leaf",
+# "problems" is a bundle. Naming statuses instead is how you take the errors and
+# leave the tolerated warnings alone -- compare the "coerced 3 rows" line here
+# with section B, where it carries a call site.
+run_section("B2. show = \"error\" -- errors, without their warnings",
+            overrides = list(trace = list(show = "error")))
+
+# Statuses are the theme's own vocabulary, so anything that has a glyph slot can
+# be named: here the errors plus any step whose frame unwound.
+run_section("B3. show = c(\"error\", \"interrupted\") -- and the steps that died",
+            overrides = list(trace = list(show = c("error", "interrupted"))))
+
+# "running" is what an open line reports, so it is the token that turns *only*
+# the open lines on -- the leaves below them stay bare.
+run_section("B4. show = \"running\" -- open lines only",
+            overrides = list(trace = list(show = "running")))
+
+run_section("C. show = TRUE -- every line that can carry a call site",
             overrides = list(trace = list(show = TRUE)))
 
 run_section("D. format = \"{fn}()\" -- the half that never degrades",
@@ -92,6 +111,15 @@ run_section("E3. color = \"blue\" -- one style over the whole column",
 section("F. the summary digest carries call sites too")
 logtree_reset()
 logtree_theme("unicode", overrides = list(trace = list(show = "problems")))
+with_logging(tree(), summary = FALSE)
+logtree_summary()
+logtree_theme("unicode")
+
+# The digest applies the same filter, so a status named once means the same
+# thing everywhere: only the error line below carries a location.
+section("F2. the digest filters by status too (show = \"error\")")
+logtree_reset()
+logtree_theme("unicode", overrides = list(trace = list(show = "error")))
 with_logging(tree(), summary = FALSE)
 logtree_summary()
 logtree_theme("unicode")

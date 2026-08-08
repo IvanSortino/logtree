@@ -4,7 +4,15 @@
   in your code* it came from as well as what happened. `logtree_theme(list(trace
   = list(show = "problems")))` annotates only warning and error leaves plus
   steps that were interrupted -- the lines you go looking for a source location
-  on -- and `show = TRUE` extends that to every open line and leaf. The column's
+  on -- and `show = TRUE` extends that to every line that can carry one. When
+  that bundle is more than you want, `show` also takes the statuses themselves:
+  `"error"` annotates errors and leaves tolerated warnings bare, `c("error",
+  "interrupted")` adds the steps that never finished, `"running"` names open
+  lines. An ordinary close line never carries a call site whatever you name --
+  its site is its own open line's. The same filter applies to
+  `logtree_summary()`'s digest, so a status named once means the same thing
+  everywhere (a line pinned into the digest with `summary = TRUE` therefore
+  carries a call site only when its own status is in the set). The column's
   content is a template over `{fn}`, `{file}` and `{line}` (default
   `"{file}:{line} {fn}()"`), styled by the slot's `color` -- which takes a
   `list(base=, location=, fn=)` so the parts can be told apart, as the presets

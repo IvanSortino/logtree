@@ -224,7 +224,7 @@ logtree_summary <- function(filter = NULL, depth = NULL,
       # emphasised path reads as the trail leading to it.
       crumb <- with_trace(
         format_crumb(clip(c(e$path, e$msg)), plain_last = TRUE),
-        format_trace_digest(e$trace)
+        format_trace_digest(e$trace, e$status)
       )
       cat(compose_flat_line(theme_glyph(e$status), crumb), "\n", sep = "")
     } else {
@@ -239,7 +239,8 @@ logtree_summary <- function(filter = NULL, depth = NULL,
       )
       cat(compose_flat_line(
             theme_glyph(e$status),
-            with_trace(paste0(path, "  ", detail), format_trace_digest(e$trace))
+            with_trace(paste0(path, "  ", detail),
+                       format_trace_digest(e$trace, e$status))
           ), "\n", sep = "")
     }
   }

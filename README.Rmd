@@ -207,6 +207,18 @@ printed relative to the working directory and is a single terminal hyperlink to
 the file at that line -- click it and your editor opens there; terminals without
 hyperlink support print the same text unlinked.
 
+When `"problems"` is more than you want, `show` takes the statuses themselves --
+`"running"` for open lines, `"info"`/`"debug"`/`"success"`/`"warning"`/`"error"`
+for leaves, `"interrupted"` for a step that never finished:
+
+``` r
+logtree_theme(list(trace = list(show = "error")))              # errors only
+logtree_theme(list(trace = list(show = c("error", "interrupted"))))
+```
+
+The same filter applies to the digest, so `show = "error"` means errors only
+wherever you read them.
+
 The example above pins `format = "{fn}()"` because `{file}` and `{line}` come
 from R's source references, and those exist only when code was parsed with
 `keep.source = TRUE` -- true interactively and under `devtools::load_all()`, but

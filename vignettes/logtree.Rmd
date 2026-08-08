@@ -240,7 +240,7 @@ logtree_theme("unicode")
 | `width` | `integer(1)` | Rendered display width of the glyph (`1` normal, `2` emoji/wide). Sets column alignment; status slots only. |
 | `color` | `character` / `NULL` / `list` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. On `trace`, a named list styles the parts separately: `location`, `fn`, `base`. |
 | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its time; `""` drops it. Expands `{label}` and `{elapsed}`. |
-| `show` | `logical(1)` / `character(1)` | On `elapsed`, `FALSE` drops the time column entirely. On `trace`, `FALSE` (default) is off, `"problems"` marks only warnings/errors/interrupted steps, `TRUE` adds every open line and leaf. |
+| `show` | `logical(1)` / `character` | On `elapsed`, `FALSE` drops the time column entirely. On `trace`, `FALSE` (default) is off, `TRUE` marks every line that can carry a call site, `"problems"` is shorthand for `c("warning", "error", "interrupted")`, and a status vector names exactly what to mark -- e.g. `"error"`, or `c("error", "interrupted")`. |
 | `format` | `character(1)` | `trace` slot only. Template over `{fn}`, `{file}`, `{line}`. Default `"{file}:{line} {fn}()"`. |
 | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds. |
 | `slow` | `numeric(1)` / `NULL` | `elapsed` slot only. Times at or over this count as slow. |
@@ -295,6 +295,14 @@ so you opt in and the default path pays nothing. `show = "problems"` marks only
 warning and error leaves plus interrupted steps; `show = TRUE` adds every open
 line and leaf.
 
+When that bundle is more than you want, `show` also takes the statuses
+themselves -- `"running"` for open lines, `"info"`, `"debug"`, `"success"`,
+`"warning"`, `"error"` for leaves, `"interrupted"` for a step that unwound. So
+`show = "error"` annotates errors and leaves tolerated warnings bare, and
+`show = c("error", "interrupted")` adds the steps that never finished. An
+ordinary close line never carries a call site whatever you name, since its site
+is its own open line's, two rows up.
+
 ```{r}
 logtree_theme("unicode", overrides = list(
   trace = list(show = "problems", format = "{fn}()")
@@ -333,7 +341,9 @@ logtree_theme("unicode", overrides = list(
 
 The column is appended to the message rather than given a column of its own, so
 it wraps with the message instead of shearing the tree. It also reaches
-`logtree_summary()`'s digest lines and the `fn` / `file` / `line` fields of a
+`logtree_summary()`'s digest lines, where the same status filter applies -- so
+`show = "error"` means errors only wherever you read them -- and the `fn` /
+`file` / `line` fields of a
 `"json"` sink; `logtree_sink_file(trace = )` pins a file sink's column
 independently of the console's, so a log file can record call sites while the
 terminal stays quiet.

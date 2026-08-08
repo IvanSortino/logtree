@@ -89,7 +89,14 @@ The opt-in `trace` theme slot annotates lines with `file.R:line fn()`.
 `src_parts()` reads the srcref for file/line (and `src_location()`, the older
 "file:line" view used by the srckey reconcile, now delegates to it). Capture is
 gated by `trace_enabled()` and so costs nothing on the default path — `show` is
-`FALSE` in every preset. **`{file}`/`{line}` require `keep.source`**, absent
+`FALSE` in every preset. `resolve_trace_show()` normalises `show` to **`FALSE`
+or a character vector of statuses** (`trace_statuses`: running, info, debug,
+success, warning, error, interrupted), resolving the `TRUE` and `"problems"`
+shorthands away there so every line-level decision is one `%in%` —
+`format_trace_field()` tests `"running"` for open lines and the line's own
+status otherwise, and `format_trace_digest()` tests the entry's status. The one
+rule that is not membership: an ordinary close line never carries a trace (its
+site is its own open line's), only an interrupted one. **`{file}`/`{line}` require `keep.source`**, absent
 under plain `Rscript`, so `expand_trace_text()` drops any template run whose
 placeholders are all unavailable rather than rendering `NA`.
 

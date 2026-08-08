@@ -148,8 +148,10 @@ The \code{trace} slot is off in every preset, and deliberately so: capturing a c
 site costs a frame walk and a source-reference lookup on every logged line, so
 you opt in and the default path pays nothing. Switch it on with
 \code{list(trace = list(show = "problems"))} to annotate only what went wrong, or
-\code{show = TRUE} for every open line and leaf. The column is appended to the
-message, so it wraps with it rather than shearing the tree.
+\code{show = TRUE} for every line that can carry a call site. \code{show} also takes a
+vector of statuses, for when the bundle is too much: \code{show = "error"}
+annotates errors and leaves tolerated warnings bare, \code{show = c("error", "interrupted")} adds the steps that never finished. The column is appended to
+the message, so it wraps with it rather than shearing the tree.
 
 The location -- \code{{file}} and \code{{line}} together, separator included -- is also
 emitted as one terminal hyperlink pointing at the file, at that line, so a
@@ -170,10 +172,11 @@ degrades to no column at all. Set \code{options(keep.source = TRUE)} at the top 
 a script if you want locations under \code{Rscript}.
 
 Two places outside the tree also report call sites when the slot is on:
-\code{\link[=logtree_summary]{logtree_summary()}}'s digest lines, and the \code{fn} / \code{file} / \code{line} fields of a
-\code{"json"} sink (which carries them whenever they were captured, regardless of
-\code{show}). See \code{\link[=logtree_sink_file]{logtree_sink_file()}} for pinning a file sink's column
-independently of the console's.
+\code{\link[=logtree_summary]{logtree_summary()}}'s digest lines, which apply the same status filter as the
+tree does, and the \code{fn} / \code{file} / \code{line} fields of a \code{"json"} sink (which
+carries them whenever they were captured, regardless of \code{show}). See
+\code{\link[=logtree_sink_file]{logtree_sink_file()}} for pinning a file sink's column independently of the
+console's.
 
 \strong{Fields} (valid names inside a slot):\tabular{lll}{
    Field \tab Type \tab Accepted values \cr
@@ -181,7 +184,7 @@ independently of the console's.
    \code{width} \tab \code{integer(1)} \tab Rendered display width of \code{glyph} (\code{1} for normal, \code{2} for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (\code{step}, \code{info}, \code{debug}, \code{success}, \code{done}, \code{warning}, \code{error}, \code{interrupted}). \cr
    \code{color} \tab \code{character}, \code{NULL}, or a named \code{list} on \code{trace} \tab One or more cli styles, or \code{NULL} for no styling. Named colors (\code{"red"}, \code{"cyan"}, \code{"silver"}, ...), bright variants (\code{"br_red"}), backgrounds (\code{"bg_blue"}), text styles (\code{"bold"}, \code{"italic"}, \code{"dim"}), or a hex string (\code{"#ff8800"}). A character vector combines styles, e.g. \code{c("red", "bold")}. On the \code{elapsed} slot it styles the time itself. On \code{trace} it also accepts a named list styling the parts of the column separately: \code{location} for a \code{{file}}/\code{{line}} run (the separator between them included -- the location is one thing, styled and linked whole), \code{fn} for the function name, and \code{base} for everything else, which in the default format is the \verb{()}. That is what the coloured presets ship: all of it dim, with the location in silver and \code{fn} in cyan, so the two read apart. A plain character vector on \code{trace} styles the whole column. \code{NULL} in the colourless ascii and ci presets. See \code{\link[cli:combine_ansi_styles]{cli::combine_ansi_styles()}}. \cr
    \code{text} \tab \code{character(1)} \tab Close-line status slots only (\code{done}, \code{warning}, \code{error}, \code{interrupted}). The word a close line prints before its elapsed time; \code{""} drops it, leaving the glyph and the time. Two placeholders are expanded: \code{{label}} (the closing step's own label, or a group's name) and \code{{elapsed}} (the formatted time). A template that places \code{{elapsed}} itself owns that column, so the time is not appended after it a second time. \cr
-   \code{show} \tab \code{logical(1)}, or \code{character(1)} on \code{trace} \tab On \code{elapsed}: \code{FALSE} drops the elapsed-time column entirely, default \code{TRUE}. On \code{trace}: \code{FALSE} (the default in every preset) off entirely, \code{"problems"} only on warning/error leaves and interrupted close lines, \code{TRUE} on every open line and leaf as well. \code{TRUE} is a superset of \code{"problems"}. Anything unrecognised reads as \code{FALSE}. \cr
+   \code{show} \tab \code{logical(1)}, or \code{character} on \code{trace} \tab On \code{elapsed}: \code{FALSE} drops the elapsed-time column entirely, default \code{TRUE}. On \code{trace}: \code{FALSE} (the default in every preset) off entirely; \code{TRUE} every line that can carry a call site; \code{"problems"} a shorthand for \code{c("warning", "error", "interrupted")}; or a vector of statuses naming exactly what to annotate -- \code{"running"} (open lines), \code{"info"}, \code{"debug"}, \code{"success"}, \code{"warning"}, \code{"error"} (leaves of that status) and \code{"interrupted"} (a close line whose step unwound). \code{show = "error"} is errors without their warnings. An ordinary close line never carries one whatever the set: its site is its own open line's. Unknown tokens are dropped, and anything unrecognised reads as \code{FALSE}. \cr
    \code{format} \tab \code{character(1)} \tab \code{trace} slot only. Template for the call-site column over three placeholders: \code{{fn}} (the enclosing function's name), \code{{file}} and \code{{line}} (where the log call sits). Default \code{"{file}:{line} {fn}()"}. A whitespace-separated run whose placeholders are \emph{all} unavailable is dropped whole, so the default degrades to \code{load_data()} rather than printing \code{NA} -- see the note on source references below. \cr
    \code{min} \tab \code{numeric(1)} \tab \code{elapsed} slot only. Hide times below this many seconds -- \code{min = 0.1} silences the \verb{0.00s} noise on trivial steps. Default \code{0} (show everything). \cr
    \code{slow} \tab \code{numeric(1)} or \code{NULL} \tab \code{elapsed} slot only. Times at or over this many seconds count as slow and are styled with \code{slow_color} instead of \code{color}. \code{NULL} (the default) means nothing is ever flagged. \cr
@@ -220,6 +223,8 @@ logtree_theme(list(elapsed = list(show = FALSE)))
 # The call-site column: off by default, loudest on the lines that matter.
 logtree_theme(list(trace = list(show = "problems")))
 logtree_theme(list(trace = list(show = TRUE)))
+logtree_theme(list(trace = list(show = "error")))          # errors only
+logtree_theme(list(trace = list(show = c("error", "interrupted"))))
 logtree_theme(list(trace = list(show = TRUE, format = "{fn}()")))
 logtree_theme(list(trace = list(format = "{file}:{line}", color = "silver")))
 logtree_theme(list(trace = list(show = FALSE)))  # back off again

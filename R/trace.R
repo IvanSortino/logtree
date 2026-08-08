@@ -18,18 +18,35 @@
 # Everything here is gated by trace_enabled() at the call sites: with the slot
 # off (the default in every preset) none of it runs.
 
-# The active `trace$show` setting, normalised to exactly FALSE, TRUE or
-# "problems". Anything else -- a typo'd string, a stray number -- reads as
-# FALSE, matching how the `elapsed` slot's fields are defensively checked at
-# use rather than validated when set.
+# The statuses a trace can be asked for, which are the package's own status
+# vocabulary -- the strings that key the theme's glyph slots and that
+# status_severity() (R/leaves.R) ranks. Each names the line kind that can carry
+# it: "running" is an open line, "interrupted" a close line that unwound, and
+# the rest are leaves of that status.
+trace_statuses <- c("running", "info", "debug", "success", "warning", "error",
+                    "interrupted")
+
+# The active `trace$show` setting, normalised to either FALSE or a character
+# vector of statuses. Normalising the two shorthands away here is what lets
+# every line-level decision downstream be a single `%in%`:
+#
+#   TRUE         every status
+#   "problems"   warning and error leaves, plus interrupted close lines
+#   c(...)       the statuses named, unknown tokens dropped
+#
+# Anything else -- a typo'd string, a stray number, a set that named nothing
+# real -- reads as FALSE, matching how the `elapsed` slot's fields are
+# defensively checked at use rather than validated when set.
 resolve_trace_show <- function(theme = the$theme) {
   show <- theme_field("trace", "show", FALSE, theme)
-  if (isTRUE(show)) return(TRUE)
-  if (is.character(show) && length(show) == 1L && !is.na(show) &&
-      identical(show, "problems")) {
-    return("problems")
+  if (isTRUE(show)) return(trace_statuses)
+  if (!is.character(show)) return(FALSE)
+  show <- show[!is.na(show)]
+  if (identical(show, "problems")) {
+    return(c("warning", "error", "interrupted"))
   }
-  FALSE
+  show <- intersect(show, trace_statuses)
+  if (length(show) == 0L) FALSE else show
 }
 
 # Is any trace wanted at all? The gate on every capture site, and the reason

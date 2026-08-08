@@ -239,8 +239,11 @@ apply_overrides <- function(overrides) {
 #' site costs a frame walk and a source-reference lookup on every logged line, so
 #' you opt in and the default path pays nothing. Switch it on with
 #' `list(trace = list(show = "problems"))` to annotate only what went wrong, or
-#' `show = TRUE` for every open line and leaf. The column is appended to the
-#' message, so it wraps with it rather than shearing the tree.
+#' `show = TRUE` for every line that can carry a call site. `show` also takes a
+#' vector of statuses, for when the bundle is too much: `show = "error"`
+#' annotates errors and leaves tolerated warnings bare, `show = c("error",
+#' "interrupted")` adds the steps that never finished. The column is appended to
+#' the message, so it wraps with it rather than shearing the tree.
 #'
 #' The location -- `{file}` and `{line}` together, separator included -- is also
 #' emitted as one terminal hyperlink pointing at the file, at that line, so a
@@ -262,10 +265,11 @@ apply_overrides <- function(overrides) {
 #' a script if you want locations under `Rscript`.
 #'
 #' Two places outside the tree also report call sites when the slot is on:
-#' [logtree_summary()]'s digest lines, and the `fn` / `file` / `line` fields of a
-#' `"json"` sink (which carries them whenever they were captured, regardless of
-#' `show`). See [logtree_sink_file()] for pinning a file sink's column
-#' independently of the console's.
+#' [logtree_summary()]'s digest lines, which apply the same status filter as the
+#' tree does, and the `fn` / `file` / `line` fields of a `"json"` sink (which
+#' carries them whenever they were captured, regardless of `show`). See
+#' [logtree_sink_file()] for pinning a file sink's column independently of the
+#' console's.
 #'
 #' **Fields** (valid names inside a slot):
 #'
@@ -275,7 +279,7 @@ apply_overrides <- function(overrides) {
 #' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `done`, `warning`, `error`, `interrupted`). |
 #' | `color` | `character`, `NULL`, or a named `list` on `trace` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself. On `trace` it also accepts a named list styling the parts of the column separately: `location` for a `{file}`/`{line}` run (the separator between them included -- the location is one thing, styled and linked whole), `fn` for the function name, and `base` for everything else, which in the default format is the `()`. That is what the coloured presets ship: all of it dim, with the location in silver and `fn` in cyan, so the two read apart. A plain character vector on `trace` styles the whole column. `NULL` in the colourless ascii and ci presets. See [cli::combine_ansi_styles()]. |
 #' | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its elapsed time; `""` drops it, leaving the glyph and the time. Two placeholders are expanded: `{label}` (the closing step's own label, or a group's name) and `{elapsed}` (the formatted time). A template that places `{elapsed}` itself owns that column, so the time is not appended after it a second time. |
-#' | `show` | `logical(1)`, or `character(1)` on `trace` | On `elapsed`: `FALSE` drops the elapsed-time column entirely, default `TRUE`. On `trace`: `FALSE` (the default in every preset) off entirely, `"problems"` only on warning/error leaves and interrupted close lines, `TRUE` on every open line and leaf as well. `TRUE` is a superset of `"problems"`. Anything unrecognised reads as `FALSE`. |
+#' | `show` | `logical(1)`, or `character` on `trace` | On `elapsed`: `FALSE` drops the elapsed-time column entirely, default `TRUE`. On `trace`: `FALSE` (the default in every preset) off entirely; `TRUE` every line that can carry a call site; `"problems"` a shorthand for `c("warning", "error", "interrupted")`; or a vector of statuses naming exactly what to annotate -- `"running"` (open lines), `"info"`, `"debug"`, `"success"`, `"warning"`, `"error"` (leaves of that status) and `"interrupted"` (a close line whose step unwound). `show = "error"` is errors without their warnings. An ordinary close line never carries one whatever the set: its site is its own open line's. Unknown tokens are dropped, and anything unrecognised reads as `FALSE`. |
 #' | `format` | `character(1)` | `trace` slot only. Template for the call-site column over three placeholders: `{fn}` (the enclosing function's name), `{file}` and `{line}` (where the log call sits). Default `"{file}:{line} {fn}()"`. A whitespace-separated run whose placeholders are *all* unavailable is dropped whole, so the default degrades to `load_data()` rather than printing `NA` -- see the note on source references below. |
 #' | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds -- `min = 0.1` silences the `0.00s` noise on trivial steps. Default `0` (show everything). |
 #' | `slow` | `numeric(1)` or `NULL` | `elapsed` slot only. Times at or over this many seconds count as slow and are styled with `slow_color` instead of `color`. `NULL` (the default) means nothing is ever flagged. |
@@ -313,6 +317,8 @@ apply_overrides <- function(overrides) {
 #' # The call-site column: off by default, loudest on the lines that matter.
 #' logtree_theme(list(trace = list(show = "problems")))
 #' logtree_theme(list(trace = list(show = TRUE)))
+#' logtree_theme(list(trace = list(show = "error")))          # errors only
+#' logtree_theme(list(trace = list(show = c("error", "interrupted"))))
 #' logtree_theme(list(trace = list(show = TRUE, format = "{fn}()")))
 #' logtree_theme(list(trace = list(format = "{file}:{line}", color = "silver")))
 #' logtree_theme(list(trace = list(show = FALSE)))  # back off again
