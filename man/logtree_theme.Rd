@@ -19,7 +19,8 @@ list of per-key overrides to merge onto the currently active theme
 (matching the two calling styles shown in the package documentation).
 \code{NULL} (the default) keeps the active preset: \strong{a preset is swapped only
 when you name one}, so a call that sets just \code{overrides}, \code{compact},
-\code{glyph_gap} or \code{wrap} merges onto whatever theme is active. Reset with
+\code{glyph_gap}, \code{connector_gap} or \code{wrap} merges onto whatever theme is
+active. Reset with
 \code{logtree_theme("unicode")}. Five presets ship with the package:\tabular{ll}{
    Preset \tab What it is for \cr
    \code{"unicode"} \tab The default. Box-drawing connectors and coloured symbol glyphs, for an interactive terminal. \cr

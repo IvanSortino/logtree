@@ -1,5 +1,17 @@
 # logtree (development version)
 
+* `logtree_theme()` gains `connector_gap`, the spaces between a *leaf or close*
+  line's own connector and its status glyph -- the middle one of logtree's
+  three horizontal knobs, between `compact` (the per-level rail column) and
+  `glyph_gap` (glyph to message). Unset it tracks `col_gap`, so every preset
+  and every `compact` density renders exactly as before; set it and the two
+  diverge, which is the point: `compact = "tight"` can keep every rail column
+  flush while leaf and close glyphs still get air (`|- i msg` rather than
+  `|-i msg`). It deliberately never touches a step's *open* line or a group
+  header -- those are rail columns, not the glyph's own approach, so they stay
+  flush at any density -- and the gap does not compound with depth, so a deeper
+  tree does not fan out to the right.
+
 * `logtree_theme()` gains `wrap`, which caps a rendered line at a column budget
   instead of letting a long message run off the right edge. `FALSE` (the
   default) never wraps, `TRUE` wraps at `cli::console_width()` measured at
