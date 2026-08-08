@@ -84,6 +84,26 @@ test_that("wrapping off leaves every line exactly as it was", {
   ), fixed = TRUE))
 })
 
+test_that("compose_line leaves cols and cont unevaluated when wrapping is off", {
+  withr::defer(logtree_theme("unicode"))
+  logtree_theme("ascii")
+
+  # Not a style preference: `cont` costs a rail_unit(), which costs a
+  # cli::combine_ansi_styles() -- about a sixth of the time it takes to render
+  # a line. Callers pass these as inline expressions so R's lazy arguments keep
+  # the default (unwrapped) path from paying for them. Passing stop() proves it
+  # stays that way: if either is ever forced, this errors.
+  expect_equal(
+    compose_line("|- i ", "hello", stop("cols forced"), stop("cont forced")),
+    "|- i hello"
+  )
+
+  # And `cont` is still untouched when a width is set but the line fits.
+  logtree_theme(wrap = 200)
+  expect_equal(compose_line("|- i ", "hello", 5L, stop("cont forced")),
+               "|- i hello")
+})
+
 test_that("wrap_message breaks on words and leaves short text alone", {
   expect_equal(wrap_message("short", 40), "short")
   expect_equal(wrap_message("short", NA_integer_), "short")
