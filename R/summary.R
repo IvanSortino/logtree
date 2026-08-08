@@ -67,6 +67,22 @@ resolve_gap <- function(gap, theme = the$theme) {
   as.integer(gap)
 }
 
+# The theme a digest renders through: the active one, unless the call pins the
+# trace column itself, in which case only that slot is swapped. The same shape
+# as text_sink_theme() (R/appenders.R), and the same reason -- one view wanting
+# a different answer about call sites than the console gave.
+#
+# Note what this cannot do: capture is decided while the run is happening, so a
+# digest can only ever narrow or reshape what was already captured. With the
+# theme's slot off for the run, nothing was captured and no `trace =` here can
+# invent it.
+digest_theme <- function(trace) {
+  if (is.null(trace)) return(the$theme)
+  theme <- the$theme
+  theme$trace$show <- trace
+  theme
+}
+
 resolve_rule <- function(rule, theme = the$theme) {
   if (is.null(rule)) rule <- theme_field("summary", "rule", TRUE, theme)
   ok <- (is.logical(rule) && length(rule) == 1L && !is.na(rule)) ||
@@ -130,8 +146,8 @@ print_summary_header <- function(header, gap, rule) {
 #' The digest's appearance comes from the active theme, so it is customised
 #' through [logtree_theme()] like everything else: the `crumb` slot sets the
 #' breadcrumb separator and the emphasis on the path nodes, the `summary` slot
-#' the divider (`gap`, `rule`, `line`). `gap` and `rule` below override the
-#' theme for a single call.
+#' the divider (`gap`, `rule`, `line`). `gap`, `rule` and `trace` below override
+#' the theme for a single call.
 #'
 #' @param filter Optional character vector of statuses to include, e.g.
 #'   `"error"` or `c("warning", "interrupted")`. Only entries whose status
@@ -153,6 +169,15 @@ print_summary_header <- function(header, gap, rule) {
 #'   header line; a character string draws the rule with that title and prints
 #'   the header line below it. `NULL` (the default) takes the active theme's
 #'   `summary$rule` (`TRUE` in every built-in preset).
+#' @param trace Pins the digest's call-site column for this call, overriding the
+#'   theme's `trace$show`. Takes the same values: `FALSE` for no call sites,
+#'   `TRUE` for all of them, `"problems"`, or a vector of statuses such as
+#'   `"error"` -- see [logtree_theme()]. `NULL` (the default) follows the theme,
+#'   so the digest agrees with the tree. Useful when the tree was quiet and the
+#'   digest is where you want the locations, or the reverse. Note this can only
+#'   narrow or reshape what was *captured*: capture is decided while the run
+#'   happens, so with the theme's slot off for the run there is nothing for
+#'   `trace = TRUE` here to print.
 #' @return The recorded entries, invisibly: a list of records, each a list with
 #'   `kind`, `status`, `msg`, `path` (character vector), `elapsed`, and `trace`
 #'   (the call site: a list of `fn`, `file` and `line`, or `NULL` when the
@@ -171,6 +196,12 @@ print_summary_header <- function(header, gap, rule) {
 #' # Flush against the tree, with a titled divider.
 #' logtree_summary(gap = 0, rule = "Run report")
 #'
+#' # Call sites in the digest only: the tree above stays as it was rendered.
+#' logtree_theme(list(trace = list(show = TRUE)))
+#' f()
+#' logtree_summary(trace = "error")
+#' logtree_theme("unicode")
+#'
 #' # Set the layout and the breadcrumb symbol once, on the theme.
 #' logtree_theme(list(
 #'   summary = list(gap = 2, rule = FALSE),
@@ -179,9 +210,10 @@ print_summary_header <- function(header, gap, rule) {
 #' logtree_summary()
 #' logtree_theme("unicode")
 logtree_summary <- function(filter = NULL, depth = NULL,
-                            gap = NULL, rule = NULL) {
-  gap  <- resolve_gap(gap)
-  rule <- resolve_rule(rule)
+                            gap = NULL, rule = NULL, trace = NULL) {
+  gap   <- resolve_gap(gap)
+  rule  <- resolve_rule(rule)
+  theme <- digest_theme(trace)
   if (!is.null(depth)) {
     if (!is.numeric(depth) || length(depth) != 1L || is.na(depth) ||
         depth < 1 || depth != as.integer(depth)) {
@@ -224,7 +256,7 @@ logtree_summary <- function(filter = NULL, depth = NULL,
       # emphasised path reads as the trail leading to it.
       crumb <- with_trace(
         format_crumb(clip(c(e$path, e$msg)), plain_last = TRUE),
-        format_trace_digest(e$trace, e$status)
+        format_trace_digest(e$trace, e$status, theme = theme)
       )
       cat(compose_flat_line(theme_glyph(e$status), crumb), "\n", sep = "")
     } else {
@@ -240,7 +272,7 @@ logtree_summary <- function(filter = NULL, depth = NULL,
       cat(compose_flat_line(
             theme_glyph(e$status),
             with_trace(paste0(path, "  ", detail),
-                       format_trace_digest(e$trace, e$status))
+                       format_trace_digest(e$trace, e$status, theme = theme))
           ), "\n", sep = "")
     }
   }

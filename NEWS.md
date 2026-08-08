@@ -12,7 +12,12 @@
   its site is its own open line's. The same filter applies to
   `logtree_summary()`'s digest, so a status named once means the same thing
   everywhere (a line pinned into the digest with `summary = TRUE` therefore
-  carries a call site only when its own status is in the set). The column's
+  carries a call site only when its own status is in the set), and
+  `logtree_summary(trace = )` pins the digest's column for a single call the way
+  `gap` and `rule` already pin its layout -- for when the tree was quiet and the
+  digest is where you want the locations, or the reverse. It can only narrow or
+  reshape what was captured, since capture is decided while the run happens. The
+  column's
   content is a template over `{fn}`, `{file}` and `{line}` (default
   `"{file}:{line} {fn}()"`), styled by the slot's `color` -- which takes a
   `list(base=, location=, fn=)` so the parts can be told apart, as the presets

@@ -217,7 +217,8 @@ logtree_theme(list(trace = list(show = c("error", "interrupted"))))
 ```
 
 The same filter applies to the digest, so `show = "error"` means errors only
-wherever you read them.
+wherever you read them; `logtree_summary(trace = )` pins the digest's column for
+a single call when you want it to disagree with the tree.
 
 The example above pins `format = "{fn}()"` because `{file}` and `{line}` come
 from R's source references, and those exist only when code was parsed with

@@ -598,6 +598,55 @@ test_that("the digest applies the same status filter as the tree", {
   expect_false(any(grepl("pipeline.R", warn_line, fixed = TRUE)))
 })
 
+test_that("logtree_summary(trace = ) pins the digest's column for one call", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_trace("problems")
+  freeze_srcref("pipeline.R", 20L)
+
+  job <- function() {
+    log_step("Job")
+    log_warn("coerced 3 rows")
+    log_error("no numeric columns")
+  }
+  invisible(capture.output(job()))
+
+  # Narrower than the theme: the warning line loses its call site.
+  out <- capture.output(logtree_summary(trace = "error"))
+  expect_true(any(grepl("no numeric columns  pipeline.R:20 job()", out,
+                        fixed = TRUE)))
+  warn_line <- grep("coerced 3 rows", out, fixed = TRUE, value = TRUE)
+  expect_false(any(grepl("pipeline.R", warn_line, fixed = TRUE)))
+
+  # Off entirely, with the theme still on.
+  out <- capture.output(logtree_summary(trace = FALSE))
+  expect_false(any(grepl("pipeline.R", out, fixed = TRUE)))
+
+  # And the pin is per call: the next digest follows the theme again.
+  out <- capture.output(logtree_summary())
+  expect_equal(sum(grepl("pipeline.R", out, fixed = TRUE)), 2L)
+})
+
+test_that("a digest cannot invent call sites that were never captured", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  freeze_srcref("pipeline.R", 20L)
+
+  # Trace off for the run: nothing was captured, so no `trace =` at digest time
+  # can print a location. The lines still render, without the column.
+  job <- function() {
+    log_step("Job")
+    log_error("no numeric columns")
+  }
+  invisible(capture.output(job()))
+  out <- capture.output(logtree_summary(trace = TRUE))
+
+  expect_true(any(grepl("no numeric columns", out, fixed = TRUE)))
+  expect_false(any(grepl("pipeline.R", out, fixed = TRUE)))
+})
+
 test_that("digest entries expose the trace in the returned records", {
   logtree_reset()
   withr::defer(logtree_reset())

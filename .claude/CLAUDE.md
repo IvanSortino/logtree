@@ -96,7 +96,10 @@ shorthands away there so every line-level decision is one `%in%` —
 `format_trace_field()` tests `"running"` for open lines and the line's own
 status otherwise, and `format_trace_digest()` tests the entry's status. The one
 rule that is not membership: an ordinary close line never carries a trace (its
-site is its own open line's), only an interrupted one. **`{file}`/`{line}` require `keep.source`**, absent
+site is its own open line's), only an interrupted one. `logtree_summary(trace =)`
+swaps just that slot for one call via `digest_theme()` (`R/summary.R`), the same
+shape as `text_sink_theme()` — it can only narrow what was already captured,
+since capture is decided at log time. **`{file}`/`{line}` require `keep.source`**, absent
 under plain `Rscript`, so `expand_trace_text()` drops any template run whose
 placeholders are all unavailable rather than rendering `NA`.
 

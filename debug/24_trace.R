@@ -124,6 +124,22 @@ with_logging(tree(), summary = FALSE)
 logtree_summary()
 logtree_theme("unicode")
 
+# `logtree_summary(trace = )` pins the digest's column for one call, the way
+# gap/rule already pin its layout. Here the tree shows every call site and the
+# digest narrows to the error -- and the pin lasts exactly one call, so the
+# second digest is back to following the theme.
+section("F3. logtree_summary(trace = ) -- pinned for a single call")
+logtree_reset()
+logtree_theme("unicode", overrides = list(trace = list(show = TRUE)))
+with_logging(tree(), summary = FALSE)
+cat("\n-- trace = \"error\" --\n")
+logtree_summary(trace = "error")
+cat("\n-- trace = FALSE --\n")
+logtree_summary(trace = FALSE)
+cat("\n-- no argument: back to the theme --\n")
+logtree_summary()
+logtree_theme("unicode")
+
 # --- G. degradation ----------------------------------------------------------
 # Evaluate the same logging with keep.source = FALSE, so no srcrefs exist. The
 # {file}:{line} run drops out of the template whole rather than rendering "NA".
