@@ -198,6 +198,65 @@ logtree_summary()
 #> ✖ Release v2.1 › Apply migration › constraint violation on users.email
 ```
 
+## Call sites
+
+The digest tells you *what* went wrong; the `trace` theme slot tells you
+*where*. It is off by default – capturing a call site costs a frame walk
+per line, so you opt in. `show = "problems"` annotates only warning and
+error leaves plus interrupted steps, which is usually all you want:
+
+``` r
+logtree_reset()
+logtree_theme(list(trace = list(show = "problems", format = "{fn}()")))
+
+parse_rows <- function() {
+  log_step("Parse rows")
+  log_info("1200 rows")
+  log_warn("coerced 3 rows")
+}
+
+load_data <- function() {
+  log_step("Load data")
+  parse_rows()
+}
+
+with_logging(load_data(), summary = FALSE)
+#> ▶ Load data
+#> ├─ ▶ Parse rows
+#> │  ├─ ℹ 1200 rows
+#> │  ├─ ⚠ coerced 3 rows  parse_rows()
+#> │  └─ ⚠ Done  0.00s
+#> └─ ✔ Done  0.00s
+logtree_summary()
+#> 
+#> ── Summary: 1 warning ──────────────────────────────────────────────────────────
+#> ⚠ Load data › Parse rows › coerced 3 rows  parse_rows()
+```
+
+The column’s content is a template over `{fn}`, `{file}` and `{line}`.
+The default is `"{file}:{line} {fn}()"`, which in a real script reads:
+
+    ▶ Load data  R/pipeline.R:12 load_data()
+    ├─ ▶ Parse rows  R/pipeline.R:18 parse_rows()
+    │  ├─ ⚠ coerced 3 rows  R/pipeline.R:20 parse_rows()
+
+The whole column is dim, with the location and the function name styled
+apart (`color` takes a `list(base=, location=, fn=)` to change that).
+The location is printed relative to the working directory and is a
+single terminal hyperlink to the file at that line – click it and your
+editor opens there; terminals without hyperlink support print the same
+text unlinked.
+
+The example above pins `format = "{fn}()"` because `{file}` and `{line}`
+come from R’s source references, and those exist only when code was
+parsed with `keep.source = TRUE` – true interactively and under
+`devtools::load_all()`, but not under plain `Rscript`, and not inside
+this README’s own knitted chunks. `{fn}` always works, and rather than
+print `NA` the template drops any run whose placeholders are all
+missing, so the default degrades to `load_data()` on its own.
+`logtree_sink_file()` takes a `trace` argument too, so a log file can
+record call sites while the console stays quiet.
+
 ## Grouping
 
 Adjacent `log_step()` calls that share a `group = c(name = value)` value
@@ -266,7 +325,7 @@ demo_build()
 #> |- i compiling
 #> |- ! 3 deprecation warnings
 #> |- + build ok
-#> |- ! Done  0.01s
+#> |- ! Done  0.00s
 
 logtree_theme("emoji")
 demo_build()

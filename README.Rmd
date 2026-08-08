@@ -193,13 +193,19 @@ logtree_theme("unicode")
 ```
 
 The column's content is a template over `{fn}`, `{file}` and `{line}`. The
-default is `"{fn}() {file}:{line}"`, which in a real script reads:
+default is `"{file}:{line} {fn}()"`, which in a real script reads:
 
 ```
-▶ Load data  load_data() pipeline.R:12
-├─ ▶ Parse rows  parse_rows() pipeline.R:18
-│  ├─ ⚠ coerced 3 rows  parse_rows() pipeline.R:20
+▶ Load data  R/pipeline.R:12 load_data()
+├─ ▶ Parse rows  R/pipeline.R:18 parse_rows()
+│  ├─ ⚠ coerced 3 rows  R/pipeline.R:20 parse_rows()
 ```
+
+The whole column is dim, with the location and the function name styled apart
+(`color` takes a `list(base=, location=, fn=)` to change that). The location is
+printed relative to the working directory and is a single terminal hyperlink to
+the file at that line -- click it and your editor opens there; terminals without
+hyperlink support print the same text unlinked.
 
 The example above pins `format = "{fn}()"` because `{file}` and `{line}` come
 from R's source references, and those exist only when code was parsed with

@@ -242,6 +242,14 @@ apply_overrides <- function(overrides) {
 #' `show = TRUE` for every open line and leaf. The column is appended to the
 #' message, so it wraps with it rather than shearing the tree.
 #'
+#' The location -- `{file}` and `{line}` together, separator included -- is also
+#' emitted as one terminal hyperlink pointing at the file, at that line, so a
+#' click anywhere on it opens your editor there. Terminals without
+#' hyperlink support print the same text unlinked, and the escape has no
+#' printable width either way. `{file}` prints relative to the working directory
+#' where the source sits under it -- a bare file name is not something a
+#' terminal can resolve.
+#'
 #' **On source references.** `{file}` and `{line}` come from R's source
 #' references, which exist only when the code was parsed with `keep.source =
 #' TRUE`. That is the default in an interactive session and under
@@ -249,7 +257,7 @@ apply_overrides <- function(overrides) {
 #' installed package. `{fn}` is always available. Rather than print `NA`, the
 #' expander drops any whitespace-separated run of the template whose placeholders
 #' are all unavailable -- so the default format degrades from
-#' `load_data() pipeline.R:12` to `load_data()`, and a `"{file}:{line}"` format
+#' `pipeline.R:12 load_data()` to `load_data()`, and a `"{file}:{line}"` format
 #' degrades to no column at all. Set `options(keep.source = TRUE)` at the top of
 #' a script if you want locations under `Rscript`.
 #'
@@ -265,10 +273,10 @@ apply_overrides <- function(overrides) {
 #' | ----- | ---- | --------------- |
 #' | `glyph` | `character(1)` | Any string, including `""`. In package source, non-ASCII must be written as `\u`/`\U` escapes, never literal characters. |
 #' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `done`, `warning`, `error`, `interrupted`). |
-#' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself; on `trace`, the call-site column (`"dim"` in the unicode, emoji and minimal presets, `NULL` in the colourless ascii and ci presets). See [cli::combine_ansi_styles()]. |
+#' | `color` | `character`, `NULL`, or a named `list` on `trace` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself. On `trace` it also accepts a named list styling the parts of the column separately: `location` for a `{file}`/`{line}` run (the separator between them included -- the location is one thing, styled and linked whole), `fn` for the function name, and `base` for everything else, which in the default format is the `()`. That is what the coloured presets ship: all of it dim, with the location in silver and `fn` in cyan, so the two read apart. A plain character vector on `trace` styles the whole column. `NULL` in the colourless ascii and ci presets. See [cli::combine_ansi_styles()]. |
 #' | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its elapsed time; `""` drops it, leaving the glyph and the time. Two placeholders are expanded: `{label}` (the closing step's own label, or a group's name) and `{elapsed}` (the formatted time). A template that places `{elapsed}` itself owns that column, so the time is not appended after it a second time. |
 #' | `show` | `logical(1)`, or `character(1)` on `trace` | On `elapsed`: `FALSE` drops the elapsed-time column entirely, default `TRUE`. On `trace`: `FALSE` (the default in every preset) off entirely, `"problems"` only on warning/error leaves and interrupted close lines, `TRUE` on every open line and leaf as well. `TRUE` is a superset of `"problems"`. Anything unrecognised reads as `FALSE`. |
-#' | `format` | `character(1)` | `trace` slot only. Template for the call-site column over three placeholders: `{fn}` (the enclosing function's name), `{file}` and `{line}` (where the log call sits). Default `"{fn}() {file}:{line}"`. A whitespace-separated run whose placeholders are *all* unavailable is dropped whole, so the default degrades to `load_data()` rather than printing `NA` -- see the note on source references below. |
+#' | `format` | `character(1)` | `trace` slot only. Template for the call-site column over three placeholders: `{fn}` (the enclosing function's name), `{file}` and `{line}` (where the log call sits). Default `"{file}:{line} {fn}()"`. A whitespace-separated run whose placeholders are *all* unavailable is dropped whole, so the default degrades to `load_data()` rather than printing `NA` -- see the note on source references below. |
 #' | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds -- `min = 0.1` silences the `0.00s` noise on trivial steps. Default `0` (show everything). |
 #' | `slow` | `numeric(1)` or `NULL` | `elapsed` slot only. Times at or over this many seconds count as slow and are styled with `slow_color` instead of `color`. `NULL` (the default) means nothing is ever flagged. |
 #' | `slow_color` | `character` or `NULL` | `elapsed` slot only. Styles applied to a slow time in place of `color`. Same accepted values as `color`; `"yellow"` in the unicode, emoji and minimal presets, `NULL` in the colourless ascii and ci presets. |

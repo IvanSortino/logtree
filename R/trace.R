@@ -45,17 +45,38 @@ trace_enabled <- function(theme = the$theme) {
   !isFALSE(resolve_trace_show(theme)) || the$trace_sinks > 0L
 }
 
-# The file and line of a call, as separate fields, or NA for both when no
-# source reference is available. src_location() (R/step.R) is the "file:line"
-# view of this, kept for the srcref reconcile that predates the trace feature.
+# The file and line of a call, or NA for all fields when no source reference is
+# available. src_location() (R/step.R) is the "file:line" view of this, kept for
+# the srcref reconcile that predates the trace feature.
+#
+# Three fields, not two: `file` is what gets *printed* and `path` is what gets
+# *linked*. A bare basename is unresolvable -- neither a terminal's own path
+# detection nor a hyperlink can find `24_trace.R` when the file is really
+# `debug/24_trace.R` -- so `file` is the working-directory-relative path where
+# there is one, and `path` carries the absolute form for the link target.
 src_parts <- function(call) {
   line <- utils::getSrcLocation(call, "line")
   if (is.null(line) || is.na(line)) {
-    return(list(file = NA_character_, line = NA_integer_))
+    return(list(file = NA_character_, line = NA_integer_, path = NA_character_))
   }
-  file <- utils::getSrcFilename(call)
-  if (is.null(file) || !nzchar(file)) file <- "<text>"
-  list(file = basename(file), line = as.integer(line))
+  full <- utils::getSrcFilename(call, full.names = TRUE)
+  if (is.null(full) || !nzchar(full)) {
+    return(list(file = "<text>", line = as.integer(line), path = NA_character_))
+  }
+  abs <- normalizePath(full, winslash = "/", mustWork = FALSE)
+  list(file = display_path(abs),
+       line = as.integer(line),
+       path = if (file.exists(abs)) abs else NA_character_)
+}
+
+# The shortest view of a source file that a terminal can still resolve:
+# relative to the working directory when the file sits under it, the bare file
+# name otherwise (a package installed elsewhere, say, where no short form would
+# have resolved anyway).
+display_path <- function(abs) {
+  wd <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  if (startsWith(abs, paste0(wd, "/"))) return(substring(abs, nchar(wd) + 2L))
+  basename(abs)
 }
 
 # The name of the function a call belongs to, or NA. rlang::call_name() returns
@@ -84,7 +105,8 @@ capture_trace <- function(call, up = 1L) {
   idx    <- sys.nframe() - (up + 1L)
   target <- if (idx >= 1L) sys.call(idx) else NULL
   loc    <- src_parts(call)
-  list(fn = call_fn_name(target), file = loc$file, line = loc$line)
+  list(fn = call_fn_name(target), file = loc$file, line = loc$line,
+       path = loc$path)
 }
 
 # A trace for a call we were handed rather than one we had to find.
@@ -106,5 +128,6 @@ capture_trace <- function(call, up = 1L) {
 trace_from_call <- function(call) {
   if (is.null(call) || !trace_enabled()) return(NULL)
   loc <- src_parts(call)
-  list(fn = call_fn_name(call), file = loc$file, line = loc$line)
+  list(fn = call_fn_name(call), file = loc$file, line = loc$line,
+       path = loc$path)
 }

@@ -5,10 +5,14 @@
   = list(show = "problems")))` annotates only warning and error leaves plus
   steps that were interrupted -- the lines you go looking for a source location
   on -- and `show = TRUE` extends that to every open line and leaf. The column's
-  content is a template over `{fn}`, `{file}` and `{line}` (default `"{fn}()
-  {file}:{line}"`), styled by the slot's `color`. It is appended to the message
-  rather than given a column of its own, so it wraps with the message and never
-  shears the tree. Defaults leave output completely unchanged: `show` is `FALSE`
+  content is a template over `{fn}`, `{file}` and `{line}` (default
+  `"{file}:{line} {fn}()"`), styled by the slot's `color` -- which takes a
+  `list(base=, location=, fn=)` so the parts can be told apart, as the presets
+  do: all of it dim, location in silver, function name in cyan. The location is
+  printed relative to the working directory and is a single terminal hyperlink
+  to that file and line, separator included, so a click anywhere on it opens
+  your editor there where the terminal supports it. It is appended to the message rather than given a column
+  of its own, so it wraps with the message and never shears the tree. Defaults leave output completely unchanged: `show` is `FALSE`
   in all five presets, and with it off nothing is captured at all, so the cost
   of the feature to a run that does not use it is a single list lookup per line.
 

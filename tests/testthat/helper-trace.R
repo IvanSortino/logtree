@@ -7,9 +7,12 @@
 #
 # Only the location is frozen -- `fn` still comes from the real frame stack,
 # which is the half worth asserting on.
-freeze_srcref <- function(file = "demo.R", line = 1L, envir = parent.frame()) {
+freeze_srcref <- function(file = "demo.R", line = 1L, path = NA_character_,
+                          envir = parent.frame()) {
   testthat::local_mocked_bindings(
-    src_parts = function(call) list(file = file, line = as.integer(line)),
+    src_parts = function(call) {
+      list(file = file, line = as.integer(line), path = path)
+    },
     .package = "logtree",
     .env = envir
   )
@@ -23,6 +26,7 @@ local_trace <- function(show = TRUE, ..., envir = parent.frame()) {
 }
 
 # A hand-built trace, for formatter tests that bypass capture entirely.
-test_trace <- function(fn = "load_data", file = "pipeline.R", line = 12L) {
-  list(fn = fn, file = file, line = as.integer(line))
+test_trace <- function(fn = "load_data", file = "pipeline.R", line = 12L,
+                       path = NA_character_) {
+  list(fn = fn, file = file, line = as.integer(line), path = path)
 }

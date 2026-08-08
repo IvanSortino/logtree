@@ -33,7 +33,9 @@ the header line below it. \code{NULL} (the default) takes the active theme's
 }
 \value{
 The recorded entries, invisibly: a list of records, each a list with
-\code{kind}, \code{status}, \code{msg}, \code{path} (character vector), and \code{elapsed}.
+\code{kind}, \code{status}, \code{msg}, \code{path} (character vector), \code{elapsed}, and \code{trace}
+(the call site: a list of \code{fn}, \code{file} and \code{line}, or \code{NULL} when the
+\code{trace} theme slot was off and nothing was captured).
 }
 \description{
 Prints a compact end-of-run digest of everything worth attention that

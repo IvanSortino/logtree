@@ -4,13 +4,20 @@
 \alias{logtree_sink_file}
 \title{Add a file sink}
 \usage{
-logtree_sink_file(path, format = c("text", "json"))
+logtree_sink_file(path, format = c("text", "json"), trace = NULL)
 }
 \arguments{
 \item{path}{File path to append rendered log lines to.}
 
 \item{format}{\code{"text"} for a plain ASCII tree (no ANSI, independent of
 the active console theme) or \code{"json"} for one NDJSON object per event.}
+
+\item{trace}{Whether this sink prints the call-site column (see the \code{trace}
+slot in \code{\link[=logtree_theme]{logtree_theme()}}). \code{NULL} (the default) follows the active console
+theme, read afresh for each event, so switching trace on reaches the file
+too; \code{FALSE}, \code{TRUE} or \code{"problems"} pins this sink independently of the
+console. Text sinks only: a \code{"json"} sink always carries the \code{fn}, \code{file}
+and \code{line} fields, \code{null} when there is no call site to report.}
 }
 \value{
 \code{NULL}, invisibly.
@@ -27,4 +34,7 @@ logtree_sink_file(tempfile(), format = "text")
 with_logging({
   log_step("Step one")
 })
+
+# A file that records call sites even with the console column off.
+logtree_sink_file(tempfile(), format = "text", trace = TRUE)
 }

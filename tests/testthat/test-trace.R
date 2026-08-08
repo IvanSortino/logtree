@@ -56,6 +56,27 @@ test_that("src_parts splits a call site, and reports NA without a srcref", {
   p <- src_parts(call)
   expect_equal(p$line, 1L)
   expect_type(p$file, "character")
+  # No srcref, no link target either.
+  expect_true(is.na(src_parts(quote(foo()))$path))
+})
+
+test_that("src_parts prints a resolvable path and carries the absolute one", {
+  dir <- withr::local_tempdir()
+  dir.create(file.path(dir, "R"))
+  file <- file.path(dir, "R", "job.R")
+  writeLines('log_open("z")', file)
+  withr::local_dir(dir)
+
+  exprs <- parse(file, keep.source = TRUE)
+  call  <- exprs[[1]]
+  attr(call, "srcref") <- attr(exprs, "srcref")[[1]]
+  p <- src_parts(call)
+
+  # A basename would name a file that is not there: the printed form has to be
+  # relative to the working directory for anything to resolve it.
+  expect_equal(p$file, file.path("R", "job.R"))
+  expect_equal(p$path, normalizePath(file, winslash = "/"))
+  expect_equal(p$line, 1L)
 })
 
 test_that("src_location still returns the joined form it always did", {
@@ -193,6 +214,78 @@ test_that("a template with no placeholders passes through", {
   expect_equal(expand_trace_text("", test_trace()), "")
 })
 
+# --- Per-part styling and hyperlinks ---------------------------------------
+
+# cli decides both of these from the terminal it finds itself in, and under
+# testthat it finds none. Force them on so the escapes are actually emitted.
+local_ansi <- function(envir = parent.frame()) {
+  withr::local_options(cli.num_colors = 256L, cli.hyperlink = TRUE,
+                       .local_envir = envir)
+}
+
+test_that("the location is styled whole and the function name alone", {
+  local_ansi()
+  styles <- list(base = "dim", location = "blue", fn = "cyan")
+  out <- expand_trace_text("{file}:{line} {fn}()", test_trace(), styles = styles)
+
+  # One style over the location, separator included -- not two styled halves
+  # with a bare ":" between them.
+  expect_match(out, cli::combine_ansi_styles("blue")("pipeline.R:12"),
+               fixed = TRUE)
+  # The function name is styled on its own, so the "()" after it is left to the
+  # caller's `base` pass.
+  expect_match(out, paste0(cli::combine_ansi_styles("cyan")("load_data"), "()"),
+               fixed = TRUE)
+  expect_equal(cli::ansi_strip(out), "pipeline.R:12 load_data()")
+})
+
+test_that("a character color still styles the whole column", {
+  local_ansi()
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_trace(TRUE, color = "dim")
+
+  # The pre-list form of the slot: one style, applied once, no per-part
+  # escapes inside it.
+  out <- render_trace_text(test_trace())
+  expect_equal(out, cli::combine_ansi_styles("dim")("pipeline.R:12 load_data()"))
+})
+
+test_that("the location links to the file and the width is unchanged", {
+  local_ansi()
+  tr  <- test_trace(path = "/tmp/pipeline.R")
+  out <- expand_trace_text("{file}:{line} {fn}()", tr, link = TRUE)
+
+  expect_match(out, "file:///tmp/pipeline.R", fixed = TRUE)
+  # One link over "pipeline.R:12", not one per half, and none on the function
+  # name -- a function is not a place.
+  expect_equal(lengths(gregexpr("file:///tmp/pipeline.R", out, fixed = TRUE)),
+               1L)
+  expect_match(cli::ansi_strip(out, link = FALSE), "pipeline\\.R:12\033\\]8;;")
+  expect_equal(cli::ansi_strip(out), "pipeline.R:12 load_data()")
+  # The escape has no printable width, so compose_line()'s wrapping arithmetic
+  # is unaffected by it.
+  expect_equal(cli::ansi_nchar(out, type = "width"),
+               nchar("pipeline.R:12 load_data()"))
+})
+
+test_that("no path means no link, and a plain sink never links", {
+  local_ansi()
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_trace(TRUE)
+
+  # keep.source = FALSE, an installed package, a deleted file: text only.
+  expect_equal(expand_trace_text("{file}:{line}", test_trace(), link = TRUE),
+               "pipeline.R:12")
+  # color = FALSE is the file-sink path: neither style nor link may reach it.
+  expect_equal(render_trace_text(test_trace(path = "/tmp/pipeline.R"),
+                                 color = FALSE),
+               "pipeline.R:12 load_data()")
+})
+
 # --- The show policy -------------------------------------------------------
 
 test_that("show = TRUE traces open lines and leaves but not clean closes", {
@@ -204,10 +297,10 @@ test_that("show = TRUE traces open lines and leaves but not clean closes", {
   entry <- list(depth = 1L, label = "Pipeline", glyph = NULL,
                 status = "running", elapsed = 0.5, trace = test_trace())
   expect_equal(format_open(entry, color = FALSE),
-               "> Pipeline  load_data() pipeline.R:12")
+               "> Pipeline  pipeline.R:12 load_data()")
   expect_equal(
     format_leaf("info", "reading", 1L, color = FALSE, trace = test_trace()),
-    "|- i reading  load_data() pipeline.R:12"
+    "|- i reading  pipeline.R:12 load_data()"
   )
   # A clean close carries none: its site is its own open line's.
   expect_equal(format_close(entry, color = FALSE), "|- + Done  0.50s")
@@ -229,9 +322,9 @@ test_that("show = \"problems\" traces only what went wrong", {
                "|- d quiet")
 
   expect_equal(format_leaf("warning", "coerced", 1L, color = FALSE, trace = tr),
-               "|- ! coerced  load_data() pipeline.R:12")
+               "|- ! coerced  pipeline.R:12 load_data()")
   expect_equal(format_leaf("error", "bad row", 1L, color = FALSE, trace = tr),
-               "|- x bad row  load_data() pipeline.R:12")
+               "|- x bad row  pipeline.R:12 load_data()")
 
   # An open line stays clean under "problems".
   entry <- list(depth = 1L, label = "Pipeline", glyph = NULL,
@@ -241,7 +334,7 @@ test_that("show = \"problems\" traces only what went wrong", {
   # An interrupted close is the one close line that does carry it: there is no
   # accompanying leaf to hang the location on.
   entry$status <- "interrupted"
-  expect_match(format_close(entry, color = FALSE), "load_data\\(\\) pipeline\\.R:12$")
+  expect_match(format_close(entry, color = FALSE), "pipeline\\.R:12 load_data\\(\\)$")
 
   entry$status <- "warning"
   expect_equal(format_close(entry, color = FALSE), "|- ! Done  0.50s")
@@ -256,7 +349,7 @@ test_that("show = TRUE is a superset of \"problems\"", {
   # Turning the column up must never take away a line the quieter setting shows.
   entry <- list(depth = 1L, label = "Pipeline", glyph = NULL,
                 status = "interrupted", elapsed = 0.5, trace = test_trace())
-  expect_match(format_close(entry, color = FALSE), "load_data\\(\\) pipeline\\.R:12$")
+  expect_match(format_close(entry, color = FALSE), "pipeline\\.R:12 load_data\\(\\)$")
 })
 
 test_that("a group header never carries a trace", {
@@ -325,7 +418,7 @@ test_that("a text sink follows the console by default", {
   f <- function() log_info("reading")
   invisible(capture.output(f()))
 
-  expect_true(any(grepl("reading  f() demo.R:7", readLines(path), fixed = TRUE)))
+  expect_true(any(grepl("reading  demo.R:7 f()", readLines(path), fixed = TRUE)))
 })
 
 test_that("a text sink can carry trace with the console column off", {
@@ -345,7 +438,7 @@ test_that("a text sink can carry trace with the console column off", {
   out <- capture.output(f())
 
   # File has it, console does not.
-  expect_true(any(grepl("reading  f() demo.R:7", readLines(path), fixed = TRUE)))
+  expect_true(any(grepl("reading  demo.R:7 f()", readLines(path), fixed = TRUE)))
   expect_false(any(grepl("demo.R", out, fixed = TRUE)))
 })
 
@@ -400,7 +493,7 @@ test_that("digest lines carry the call site", {
   invisible(capture.output(parse_rows()))
   out <- capture.output(logtree_summary())
 
-  expect_true(any(grepl("coerced 3 rows  parse_rows() pipeline.R:20", out,
+  expect_true(any(grepl("coerced 3 rows  pipeline.R:20 parse_rows()", out,
                         fixed = TRUE)))
 })
 

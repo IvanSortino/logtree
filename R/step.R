@@ -762,7 +762,15 @@ trace_value <- function(key, trace) {
 #     what makes the default format degrade to "load_data()" under
 #     keep.source = FALSE instead of leaving ":" or "NA:NA" behind, and what
 #     makes a location-only format collapse to no column at all.
-expand_trace_text <- function(template, trace) {
+#   * A run that mentions `{file}` or `{line}` is a *location*, and is styled
+#     and linked as one thing -- the `:` between the two included, so the whole
+#     of `pipeline.R:12` is a single silver, single-hyperlink unit rather than
+#     two links with a differently coloured separator wedged between them. Any
+#     other run styles its placeholders one by one, which is what leaves `{fn}`
+#     coloured and the `()` after it in the base colour.
+#   * Both happen *after* the availability check above, so a styled empty value
+#     can never keep a run alive that plain expansion would have dropped.
+expand_trace_text <- function(template, trace, styles = NULL, link = FALSE) {
   if (!grepl("{", template, fixed = TRUE)) return(template)
   runs <- strsplit(template, " ", fixed = TRUE)[[1L]]
   keep <- character(0)
@@ -776,10 +784,53 @@ expand_trace_text <- function(template, trace) {
     vals <- vapply(hits, trace_value, character(1), trace = trace,
                    USE.NAMES = FALSE)
     if (all(!nzchar(vals))) next
+    location <- any(hits %in% c("{file}", "{line}"))
+    if (!location && !is.null(styles)) {
+      vals <- vapply(seq_along(hits), function(i) {
+        part <- substring(hits[[i]], 2L, nchar(hits[[i]]) - 1L)
+        colorize(vals[[i]], styles[[part]], nzchar(vals[[i]]))
+      }, character(1))
+    }
     regmatches(run, m) <- list(vals)
+    if (location) {
+      run <- colorize(run, styles$location, !is.null(styles))
+      if (isTRUE(link)) run <- trace_link(run, trace)
+    }
     keep <- c(keep, run)
   }
   paste(keep, collapse = " ")
+}
+
+# An OSC 8 hyperlink to the source file, at the traced line. Two things make
+# this safe to emit unconditionally: cli::style_hyperlink() returns the text
+# untouched where the terminal has no hyperlink support, and the escape carries
+# no printable width, so the wrapping arithmetic in compose_line() is unaffected
+# (cli::ansi_nchar() measures a linked string as its visible text).
+#
+# The link target is the absolute path -- the whole point of carrying `path`
+# alongside the printed `file`.
+trace_link <- function(text, trace) {
+  path <- trace$path
+  if (is.null(path) || length(path) != 1L || is.na(path)) return(text)
+  params <- NULL
+  if (!is.null(trace$line) && length(trace$line) == 1L && !is.na(trace$line)) {
+    params <- c(line = as.character(trace$line))
+  }
+  cli::style_hyperlink(text, paste0("file://", path), params = params)
+}
+
+# The theme's per-part trace styles, or NULL when the column is unstyled.
+#
+# `color` takes either form: a character vector of cli styles styles the whole
+# column and becomes the `base`, while a named list styles the parts
+# independently -- `location` for a `{file}`/`{line}` run, `fn` for the function
+# name, `base` for everything else, the literal text of the template included.
+# Presets use the list form so the location and the function name read as
+# different things while both stay dim.
+trace_styles <- function(theme = the$theme) {
+  col <- theme_field("trace", "color", NULL, theme)
+  if (is.null(col)) return(NULL)
+  if (is.list(col)) col else list(base = col)
 }
 
 # The call-site column, governed by the theme's `trace` slot. Returns "" when
@@ -815,9 +866,11 @@ format_trace_field <- function(trace, kind, status = NULL, theme = the$theme,
 # Expand and style a trace, with no policy applied: the shared tail of
 # format_trace_field() and format_trace_digest().
 render_trace_text <- function(trace, theme = the$theme, color = TRUE) {
-  text <- expand_trace_text(theme_field("trace", "format", "", theme), trace)
+  styles <- if (isTRUE(color)) trace_styles(theme) else NULL
+  text   <- expand_trace_text(theme_field("trace", "format", "", theme), trace,
+                              styles = styles, link = isTRUE(color))
   if (!nzchar(text)) return("")
-  colorize(text, theme_field("trace", "color", NULL, theme), color)
+  colorize(text, styles$base, color)
 }
 
 # The trace column for a logtree_summary() digest line.

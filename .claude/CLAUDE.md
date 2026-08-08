@@ -84,7 +84,7 @@ is the last sibling.
 
 ### Call-site trace (`R/trace.R`)
 
-The opt-in `trace` theme slot annotates lines with `fn() file.R:line`.
+The opt-in `trace` theme slot annotates lines with `file.R:line fn()`.
 `capture_trace()` walks the frame stack for the enclosing function's name;
 `src_parts()` reads the srcref for file/line (and `src_location()`, the older
 "file:line" view used by the srckey reconcile, now delegates to it). Capture is
@@ -92,6 +92,21 @@ gated by `trace_enabled()` and so costs nothing on the default path — `show` i
 `FALSE` in every preset. **`{file}`/`{line}` require `keep.source`**, absent
 under plain `Rscript`, so `expand_trace_text()` drops any template run whose
 placeholders are all unavailable rather than rendering `NA`.
+
+`src_parts()` returns three fields, not two: `file` is the *printed* form
+(relative to `getwd()` when the source sits under it — a bare basename resolves
+to nothing) and `path` is the absolute form used as the hyperlink target.
+Styling and linking happen in `expand_trace_text()`, *after* the
+run-availability check, so a styled empty value can never keep a run alive. A
+run mentioning `{file}`/`{line}` is a **location** and is styled and linked as
+one unit (separator included, one OSC 8 span); any other run styles its
+placeholders individually, which is what leaves `{fn}` coloured and its `()` in
+the base colour. `trace$color` therefore takes either a character vector (the
+whole column, becoming `base`) or a `list(base=, location=, fn=)`, which is
+what the coloured presets ship.
+`trace_link()` emits OSC 8 via `cli::style_hyperlink()`, which no-ops on
+terminals without support; the escape has zero printable width, so
+`compose_line()`'s wrapping arithmetic is untouched.
 
 The column is appended to the *message* before it reaches `compose_line()`, which
 is why none of the `cols`/`cont` layout arithmetic changed. Two handlers are

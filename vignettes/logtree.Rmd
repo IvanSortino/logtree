@@ -238,10 +238,10 @@ logtree_theme("unicode")
 | ----- | ---- | --------------- |
 | `glyph` | `character(1)` | Any string, including `""`. |
 | `width` | `integer(1)` | Rendered display width of the glyph (`1` normal, `2` emoji/wide). Sets column alignment; status slots only. |
-| `color` | `character` / `NULL` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. |
+| `color` | `character` / `NULL` / `list` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. On `trace`, a named list styles the parts separately: `location`, `fn`, `base`. |
 | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its time; `""` drops it. Expands `{label}` and `{elapsed}`. |
 | `show` | `logical(1)` / `character(1)` | On `elapsed`, `FALSE` drops the time column entirely. On `trace`, `FALSE` (default) is off, `"problems"` marks only warnings/errors/interrupted steps, `TRUE` adds every open line and leaf. |
-| `format` | `character(1)` | `trace` slot only. Template over `{fn}`, `{file}`, `{line}`. Default `"{fn}() {file}:{line}"`. |
+| `format` | `character(1)` | `trace` slot only. Template over `{fn}`, `{file}`, `{line}`. Default `"{file}:{line} {fn}()"`. |
 | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds. |
 | `slow` | `numeric(1)` / `NULL` | `elapsed` slot only. Times at or over this count as slow. |
 | `slow_color` | `character` / `NULL` | `elapsed` slot only. Styles a slow time in place of `color`. |
@@ -310,13 +310,26 @@ logtree_theme("unicode")
 ```
 
 `format` is a template over `{fn}`, `{file}` and `{line}`; the default is
-`"{fn}() {file}:{line}"`. The example pins `"{fn}()"` because `{file}` and
+`"{file}:{line} {fn}()"`. The example pins `"{fn}()"` because `{file}` and
 `{line}` come from R's source references, which exist only when code was parsed
 with `keep.source = TRUE` -- the default interactively and under
 `devtools::load_all()`, but not under plain `Rscript`, and not in this
 vignette's knitted chunks. `{fn}` always works, and rather than print `NA` the
 template drops any whitespace-separated run whose placeholders are all
 unavailable, so the default degrades to `flaky()` on its own.
+
+The location is printed relative to the working directory and carries one
+terminal hyperlink to the file at that line -- `{file}`, the `:` and `{line}`
+together -- so a click anywhere on it opens the file where the terminal
+supports it; elsewhere the same text prints unlinked. `color` styles the parts
+separately (`location`, `fn`, and `base` for everything else): the presets keep
+the whole column dim, with the location in silver and `fn` in cyan.
+
+```r
+logtree_theme("unicode", overrides = list(
+  trace = list(show = "problems", color = list(fn = "magenta"))
+))
+```
 
 The column is appended to the message rather than given a column of its own, so
 it wraps with the message instead of shearing the tree. It also reaches
