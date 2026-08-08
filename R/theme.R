@@ -108,7 +108,8 @@ apply_overrides <- function(overrides) {
 #'   (matching the two calling styles shown in the package documentation).
 #'   `NULL` (the default) keeps the active preset: **a preset is swapped only
 #'   when you name one**, so a call that sets just `overrides`, `compact`,
-#'   `glyph_gap` or `wrap` merges onto whatever theme is active. Reset with
+#'   `glyph_gap`, `connector_gap` or `wrap` merges onto whatever theme is
+#'   active. Reset with
 #'   `logtree_theme("unicode")`. Five presets ship with the package:
 #'
 #'   | Preset | What it is for |

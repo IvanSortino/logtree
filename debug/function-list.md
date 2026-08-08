@@ -34,6 +34,9 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `glyph_gutter` | `theme = the$theme` |
 | `rail_unit` | `theme = the$theme, color = TRUE` |
 | `connector_str` | `key, theme = the$theme, color = TRUE` |
+| `own_connector_str` | `key, theme = the$theme, color = TRUE` |
+| `own_connector_width` | `key, theme = the$theme` |
+| `own_rail` | `key, theme = the$theme, color = TRUE` |
 | `pad_custom_glyph` | `glyph, theme = the$theme` |
 | `format_open` | `entry, theme = the$theme, color = TRUE` |
 | `close_text_template` | `status, theme = the$theme` |
@@ -81,11 +84,12 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 | Function | Params |
 |---|---|
-| `logtree_theme` `[export]` | `theme = NULL, overrides = list(), compact = FALSE, glyph_gap = NULL, wrap = NULL` |
+| `logtree_theme` `[export]` | `theme = NULL, overrides = list(), compact = FALSE, glyph_gap = NULL, connector_gap = NULL, wrap = NULL` |
 | `logtree_threshold` `[export]` | `level = c("debug", "info", "warn", "error")` |
 | `theme_preset` | `name` |
 | `resolve_compact` | `x` |
 | `resolve_glyph_gap` | `x` |
+| `resolve_connector_gap` | `x` |
 | `resolve_wrap` | `x` |
 | `apply_compact` | `level` |
 | `apply_overrides` | `overrides` |
@@ -94,6 +98,7 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `close_glyph_key` | `status, theme = the$theme` |
 | `theme_col_gap` | `theme = the$theme` |
 | `theme_glyph_gap` | `theme = the$theme` |
+| `theme_connector_gap` | `theme = the$theme` |
 | `glyph_pad` | `theme = the$theme` |
 | `theme_wrap_width` | `theme = the$theme` |
 | `colorize` | `text, color, enabled = TRUE` |
@@ -146,5 +151,5 @@ keyed by glyph/status, no params. `theme_presets` — the character vector of pr
 
 ---
 
-**Totals:** 16 exported fns, 74 internal fns, 1 pkg hook, 10 package-level data
+**Totals:** 16 exported fns, 79 internal fns, 1 pkg hook, 10 package-level data
 objects (the 5 glyph presets among them).
