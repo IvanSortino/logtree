@@ -12,17 +12,19 @@
   flush at any density -- and the gap does not compound with depth, so a deeper
   tree does not fan out to the right.
 
-* `logtree_theme()` gains `wrap`, which caps a rendered line at a column budget
-  instead of letting a long message run off the right edge. `FALSE` (the
-  default) never wraps, `TRUE` wraps at `cli::console_width()` measured at
-  render time -- so resizing a terminal mid-run is picked up on its own -- and a
-  number pins a fixed width. Continuation lines indent to the message column
-  and carry the rails down, so a wrapped message still reads as one node of the
-  tree: after a branch connector the rail continues, after a corner it does
-  not. A token with no break opportunity (a long path, a URL) is split by
-  display width rather than left to overflow, and a budget narrower than the
-  tree is deep degrades to no wrapping rather than to an unusable one-column
-  line. It covers every line logtree renders, including the
+* Console output now wraps by default: a long message is word-wrapped at
+  `cli::console_width()` instead of running off the right edge. The new
+  `logtree_theme(wrap = )` governs it -- `TRUE` (the console default) follows
+  the terminal, measured at render time so a mid-run resize is picked up on its
+  own, a number pins a fixed width, and `FALSE` restores the old overflowing
+  behaviour. Continuation lines indent to the message column and carry the
+  rails down, so a wrapped message still reads as one node of the tree: after a
+  branch connector the rail continues, after a corner it does not, and a
+  step-open line or group header also rails its own glyph/marker column, which
+  is where its children hang. A token with no break opportunity (a long path, a
+  URL) is split by display width rather than left to overflow, and a budget
+  narrower than the tree is deep degrades to no wrapping rather than to an
+  unusable one-column line. It covers every line logtree renders, including the
   `logtree_summary()` digest and the `with_logging()` run-summary line. File
   sinks are never wrapped -- a file has no width to wrap to.
 

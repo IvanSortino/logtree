@@ -14,6 +14,18 @@ theme_preset <- function(name) {
   )
 }
 
+# A preset as the *console* theme carries: the presets themselves are plain
+# glyph tables, and wrapping is a property of the sink rather than of the
+# glyphs. Wrapping on at the terminal width is the default -- a long message
+# reads better wrapped than run off the right edge -- and it is set here, not
+# in the presets, precisely so that file sinks (which render through
+# `glyphs_ascii` directly, and have no width to wrap to) stay unwrapped.
+console_preset <- function(name) {
+  preset <- theme_preset(name)
+  preset$wrap <- TRUE
+  preset
+}
+
 # Resolve the `compact` argument of logtree_theme() to NULL / "medium" / "tight".
 resolve_compact <- function(x) {
   if (is.null(x) || isFALSE(x)) return(NULL)
@@ -156,10 +168,11 @@ apply_overrides <- function(overrides) {
 #'   their own connector. Like `glyph_gap`, it applies to the active (console)
 #'   theme and is cleared by a subsequent preset swap.
 #' @param wrap Column budget a rendered line is wrapped to, instead of letting
-#'   a long message run off the right edge. `FALSE` never wraps (the built-in
-#'   behaviour); `TRUE` wraps at [cli::console_width()], measured at render
-#'   time so a terminal resized mid-run is picked up on its own; a positive
-#'   number pins a fixed width. `NULL` (the default) leaves the active setting
+#'   a long message run off the right edge. `TRUE` wraps at
+#'   [cli::console_width()], measured at render time so a terminal resized
+#'   mid-run is picked up on its own -- this is the console default; a
+#'   positive number pins a fixed width; `FALSE` never wraps, letting long
+#'   lines overflow. `NULL` (the argument default) leaves the active setting
 #'   alone.
 #'
 #'   Continuation lines indent to the message column and carry the rails down,
@@ -175,9 +188,10 @@ apply_overrides <- function(overrides) {
 #'   It applies to every line logtree renders, including the
 #'   [logtree_summary()] digest and the [with_logging()] run-summary line.
 #'
-#'   Like `compact` and `glyph_gap`, it applies to the active (console) theme
-#'   and is cleared by a subsequent preset swap. File sinks are never wrapped:
-#'   they render through the ascii preset, and a file has no width to wrap to.
+#'   Like `compact` and `glyph_gap`, it applies to the active (console) theme,
+#'   and a subsequent preset swap returns it to the `TRUE` default. File sinks
+#'   are never wrapped: they render through the ascii preset, and a file has no
+#'   width to wrap to.
 #' @return `NULL`, invisibly.
 #' @details
 #' An override list is keyed by *slot*; each slot's value is itself a named
@@ -274,10 +288,10 @@ apply_overrides <- function(overrides) {
 #' logtree_theme(glyph_gap = 0)   # tightest: no space after the glyph
 #' logtree_theme(glyph_gap = 2)   # roomier message column
 #'
-#' # Wrapping long messages.
-#' logtree_theme(wrap = TRUE)     # follow the console width
+#' # Wrapping long messages (on by default, at the console width).
 #' logtree_theme(wrap = 72)       # pin a fixed width
-#' logtree_theme(wrap = FALSE)    # back to letting long lines overflow
+#' logtree_theme(wrap = FALSE)    # let long lines overflow instead
+#' logtree_theme(wrap = TRUE)     # back to the console width
 #'
 #' # The other two presets.
 #' logtree_theme("minimal")       # no connectors: indentation only
@@ -287,7 +301,7 @@ logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
                           glyph_gap = NULL, connector_gap = NULL, wrap = NULL) {
   if (is.character(theme)) {
     theme <- match.arg(theme, theme_presets)
-    the$theme <- theme_preset(theme)
+    the$theme <- console_preset(theme)
   } else if (is.list(theme)) {
     # Called as logtree_theme(list(...)) -- overrides-only, merge onto
     # whatever theme is already active.
@@ -409,10 +423,12 @@ glyph_pad <- function(theme = the$theme) {
   strrep(" ", theme_glyph_gap(theme))
 }
 
-# Column budget a rendered line is wrapped to, or NA when wrapping is off (the
-# default, and always the case for file sinks, which render through the ascii
-# preset). TRUE measures the console at render time rather than at the time the
-# theme was set, so resizing a terminal mid-run is picked up on its own.
+# Column budget a rendered line is wrapped to, or NA when wrapping is off --
+# which is what a bare preset carries, and so always the case for file sinks,
+# which render through `glyphs_ascii` directly. The console theme is built by
+# console_preset(), which turns wrapping on. TRUE measures the console at
+# render time rather than at the time the theme was set, so resizing a
+# terminal mid-run is picked up on its own.
 theme_wrap_width <- function(theme = the$theme) {
   w <- theme$wrap
   if (is.null(w) || isFALSE(w)) return(NA_integer_)

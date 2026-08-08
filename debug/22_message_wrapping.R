@@ -1,9 +1,12 @@
 # Message wrapping: `logtree_theme(wrap = ...)` caps a rendered line at a
-# column budget instead of letting long text run off the right edge.
+# column budget instead of letting long text run off the right edge. The
+# console wraps at its own width out of the box; `wrap` is how you change or
+# switch off that budget.
 #
-#   wrap = FALSE   -- never wrap (the default; output is unchanged)
 #   wrap = TRUE    -- wrap at cli::console_width(), measured at render time
+#                     (the console default)
 #   wrap = 60      -- wrap at a fixed 60 columns
+#   wrap = FALSE   -- never wrap; long lines run off the edge
 #
 # Continuation lines indent to the message column and carry the rails down, so
 # a wrapped message still reads as one node of the tree. After a branch
@@ -47,14 +50,15 @@ tree <- function() {
   verify()
 }
 
-run_section("A. wrap = FALSE (default) -- lines run off the edge", width = 60)
+run_section("A. wrap = FALSE -- lines run off the edge", wrap = FALSE, width = 60)
 run_section("B. wrap = 60 -- word-wrapped, rails carried down", wrap = 60, width = 60)
 run_section("C. wrap = 44 -- tighter budget", wrap = 44, width = 44)
 
-# TRUE re-measures every time a line is rendered, so resizing the terminal
-# mid-run is picked up without touching the theme again.
-section("D. wrap = TRUE follows the console width")
-logtree_theme("unicode", wrap = TRUE)
+# TRUE -- what a fresh session and every preset swap start from -- re-measures
+# every time a line is rendered, so resizing the terminal mid-run is picked up
+# without touching the theme again.
+section("D. wrap = TRUE (the default) follows the console width")
+logtree_theme("unicode")
 for (w in c(50, 70)) {
   withr::with_options(list(cli.width = w), {
     cat("\ncli.width = ", w, " -> theme_wrap_width() = ", theme_wrap_width(),

@@ -21,7 +21,7 @@ test_that("ci resolves by name and is reachable from logtree_theme", {
 
   expect_identical(theme_preset("ci"), glyphs_ci)
   logtree_theme("ci")
-  expect_identical(the$theme, glyphs_ci)
+  expect_identical(the$theme, console_preset("ci"))
 
   expect_error(logtree_theme("nope"))
 })
