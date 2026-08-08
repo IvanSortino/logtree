@@ -21,7 +21,7 @@ test_that("minimal resolves by name and is reachable from logtree_theme", {
 
   expect_identical(theme_preset("minimal"), glyphs_minimal)
   logtree_theme("minimal")
-  expect_identical(the$theme, glyphs_minimal)
+  expect_identical(the$theme, console_preset("minimal"))
 })
 
 test_that("minimal carries every slot the built-ins rely on", {

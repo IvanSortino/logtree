@@ -71,10 +71,11 @@ their own connector. Like \code{glyph_gap}, it applies to the active (console)
 theme and is cleared by a subsequent preset swap.}
 
 \item{wrap}{Column budget a rendered line is wrapped to, instead of letting
-a long message run off the right edge. \code{FALSE} never wraps (the built-in
-behaviour); \code{TRUE} wraps at \code{\link[cli:console_width]{cli::console_width()}}, measured at render
-time so a terminal resized mid-run is picked up on its own; a positive
-number pins a fixed width. \code{NULL} (the default) leaves the active setting
+a long message run off the right edge. \code{TRUE} wraps at
+\code{\link[cli:console_width]{cli::console_width()}}, measured at render time so a terminal resized
+mid-run is picked up on its own -- this is the console default; a
+positive number pins a fixed width; \code{FALSE} never wraps, letting long
+lines overflow. \code{NULL} (the argument default) leaves the active setting
 alone.
 
 Continuation lines indent to the message column and carry the rails down,
@@ -90,9 +91,10 @@ one-column line.
 It applies to every line logtree renders, including the
 \code{\link[=logtree_summary]{logtree_summary()}} digest and the \code{\link[=with_logging]{with_logging()}} run-summary line.
 
-Like \code{compact} and \code{glyph_gap}, it applies to the active (console) theme
-and is cleared by a subsequent preset swap. File sinks are never wrapped:
-they render through the ascii preset, and a file has no width to wrap to.}
+Like \code{compact} and \code{glyph_gap}, it applies to the active (console) theme,
+and a subsequent preset swap returns it to the \code{TRUE} default. File sinks
+are never wrapped: they render through the ascii preset, and a file has no
+width to wrap to.}
 }
 \value{
 \code{NULL}, invisibly.
@@ -194,10 +196,10 @@ logtree_theme("unicode", compact = "tight", connector_gap = 1)
 logtree_theme(glyph_gap = 0)   # tightest: no space after the glyph
 logtree_theme(glyph_gap = 2)   # roomier message column
 
-# Wrapping long messages.
-logtree_theme(wrap = TRUE)     # follow the console width
+# Wrapping long messages (on by default, at the console width).
 logtree_theme(wrap = 72)       # pin a fixed width
-logtree_theme(wrap = FALSE)    # back to letting long lines overflow
+logtree_theme(wrap = FALSE)    # let long lines overflow instead
+logtree_theme(wrap = TRUE)     # back to the console width
 
 # The other two presets.
 logtree_theme("minimal")       # no connectors: indentation only

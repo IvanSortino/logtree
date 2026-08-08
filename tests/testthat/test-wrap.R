@@ -45,11 +45,12 @@ test_that("resolve_wrap accepts logicals and positive counts, rejects the rest",
   expect_error(resolve_wrap(NA), "positive")
 })
 
-test_that("theme_wrap_width is off by default and follows logtree_theme(wrap=)", {
+test_that("theme_wrap_width follows the console by default and logtree_theme(wrap=)", {
   withr::defer(logtree_theme("unicode"))
 
+  # Wrapping is on out of the box, at the console width.
   logtree_theme("unicode")
-  expect_true(is.na(theme_wrap_width()))
+  withr::with_options(list(cli.width = 64), expect_equal(theme_wrap_width(), 64L))
 
   logtree_theme(wrap = 60)
   expect_equal(theme_wrap_width(), 60L)
@@ -57,10 +58,13 @@ test_that("theme_wrap_width is off by default and follows logtree_theme(wrap=)",
   logtree_theme(wrap = FALSE)
   expect_true(is.na(theme_wrap_width()))
 
-  # A preset swap clears it, as it does compact and glyph_gap.
-  logtree_theme(wrap = 60)
+  # A preset swap resets it to the default, as it does compact and glyph_gap.
   logtree_theme("unicode")
-  expect_true(is.na(theme_wrap_width()))
+  withr::with_options(list(cli.width = 64), expect_equal(theme_wrap_width(), 64L))
+
+  # A bare preset carries no wrapping at all -- that is what file sinks render
+  # through, and a file has no width to wrap to.
+  expect_true(is.na(theme_wrap_width(glyphs_ascii)))
 })
 
 test_that("wrap = TRUE measures the console at render time, not at set time", {
@@ -74,7 +78,7 @@ test_that("wrap = TRUE measures the console at render time, not at set time", {
 
 test_that("wrapping off leaves every line exactly as it was", {
   withr::defer(logtree_theme("unicode"))
-  logtree_theme("ascii")
+  logtree_theme("ascii", wrap = FALSE)
 
   long <- strrep("word ", 40)
   expect_false(grepl("\n", format_leaf("info", long, 2L, color = FALSE), fixed = TRUE))
@@ -86,7 +90,7 @@ test_that("wrapping off leaves every line exactly as it was", {
 
 test_that("compose_line leaves cols and cont unevaluated when wrapping is off", {
   withr::defer(logtree_theme("unicode"))
-  logtree_theme("ascii")
+  logtree_theme("ascii", wrap = FALSE)
 
   # Not a style preference: `cont` costs a rail_unit(), which costs a
   # cli::combine_ansi_styles() -- about a sixth of the time it takes to render
