@@ -11,6 +11,11 @@
 # marked and stays quiet.
 emit <- function(event) {
   record_summary(event)
+  # Stamp the event once, here, rather than letting each sink call Sys.time()
+  # for itself: two sinks recording the same event must agree about when it
+  # happened, and a run replayed from a file must line up with one replayed
+  # from memory.
+  event$ts <- wall_clock()
   problems <- character(0)
   for (id in names(the$sinks)) {
     fn <- the$sinks[[id]]$fn
@@ -88,6 +93,73 @@ json_scalar <- function(x) {
   esc_json_string(x)
 }
 
+# --- The structured event record --------------------------------------------
+#
+# Every non-rendering sink wants the same flattened view of an event, and the
+# two that exist -- the NDJSON file sink and the memory sink (R/sinks.R) -- must
+# not drift apart: a run replayed from a log file and the same run inspected in
+# memory should say the same things. So the flattening lives here, once, and the
+# schema is declared once in record_proto().
+#
+# The awkwardness it absorbs is that a leaf carries its fields directly while
+# every other kind carries them on `entry`, and that a group has a `name` where
+# a step has a `label`.
+
+# One zero-length vector per column, in column order: the record's schema, and
+# the prototype the memory sink's data.frame is built from.
+record_proto <- function() {
+  list(
+    ts        = as.POSIXct(numeric(0), tz = "", origin = "1970-01-01"),
+    level     = character(0),
+    id        = integer(0),
+    parent_id = integer(0),
+    depth     = integer(0),
+    label     = character(0),
+    elapsed   = numeric(0),
+    status    = character(0),
+    fn        = character(0),
+    file      = character(0),
+    line      = integer(0)
+  )
+}
+
+event_record <- function(event) {
+  is_leaf <- identical(event$kind, "leaf")
+  label   <- if (is_leaf) {
+    event$label
+  } else if (event$kind %in% c("group", "group_close")) {
+    event$entry$name
+  } else {
+    event$entry$label
+  }
+  status  <- if (is_leaf) {
+    event$status
+  } else if (identical(event$kind, "open")) {
+    "step"
+  } else if (identical(event$kind, "group")) {
+    "group"
+  } else {
+    if (identical(event$entry$status, "running")) "success" else event$entry$status
+  }
+  # A leaf carries its trace on the event; a step carries it on the entry,
+  # captured when the step opened. Groups have none (see format_group_header).
+  trace <- if (is_leaf) event$trace else event$entry$trace
+
+  list(
+    ts        = event$ts,
+    level     = event$kind,
+    id        = if (is_leaf) event$id else event$entry$id,
+    parent_id = if (is_leaf) event$parent_id else event$entry$parent_id,
+    depth     = if (is_leaf) event$depth else event$entry$depth,
+    label     = label,
+    elapsed   = if (event$kind %in% c("close", "group_close")) event$entry$elapsed else NA_real_,
+    status    = status,
+    fn        = trace$fn,
+    file      = trace$file,
+    line      = trace$line
+  )
+}
+
 # Hand-rolled scalar encoder for this one fixed, known event schema --
 # avoids adding jsonlite to Imports for a shape this small (design doc
 # section 6).
@@ -97,20 +169,20 @@ json_scalar <- function(x) {
 # can get, and json_scalar() already renders an absent one as null. They are
 # still only *captured* when the slot is on, so with trace off they are null
 # throughout -- consistent, and it costs a reader nothing.
-to_json_line <- function(event) {
+to_json_line <- function(record) {
   paste0(
     "{",
-    "\"ts\":", json_scalar(event$ts), ",",
-    "\"level\":", json_scalar(event$level), ",",
-    "\"id\":", json_scalar(event$id), ",",
-    "\"parent_id\":", json_scalar(event$parent_id), ",",
-    "\"depth\":", json_scalar(event$depth), ",",
-    "\"label\":", json_scalar(event$label), ",",
-    "\"elapsed\":", json_scalar(event$elapsed), ",",
-    "\"status\":", json_scalar(event$status), ",",
-    "\"fn\":", json_scalar(event$fn), ",",
-    "\"file\":", json_scalar(event$file), ",",
-    "\"line\":", json_scalar(event$line),
+    "\"ts\":", json_scalar(as.numeric(record$ts)), ",",
+    "\"level\":", json_scalar(record$level), ",",
+    "\"id\":", json_scalar(record$id), ",",
+    "\"parent_id\":", json_scalar(record$parent_id), ",",
+    "\"depth\":", json_scalar(record$depth), ",",
+    "\"label\":", json_scalar(record$label), ",",
+    "\"elapsed\":", json_scalar(record$elapsed), ",",
+    "\"status\":", json_scalar(record$status), ",",
+    "\"fn\":", json_scalar(record$fn), ",",
+    "\"file\":", json_scalar(record$file), ",",
+    "\"line\":", json_scalar(record$line),
     "}"
   )
 }
@@ -118,45 +190,8 @@ to_json_line <- function(event) {
 file_json_sink <- function(path) {
   force(path)
   function(event) {
-    is_leaf <- identical(event$kind, "leaf")
-    id      <- if (is_leaf) event$id else event$entry$id
-    parent  <- if (is_leaf) event$parent_id else event$entry$parent_id
-    depth   <- if (is_leaf) event$depth else event$entry$depth
-    label   <- if (is_leaf) {
-      event$label
-    } else if (event$kind %in% c("group", "group_close")) {
-      event$entry$name
-    } else {
-      event$entry$label
-    }
-    status  <- if (is_leaf) {
-      event$status
-    } else if (identical(event$kind, "open")) {
-      "step"
-    } else if (identical(event$kind, "group")) {
-      "group"
-    } else {
-      if (identical(event$entry$status, "running")) "success" else event$entry$status
-    }
-    elapsed <- if (event$kind %in% c("close", "group_close")) event$entry$elapsed else NA_real_
-    # A leaf carries its trace on the event; a step carries it on the entry,
-    # captured when the step opened. Groups have none (see format_group_header).
-    trace   <- if (is_leaf) event$trace else event$entry$trace
-
-    line <- to_json_line(list(
-      ts        = as.numeric(Sys.time()),
-      level     = event$kind,
-      id        = id,
-      parent_id = parent,
-      depth     = depth,
-      label     = label,
-      elapsed   = elapsed,
-      status    = status,
-      fn        = trace$fn,
-      file      = trace$file,
-      line      = trace$line
-    ))
-    cat(line, "\n", file = path, append = TRUE, sep = "")
+    cat(to_json_line(event_record(event)), "\n",
+        file = path, append = TRUE, sep = "")
   }
 }
 

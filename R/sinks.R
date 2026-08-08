@@ -80,6 +80,117 @@ logtree_sink <- function(fn) {
   invisible(register_sink(fn))
 }
 
+#' Collect logged events in memory
+#'
+#' Registers a sink that keeps every event in a buffer instead of writing it
+#' anywhere, so a run's logging can be *asserted on* rather than eyeballed.
+#' Read the buffer back with [logtree_sink_memory_events()]. This is the
+#' answer to "did my pipeline log what it should have?" -- previously that meant
+#' capturing console output and pattern-matching the rendered tree.
+#'
+#' The buffer is dropped when the sink is removed with [logtree_sink_remove()],
+#' and it is capped: a long-running process cannot grow it without bound.
+#'
+#' @param max Maximum number of events to keep. Once the buffer is full the
+#'   oldest events are dropped, so what you read back is always the most recent
+#'   `max`. Default `1000`.
+#' @return The sink's id, invisibly -- pass it to
+#'   [logtree_sink_memory_events()] to read the buffer, and to
+#'   [logtree_sink_remove()] to stop collecting.
+#' @seealso [logtree_sink_memory_events()], [logtree_sink()]
+#' @export
+#' @examples
+#' logtree_reset()
+#' h <- logtree_sink_memory()
+#'
+#' f <- function() {
+#'   log_step("Load data")
+#'   log_warn("coerced 3 rows")
+#' }
+#' invisible(f())
+#'
+#' events <- logtree_sink_memory_events(h)
+#' events[, c("level", "label", "status")]
+#'
+#' logtree_sink_remove(h)
+logtree_sink_memory <- function(max = 1000) {
+  if (!is.numeric(max) || length(max) != 1L || is.na(max) || max < 1) {
+    stop("`max` must be a single positive number of events.", call. = FALSE)
+  }
+  max <- as.integer(max)
+  # An environment, not a list in a closure variable: the buffer has to be
+  # readable from outside the sink function, and it is parked in
+  # `the$sink_stores` so it is dropped with the sink rather than kept alive by
+  # the closure alone.
+  store <- new.env(parent = emptyenv())
+  store$events <- list()
+  fn <- function(event) {
+    store$events[[length(store$events) + 1L]] <- event_record(event)
+    n <- length(store$events)
+    if (n > max) store$events <- store$events[seq.int(n - max + 1L, n)]
+    invisible(NULL)
+  }
+  invisible(register_sink(fn, store = store))
+}
+
+#' Read a memory sink's collected events
+#'
+#' Returns everything a [logtree_sink_memory()] sink has collected so far, as a
+#' data frame with one row per event and the same columns a `"json"` file sink
+#' writes (see [logtree_sink_file()]), so the two views of a run agree:
+#'
+#' | Column | What it holds |
+#' | ------ | ------------- |
+#' | `ts` | when the event was emitted (`POSIXct`) |
+#' | `level` | event kind: `"open"`, `"close"`, `"group"`, `"group_close"`, `"leaf"` |
+#' | `id`, `parent_id`, `depth` | the node's identity and place in the tree |
+#' | `label` | a step's label, a group's name, or a leaf's message |
+#' | `elapsed` | seconds, on close lines only; `NA` elsewhere |
+#' | `status` | a leaf's status, `"step"`/`"group"` on an opening line, or the resolved status on a close |
+#' | `fn`, `file`, `line` | the call site, when the `trace` theme slot recorded one; `NA` otherwise |
+#'
+#' @param id A memory sink's id, as returned by [logtree_sink_memory()].
+#' @return A data frame with one row per collected event, oldest first, and zero
+#'   rows (with the columns above) when nothing has been logged yet.
+#' @seealso [logtree_sink_memory()]
+#' @export
+#' @examples
+#' logtree_reset()
+#' h <- logtree_sink_memory()
+#' f <- function() log_info("Reading config.yml")
+#' invisible(f())
+#' logtree_sink_memory_events(h)
+#' logtree_sink_remove(h)
+logtree_sink_memory_events <- function(id) {
+  if (!is.character(id) || length(id) != 1L || is.na(id)) {
+    stop("`id` must be a single memory sink id.", call. = FALSE)
+  }
+  store <- the$sink_stores[[id]]
+  if (is.null(store)) {
+    stop(sprintf("`%s` is not a registered memory sink.", id), call. = FALSE)
+  }
+  records_to_df(store$events)
+}
+
+# Bind a list of event records into a data frame, column by column, from
+# record_proto()'s declared types (R/appenders.R). Typed columns matter: an
+# all-missing `elapsed` has to stay numeric rather than collapsing to logical
+# NA, or a caller's arithmetic breaks on the one run where nothing closed.
+records_to_df <- function(records) {
+  proto <- record_proto()
+  cols  <- lapply(names(proto), function(nm) {
+    empty <- proto[[nm]]
+    if (length(records) == 0L) return(empty)
+    na <- empty[NA_integer_]
+    do.call(c, lapply(records, function(r) {
+      v <- r[[nm]]
+      if (is.null(v) || length(v) != 1L || is.na(v)) na else v
+    }))
+  })
+  names(cols) <- names(proto)
+  as.data.frame(cols, stringsAsFactors = FALSE)
+}
+
 #' List the registered sinks
 #'
 #' The ids of every sink currently registered, in the order they fire. The

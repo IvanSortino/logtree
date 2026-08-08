@@ -34,6 +34,14 @@ now <- function() {
   proc.time()[["elapsed"]]
 }
 
+# Wall-clock time, as opposed to now()'s monotonic-ish process clock. The two
+# answer different questions and neither substitutes for the other: now() times
+# how long a step took, wall_clock() says when it happened. Its own function so
+# that tests can freeze it the same way they freeze now().
+wall_clock <- function() {
+  Sys.time()
+}
+
 format_elapsed <- function(seconds) {
   if (seconds < 60) {
     return(sprintf("%.2fs", seconds))
