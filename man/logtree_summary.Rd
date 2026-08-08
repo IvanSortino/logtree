@@ -4,7 +4,13 @@
 \alias{logtree_summary}
 \title{Report a digest of notable events}
 \usage{
-logtree_summary(filter = NULL, depth = NULL, gap = NULL, rule = NULL)
+logtree_summary(
+  filter = NULL,
+  depth = NULL,
+  gap = NULL,
+  rule = NULL,
+  trace = NULL
+)
 }
 \arguments{
 \item{filter}{Optional character vector of statuses to include, e.g.
@@ -30,10 +36,25 @@ instead of a separate line; \code{FALSE} draws no rule and keeps the plain
 header line; a character string draws the rule with that title and prints
 the header line below it. \code{NULL} (the default) takes the active theme's
 \code{summary$rule} (\code{TRUE} in every built-in preset).}
+
+\item{trace}{Pins the digest's call-site column for this call, overriding the
+theme's \code{trace$show}. Takes the same values: \code{FALSE} for no call sites,
+\code{TRUE} for all of them, \code{"problems"}, or a vector of statuses such as
+\code{"error"} -- see \code{\link[=logtree_theme]{logtree_theme()}}. \code{NULL} (the default) follows the theme,
+so the digest agrees with the tree. Useful when the tree was quiet and the
+digest is where you want the locations, or the reverse. Note this can only
+narrow or reshape what was \emph{captured}: capture is decided while the run
+happens, so with the theme's slot off for the run there is nothing for
+\code{trace = TRUE} here to print. To get the quiet-tree-annotated-digest
+combination, ask for capture during the run and print nothing:
+\code{logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))}, then
+\code{logtree_summary(trace = TRUE)}.}
 }
 \value{
 The recorded entries, invisibly: a list of records, each a list with
-\code{kind}, \code{status}, \code{msg}, \code{path} (character vector), and \code{elapsed}.
+\code{kind}, \code{status}, \code{msg}, \code{path} (character vector), \code{elapsed}, and \code{trace}
+(the call site: a list of \code{fn}, \code{file} and \code{line}, or \code{NULL} when the
+\code{trace} theme slot was off and nothing was captured).
 }
 \description{
 Prints a compact end-of-run digest of everything worth attention that
@@ -52,8 +73,8 @@ logged with \code{summary = TRUE}; a warning or error can be excluded with
 The digest's appearance comes from the active theme, so it is customised
 through \code{\link[=logtree_theme]{logtree_theme()}} like everything else: the \code{crumb} slot sets the
 breadcrumb separator and the emphasis on the path nodes, the \code{summary} slot
-the divider (\code{gap}, \code{rule}, \code{line}). \code{gap} and \code{rule} below override the
-theme for a single call.
+the divider (\code{gap}, \code{rule}, \code{line}). \code{gap}, \code{rule} and \code{trace} below override
+the theme for a single call.
 }
 \examples{
 logtree_reset()
@@ -66,6 +87,12 @@ logtree_summary()
 
 # Flush against the tree, with a titled divider.
 logtree_summary(gap = 0, rule = "Run report")
+
+# Call sites in the digest only: the tree above stays as it was rendered.
+logtree_theme(list(trace = list(show = TRUE)))
+f()
+logtree_summary(trace = "error")
+logtree_theme("unicode")
 
 # Set the layout and the breadcrumb symbol once, on the theme.
 logtree_theme(list(

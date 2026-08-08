@@ -82,9 +82,61 @@ connector is only ever a step's own close line (see design doc §3.5) — requir
 because this is a *live* streaming logger that can't know in advance whether a line
 is the last sibling.
 
+### Call-site trace (`R/trace.R`)
+
+The opt-in `trace` theme slot annotates lines with `file.R:line fn()`.
+`capture_trace()` walks the frame stack for the enclosing function's name;
+`src_parts()` reads the srcref for file/line (and `src_location()`, the older
+"file:line" view used by the srckey reconcile, now delegates to it). Capture is
+gated by `trace_enabled()` and so costs nothing on the default path — `show` is
+`FALSE` in every preset. `resolve_trace_show()` normalises `show` to **`FALSE`
+or a character vector of statuses** (`trace_statuses`: running, info, debug,
+success, warning, error, interrupted), resolving the `TRUE` and `"problems"`
+shorthands away there so every line-level decision is one `%in%` —
+`format_trace_field()` tests `"running"` for open lines and the line's own
+status otherwise, and `format_trace_digest()` tests the entry's status. The one
+rule that is not membership: an ordinary close line never carries a trace (its
+site is its own open line's), only an interrupted one. `logtree_summary(trace =)`
+swaps just that slot for one call via `digest_theme()` (`R/summary.R`), the same
+shape as `text_sink_theme()` — it can only narrow what was already captured,
+since capture is decided at log time.
+
+**Capture and render are separate stages, and only render can be decided after
+the fact** (the frame stack is gone by then). `trace_enabled()` is the capture
+gate and three things can open it: a non-`FALSE` `show`, the slot's own
+`capture = TRUE` (for "record, print none" — quiet tree, annotated digest or
+JSON sink), or a sink registered with `trace =` (`the$trace_sinks`). It only
+ever adds: `capture = FALSE` never removes the capture a `show` implied. **`{file}`/`{line}` require `keep.source`**, absent
+under plain `Rscript`, so `expand_trace_text()` drops any template run whose
+placeholders are all unavailable rather than rendering `NA`.
+
+`src_parts()` returns three fields, not two: `file` is the *printed* form
+(relative to `getwd()` when the source sits under it — a bare basename resolves
+to nothing) and `path` is the absolute form used as the hyperlink target.
+Styling and linking happen in `expand_trace_text()`, *after* the
+run-availability check, so a styled empty value can never keep a run alive. A
+run mentioning `{file}`/`{line}` is a **location** and is styled and linked as
+one unit (separator included, one OSC 8 span); any other run styles its
+placeholders individually, which is what leaves `{fn}` coloured and its `()` in
+the base colour. `trace$color` therefore takes either a character vector (the
+whole column, becoming `base`) or a `list(base=, location=, fn=)`, which is
+what the coloured presets ship.
+`trace_link()` emits OSC 8 via `cli::style_hyperlink()`, which no-ops on
+terminals without support; the escape has zero printable width, so
+`compose_line()`'s wrapping arithmetic is untouched.
+
+The column is appended to the *message* before it reaches `compose_line()`, which
+is why none of the `cols`/`cont` layout arithmetic changed. Two handlers are
+handed their call site rather than walking for it, because they log from inside a
+frame of their own and a walk would name the handler: `with_logging()` via
+`conditionCall()` (`log_error_at()`), and `layout_logtree()` via `logger`'s
+`.topcall`. Both pass `emit_leaf(capture = FALSE)` so a NULL call site cannot
+silently fall through to the wrong answer.
+
 ### Theme system (`R/glyphs.R`, `R/theme.R`)
 
-Three built-in presets (`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji`) are plain
+Five built-in presets (`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji`,
+`glyphs_minimal`, `glyphs_ci`) are plain
 named lists keyed by status/connector, each glyph entry declaring its own `width`
 explicitly rather than measured (`nchar()`/`ansi_nchar()` can't reliably size emoji
 cells) — this is what keeps message text column-aligned across themes.

@@ -127,16 +127,18 @@ reconcile_open_step <- function(key, srcref) {
 # "file:line" of a call site, or NA when source references are unavailable
 # (e.g. keep.source = FALSE under non-interactive Rscript). NA disables srcref
 # disambiguation, leaving the portable label-only reconcile in force.
+#
+# The lookup itself lives in src_parts() (R/trace.R), which returns the two
+# fields separately for the trace column's template. This is the joined view
+# the reconcile has always used; its return value is unchanged.
 src_location <- function(call) {
-  line <- utils::getSrcLocation(call, "line")
-  if (is.null(line) || is.na(line)) return(NA_character_)
-  file <- utils::getSrcFilename(call)
-  if (is.null(file) || !nzchar(file)) file <- "<text>"
-  paste0(basename(file), ":", line)
+  p <- src_parts(call)
+  if (is.na(p$line)) return(NA_character_)
+  paste0(p$file, ":", p$line)
 }
 
 push_step <- function(label, glyph = NULL, group = NULL, parent = NULL,
-                      key = NULL, srcref = NULL) {
+                      key = NULL, srcref = NULL, trace = NULL) {
   if (!is.null(parent)) {
     p <- find_stack_entry(parent)
     if (is.null(p)) {
@@ -188,7 +190,11 @@ push_step <- function(label, glyph = NULL, group = NULL, parent = NULL,
     status    = "running",
     glyph     = glyph,
     key       = key,
-    srcref    = srcref
+    srcref    = srcref,
+    # A separate field from `srcref`, deliberately: that one's exact-match
+    # semantics are load-bearing for reconcile_open_step(). The step persists on
+    # the stack, so its close line can still render the site captured here.
+    trace     = trace
   )
   the$stack[[length(the$stack) + 1L]] <- entry
   emit(list(kind = "open", entry = entry))
@@ -313,14 +319,22 @@ log_step <- function(msg, glyph = NULL, parent = NULL, group = NULL,
                      close = FALSE, key = NULL) {
   caller <- rlang::caller_env()
   srcref <- NULL
+  trace  <- NULL
   if (is.null(key) && is.null(parent) && identical(caller, globalenv())) {
     # Top-level call: key on the label so re-running this line re-anchors to
     # the same node instead of nesting; srcref disambiguates same-label steps.
     key    <- msg
     srcref <- src_location(sys.call())
   }
+  # Assign sys.call() to a local before handing it on: as a promise its
+  # evaluation context would be ambiguous, and the whole point is to read *this*
+  # frame's call. up = 1: our caller is the user's own function.
+  if (trace_enabled()) {
+    this_call <- sys.call()
+    trace     <- capture_trace(this_call, up = 1L)
+  }
   entry <- push_step(msg, glyph, group = group, parent = parent,
-                     key = key, srcref = srcref)
+                     key = key, srcref = srcref, trace = trace)
   if (isTRUE(close)) {
     close_step(entry$id, silent = TRUE)
     return(invisible(entry$id))
@@ -391,14 +405,20 @@ log_open <- function(msg, glyph = NULL, parent = NULL, group = NULL,
                      close = FALSE, key = NULL) {
   caller <- rlang::caller_env()
   srcref <- NULL
+  trace  <- NULL
   if (is.null(key) && is.null(parent) && identical(caller, globalenv())) {
     # Top-level call: key on the label so re-running this line re-anchors to
     # the same node instead of nesting; srcref disambiguates same-label steps.
     key    <- msg
     srcref <- src_location(sys.call())
   }
+  # See log_step(): sys.call() into a local first, up = 1 for the user's frame.
+  if (trace_enabled()) {
+    this_call <- sys.call()
+    trace     <- capture_trace(this_call, up = 1L)
+  }
   entry <- push_step(msg, glyph, group = group, parent = parent,
-                     key = key, srcref = srcref)
+                     key = key, srcref = srcref, trace = trace)
   if (isTRUE(close)) close_step(entry$id, silent = TRUE)
   invisible(entry$id)
 }
@@ -642,9 +662,15 @@ format_open <- function(entry, theme = the$theme, color = TRUE) {
     paste0(rails(d - 2L, theme, color), connector_str("branch", theme, color))
   }
   glyph <- if (is.null(entry$glyph)) theme_glyph("step", theme, color) else pad_custom_glyph(entry$glyph, theme)
+  # The trace goes into the *message*, not a column of its own, so cols/cont
+  # below stay exactly as they were and wrapping accounts for it for free.
+  label <- with_trace(
+    entry$label,
+    format_trace_field(entry$trace, "open", theme = theme, color = color)
+  )
   # cols/cont are passed inline, unevaluated -- see compose_line().
   compose_line(
-    paste0(prefix, glyph, glyph_pad(theme)), entry$label,
+    paste0(prefix, glyph, glyph_pad(theme)), label,
     cols = max(d - 1L, 0L) * tree_col_width(theme) + glyph_gutter(theme),
     cont = paste0(if (d == 1L) "" else rails(d - 1L, theme, color),
                   glyph_rail(theme, color)),
@@ -712,6 +738,161 @@ format_elapsed_field <- function(seconds, theme = the$theme, color = TRUE,
   colorize(format_elapsed(seconds), col, color)
 }
 
+# The value a single trace placeholder expands to, or "" when unavailable.
+trace_value <- function(key, trace) {
+  v <- switch(key,
+    "{fn}"   = trace$fn,
+    "{file}" = trace$file,
+    "{line}" = trace$line,
+    NULL
+  )
+  if (is.null(v) || length(v) != 1L || is.na(v)) return("")
+  as.character(v)
+}
+
+# Expand a trace template. `{fn}`, `{file}` and `{line}` are the placeholders.
+#
+# Two rules, both load-bearing:
+#
+#   * Substitution is a single regmatches<- pass per whitespace-separated run,
+#     never a gsub() per placeholder -- a function or file name that happens to
+#     contain "{line}" must be inserted as data, not rescanned and substituted
+#     again. See expand_close_text() above, and commit 3b5803d.
+#   * A run whose placeholders are *all* unavailable is dropped whole. That is
+#     what makes the default format degrade to "load_data()" under
+#     keep.source = FALSE instead of leaving ":" or "NA:NA" behind, and what
+#     makes a location-only format collapse to no column at all.
+#   * A run that mentions `{file}` or `{line}` is a *location*, and is styled
+#     and linked as one thing -- the `:` between the two included, so the whole
+#     of `pipeline.R:12` is a single silver, single-hyperlink unit rather than
+#     two links with a differently coloured separator wedged between them. Any
+#     other run styles its placeholders one by one, which is what leaves `{fn}`
+#     coloured and the `()` after it in the base colour.
+#   * Both happen *after* the availability check above, so a styled empty value
+#     can never keep a run alive that plain expansion would have dropped.
+expand_trace_text <- function(template, trace, styles = NULL, link = FALSE) {
+  if (!grepl("{", template, fixed = TRUE)) return(template)
+  runs <- strsplit(template, " ", fixed = TRUE)[[1L]]
+  keep <- character(0)
+  for (run in runs) {
+    m    <- gregexpr("\\{fn\\}|\\{file\\}|\\{line\\}", run)
+    hits <- regmatches(run, m)[[1L]]
+    if (length(hits) == 0L) {
+      keep <- c(keep, run)
+      next
+    }
+    vals <- vapply(hits, trace_value, character(1), trace = trace,
+                   USE.NAMES = FALSE)
+    if (all(!nzchar(vals))) next
+    location <- any(hits %in% c("{file}", "{line}"))
+    if (!location && !is.null(styles)) {
+      vals <- vapply(seq_along(hits), function(i) {
+        part <- substring(hits[[i]], 2L, nchar(hits[[i]]) - 1L)
+        colorize(vals[[i]], styles[[part]], nzchar(vals[[i]]))
+      }, character(1))
+    }
+    regmatches(run, m) <- list(vals)
+    if (location) {
+      run <- colorize(run, styles$location, !is.null(styles))
+      if (isTRUE(link)) run <- trace_link(run, trace)
+    }
+    keep <- c(keep, run)
+  }
+  paste(keep, collapse = " ")
+}
+
+# An OSC 8 hyperlink to the source file, at the traced line. Two things make
+# this safe to emit unconditionally: cli::style_hyperlink() returns the text
+# untouched where the terminal has no hyperlink support, and the escape carries
+# no printable width, so the wrapping arithmetic in compose_line() is unaffected
+# (cli::ansi_nchar() measures a linked string as its visible text).
+#
+# The link target is the absolute path -- the whole point of carrying `path`
+# alongside the printed `file`.
+trace_link <- function(text, trace) {
+  path <- trace$path
+  if (is.null(path) || length(path) != 1L || is.na(path)) return(text)
+  params <- NULL
+  if (!is.null(trace$line) && length(trace$line) == 1L && !is.na(trace$line)) {
+    params <- c(line = as.character(trace$line))
+  }
+  cli::style_hyperlink(text, paste0("file://", path), params = params)
+}
+
+# The theme's per-part trace styles, or NULL when the column is unstyled.
+#
+# `color` takes either form: a character vector of cli styles styles the whole
+# column and becomes the `base`, while a named list styles the parts
+# independently -- `location` for a `{file}`/`{line}` run, `fn` for the function
+# name, `base` for everything else, the literal text of the template included.
+# Presets use the list form so the location and the function name read as
+# different things while both stay dim.
+trace_styles <- function(theme = the$theme) {
+  col <- theme_field("trace", "color", NULL, theme)
+  if (is.null(col)) return(NULL)
+  if (is.list(col)) col else list(base = col)
+}
+
+# The call-site column, governed by the theme's `trace` slot. Returns "" when
+# the column is hidden, so callers join their columns conditionally -- the same
+# contract as format_elapsed_field() above.
+#
+# resolve_trace_show() has already turned `show` into a set of statuses, so the
+# policy here is one membership test against the status this line reports:
+# "running" for an open line, the line's own status otherwise. `TRUE` names
+# every status and so stays a strict superset of `"problems"` -- turning the
+# column up must never take a line away that the quieter setting was showing.
+#
+# The one rule that is not membership: an ordinary close line never carries a
+# trace, whatever the set, because its site is its own open line's, two rows up.
+# An *interrupted* close is the exception, and the only line kind where nothing
+# else carries a location -- a step whose frame unwound with no with_logging()
+# handler has no accompanying leaf to hang it on.
+format_trace_field <- function(trace, kind, status = NULL, theme = the$theme,
+                               color = TRUE) {
+  if (is.null(trace)) return("")
+  show <- resolve_trace_show(theme)
+  if (isFALSE(show)) return("")
+  if (identical(kind, "close") && !identical(status, "interrupted")) return("")
+  line_status <- if (identical(kind, "open")) "running" else status
+  if (is.null(line_status) || !(line_status %in% show)) return("")
+  render_trace_text(trace, theme, color)
+}
+
+# Expand and style a trace, with no policy applied: the shared tail of
+# format_trace_field() and format_trace_digest().
+render_trace_text <- function(trace, theme = the$theme, color = TRUE) {
+  styles <- if (isTRUE(color)) trace_styles(theme) else NULL
+  text   <- expand_trace_text(theme_field("trace", "format", "", theme), trace,
+                              styles = styles, link = isTRUE(color))
+  if (!nzchar(text)) return("")
+  colorize(text, styles$base, color)
+}
+
+# The trace column for a logtree_summary() digest line.
+#
+# The same status filter as a tree line, minus the per-kind rules: a digest
+# entry has no connectors and no close line of its own, so its own status is
+# the whole question. `show = "error"` therefore means errors only wherever you
+# read it -- in the tree and in the digest alike -- which is the point of naming
+# statuses rather than picking a bundle.
+format_trace_digest <- function(trace, status = NULL, theme = the$theme,
+                                color = TRUE) {
+  if (is.null(trace)) return("")
+  show <- resolve_trace_show(theme)
+  if (isFALSE(show)) return("")
+  if (is.null(status) || !(status %in% show)) return("")
+  render_trace_text(trace, theme, color)
+}
+
+# Join a rendered message and a rendered trace with the two-space separator the
+# elapsed column already uses, skipping it when either side is empty.
+with_trace <- function(msg, trace_text) {
+  if (!nzchar(trace_text)) return(msg)
+  if (!nzchar(msg)) return(trace_text)
+  paste0(msg, "  ", trace_text)
+}
+
 # A close line's message: the themed word, then the elapsed time. Either side
 # can be empty -- `text = ""` drops the word, and the `elapsed` slot can hide
 # the time -- so the two-space separator is placed only when there is
@@ -736,6 +917,14 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
   status <- resolved_status(entry$status)
   glyph  <- theme_glyph(close_glyph_key(status, theme), theme, color)
   msg    <- close_message(entry, status, theme, color)
+  # Only `show = "problems"` puts a trace here, and only on an interrupted
+  # close -- the one line kind with no other record of where it happened. This
+  # must precede the nzchar() guard below: a theme that drops both the close
+  # word and the elapsed time would otherwise discard the trace along with them.
+  msg <- with_trace(
+    msg,
+    format_trace_field(entry$trace, "close", status, theme = theme, color = color)
+  )
   # A theme that drops both the word and the time leaves a glyph-only close
   # line; skip the gap too rather than trailing a space off the end of it.
   if (!nzchar(msg)) return(paste0(prefix, glyph))
@@ -752,7 +941,7 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
 }
 
 format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
-                        corner = FALSE) {
+                        corner = FALSE, trace = NULL) {
   # A `corner = TRUE` leaf is the terminal line of its section (the `close =`
   # force-close): it takes the corner connector instead of branch, standing in
   # for the suppressed close line -- and, like a close line, nothing follows it
@@ -763,6 +952,11 @@ format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
   base <- if (depth == 0L) "" else rails(depth - 1L, theme, color)
   own_key <- if (isTRUE(corner)) "corner" else "branch"
   prefix <- if (depth == 0L) "" else paste0(base, own_connector_str(own_key, theme, color))
+  # Into the message, not a column of its own -- see format_open().
+  msg <- with_trace(
+    msg,
+    format_trace_field(trace, "leaf", status, theme = theme, color = color)
+  )
   # cols/cont are passed inline, unevaluated -- see compose_line().
   compose_line(
     paste0(prefix, theme_glyph(status, theme, color), glyph_pad(theme)), msg,
@@ -781,6 +975,9 @@ format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
   )
 }
 
+# A group header carries no trace, by design rather than by omission: a group is
+# a synthetic node collapsing adjacent steps, so it has no call site of its own.
+# The site you want is on its member steps' own lines.
 format_group_header <- function(entry, theme = the$theme, color = TRUE) {
   d <- entry$depth
   prefix <- if (d == 1L) "" else {

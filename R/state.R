@@ -3,6 +3,15 @@ the$stack   <- list()
 the$next_id <- 1L
 the$summary <- list()
 
+# How many registered sinks asked for the call-site column in their own right
+# (logtree_sink_file(trace = )). Capture is gated on the theme's `trace` slot,
+# but a sink can want a trace the console is not showing -- a quiet terminal and
+# a log file that records call sites -- so trace_enabled() (R/trace.R) ORs this
+# in. A count rather than a flag because sinks stack; like `sinks` itself it is
+# deliberately not cleared by logtree_reset(), and there is as yet no way to
+# unregister a sink (see debug/feature-plan.md item 4).
+the$trace_sinks <- 0L
+
 # with_logging(global = TRUE) installs a session-persistent global calling
 # handler. These track whether it is installed, the global handlers that were
 # in force before (restored on reset), and when it was installed (for the

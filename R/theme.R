@@ -212,6 +212,7 @@ apply_overrides <- function(overrides) {
 #' | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color`, `text` |
 #' | `group` | group header marker | `glyph`, `color`, `bracket` |
 #' | `elapsed` | the elapsed-time column printed on every close line | `show`, `min`, `color`, `slow`, `slow_color` |
+#' | `trace` | the optional call-site column: where in your code a line came from | `show`, `capture`, `format`, `color` |
 #' | `branch` | child connector: the "tee" drawn before every child line | `glyph`, `color` |
 #' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
 #' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
@@ -234,15 +235,60 @@ apply_overrides <- function(overrides) {
 #' `done`. `text` is a close-line concern only: it never touches the message a
 #' [log_warn()] or [log_error()] leaf prints.
 #'
+#' The `trace` slot is off in every preset, and deliberately so: capturing a call
+#' site costs a frame walk and a source-reference lookup on every logged line, so
+#' you opt in and the default path pays nothing. Switch it on with
+#' `list(trace = list(show = "problems"))` to annotate only what went wrong, or
+#' `show = TRUE` for every line that can carry a call site. `show` also takes a
+#' vector of statuses, for when the bundle is too much: `show = "error"`
+#' annotates errors and leaves tolerated warnings bare, `show = c("error",
+#' "interrupted")` adds the steps that never finished. The column is appended to
+#' the message, so it wraps with it rather than shearing the tree.
+#'
+#' The location -- `{file}` and `{line}` together, separator included -- is also
+#' emitted as one terminal hyperlink pointing at the file, at that line, so a
+#' click anywhere on it opens your editor there. Terminals without
+#' hyperlink support print the same text unlinked, and the escape has no
+#' printable width either way. `{file}` prints relative to the working directory
+#' where the source sits under it -- a bare file name is not something a
+#' terminal can resolve.
+#'
+#' **On source references.** `{file}` and `{line}` come from R's source
+#' references, which exist only when the code was parsed with `keep.source =
+#' TRUE`. That is the default in an interactive session and under
+#' `devtools::load_all()`, but **not** under plain `Rscript` and not for an
+#' installed package. `{fn}` is always available. Rather than print `NA`, the
+#' expander drops any whitespace-separated run of the template whose placeholders
+#' are all unavailable -- so the default format degrades from
+#' `pipeline.R:12 load_data()` to `load_data()`, and a `"{file}:{line}"` format
+#' degrades to no column at all. Set `options(keep.source = TRUE)` at the top of
+#' a script if you want locations under `Rscript`.
+#'
+#' Capturing and printing are separate: `show` decides what a line *prints*,
+#' `capture = TRUE` decides that call sites are *recorded* whatever `show`
+#' prints. `list(trace = list(show = FALSE, capture = TRUE))` therefore leaves
+#' the tree exactly as it was while giving the digest and any `"json"` sink
+#' locations to work with. The order matters -- capture happens as the run
+#' unfolds, so a call site not recorded then cannot be recovered afterwards.
+#'
+#' Two places outside the tree also report call sites when the slot is on:
+#' [logtree_summary()]'s digest lines, which apply the same status filter as the
+#' tree does, and the `fn` / `file` / `line` fields of a `"json"` sink (which
+#' carries them whenever they were captured, regardless of `show`). See
+#' [logtree_sink_file()] for pinning a file sink's column independently of the
+#' console's.
+#'
 #' **Fields** (valid names inside a slot):
 #'
 #' | Field | Type | Accepted values |
 #' | ----- | ---- | --------------- |
 #' | `glyph` | `character(1)` | Any string, including `""`. In package source, non-ASCII must be written as `\u`/`\U` escapes, never literal characters. |
 #' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `done`, `warning`, `error`, `interrupted`). |
-#' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself. See [cli::combine_ansi_styles()]. |
+#' | `color` | `character`, `NULL`, or a named `list` on `trace` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself. On `trace` it also accepts a named list styling the parts of the column separately: `location` for a `{file}`/`{line}` run (the separator between them included -- the location is one thing, styled and linked whole), `fn` for the function name, and `base` for everything else, which in the default format is the `()`. That is what the coloured presets ship: all of it dim, with the location in silver and `fn` in cyan, so the two read apart. A plain character vector on `trace` styles the whole column. `NULL` in the colourless ascii and ci presets. See [cli::combine_ansi_styles()]. |
 #' | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its elapsed time; `""` drops it, leaving the glyph and the time. Two placeholders are expanded: `{label}` (the closing step's own label, or a group's name) and `{elapsed}` (the formatted time). A template that places `{elapsed}` itself owns that column, so the time is not appended after it a second time. |
-#' | `show` | `logical(1)` | `elapsed` slot only. `FALSE` drops the elapsed-time column entirely. Default `TRUE`. |
+#' | `show` | `logical(1)`, or `character` on `trace` | On `elapsed`: `FALSE` drops the elapsed-time column entirely, default `TRUE`. On `trace`: `FALSE` (the default in every preset) off entirely; `TRUE` every line that can carry a call site; `"problems"` a shorthand for `c("warning", "error", "interrupted")`; or a vector of statuses naming exactly what to annotate -- `"running"` (open lines), `"info"`, `"debug"`, `"success"`, `"warning"`, `"error"` (leaves of that status) and `"interrupted"` (a close line whose step unwound). `show = "error"` is errors without their warnings. An ordinary close line never carries one whatever the set: its site is its own open line's. Unknown tokens are dropped, and anything unrecognised reads as `FALSE`. |
+#' | `format` | `character(1)` | `trace` slot only. Template for the call-site column over three placeholders: `{fn}` (the enclosing function's name), `{file}` and `{line}` (where the log call sits). Default `"{file}:{line} {fn}()"`. A whitespace-separated run whose placeholders are *all* unavailable is dropped whole, so the default degrades to `load_data()` rather than printing `NA` -- see the note on source references below. |
+#' | `capture` | `logical(1)` | `trace` slot only. `TRUE` records a call site on every line even where `show` prints none, for "record, print later": a quiet console whose [logtree_summary()] digest or `"json"` sink still carries locations. Default `FALSE` in every preset. It only ever adds -- a `show` that asks for a column already implies capture, and `capture = FALSE` never takes that away. This is the one part of the feature that cannot be decided after the fact: a call site not recorded while the run happened is gone, because the frame stack it came from has unwound. |
 #' | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds -- `min = 0.1` silences the `0.00s` noise on trivial steps. Default `0` (show everything). |
 #' | `slow` | `numeric(1)` or `NULL` | `elapsed` slot only. Times at or over this many seconds count as slow and are styled with `slow_color` instead of `color`. `NULL` (the default) means nothing is ever flagged. |
 #' | `slow_color` | `character` or `NULL` | `elapsed` slot only. Styles applied to a slow time in place of `color`. Same accepted values as `color`; `"yellow"` in the unicode, emoji and minimal presets, `NULL` in the colourless ascii and ci presets. |
@@ -275,6 +321,17 @@ apply_overrides <- function(overrides) {
 #' logtree_theme(list(elapsed = list(color = "silver", slow = 5,
 #'                                   slow_color = "red")))
 #' logtree_theme(list(elapsed = list(show = FALSE)))
+#'
+#' # The call-site column: off by default, loudest on the lines that matter.
+#' logtree_theme(list(trace = list(show = "problems")))
+#' logtree_theme(list(trace = list(show = TRUE)))
+#' logtree_theme(list(trace = list(show = "error")))          # errors only
+#' # Record call sites but print none: the digest can still show them.
+#' logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))
+#' logtree_theme(list(trace = list(show = c("error", "interrupted"))))
+#' logtree_theme(list(trace = list(show = TRUE, format = "{fn}()")))
+#' logtree_theme(list(trace = list(format = "{file}:{line}", color = "silver")))
+#' logtree_theme(list(trace = list(show = FALSE)))  # back off again
 #'
 #' # Naming one swaps the whole preset, clearing every override above.
 #' logtree_theme("unicode")

@@ -26,7 +26,18 @@ should_emit_leaf <- function(status) {
   leaf_verbosity_rank[[status]] >= verbosity_rank[[the$verbosity]]
 }
 
-emit_leaf <- function(status, msg, close = FALSE, summary = NA) {
+# `trace` is supplied by the callers that already hold a call site --
+# log_error_at() below, and layout_logtree() -- and NULL everywhere else.
+#
+# `capture = FALSE` goes with those callers, and is not the same thing as
+# `trace = NULL`. They log from inside a frame of their own, so the frame walk
+# below would name the handler or the layout rather than the user's code. Their
+# call site can legitimately come out NULL -- a condition raised without a call,
+# say -- and if that fell through to the walk we would print exactly the wrong
+# answer instead of no answer. So the two are separate: `trace` is the value,
+# `capture` is permission to go looking.
+emit_leaf <- function(status, msg, close = FALSE, summary = NA, trace = NULL,
+                      capture = TRUE) {
   # A leaf at a group's level means that (member-less) group is done -- close
   # any lingering group before the leaf is placed or gated out.
   settle_groups()
@@ -34,13 +45,25 @@ emit_leaf <- function(status, msg, close = FALSE, summary = NA) {
   # affects elevate_current_step(), which callers run beforehand, so a
   # step's close glyph still reflects a suppressed warning/error.
   if (should_emit_leaf(status)) {
+    # Capture inside the gate, not above it: a verbosity-suppressed log_debug()
+    # then costs no frame walk at all.
+    #
+    # up = 2 because all five leaf wrappers below sit exactly one frame between
+    # the user's function and here -- log_warn()/log_error() call
+    # elevate_current_step() first, but that returns before we are entered, so it
+    # does not shift the count. test-trace.R pins this constant; a future wrapper
+    # at a different depth would silently mis-attribute every line.
+    if (isTRUE(capture) && is.null(trace) && trace_enabled()) {
+      this_call <- sys.call(-1L)
+      trace     <- capture_trace(this_call, up = 2L)
+    }
     id <- the$next_id
     the$next_id <- id + 1L
     # `terminal = TRUE` renders this leaf with the corner connector -- it is
     # the section's closing line (see close = below).
     emit(list(kind = "leaf", status = status, label = msg,
               depth = current_depth(), id = id, parent_id = current_parent_id(),
-              terminal = isTRUE(close), summary = summary))
+              terminal = isTRUE(close), summary = summary, trace = trace))
   }
   # The force-close is a structural request, independent of whether the leaf
   # line itself was verbosity-gated: close even if the line was suppressed.
@@ -158,5 +181,20 @@ log_warn <- function(msg, close = FALSE, summary = NA) {
 log_error <- function(msg, close = FALSE, summary = NA) {
   elevate_current_step("error")
   emit_leaf("error", msg, close = close, summary = summary)
+  invisible(NULL)
+}
+
+# log_error() for a condition caught by a handler.
+#
+# A handler logs from its own frame, so emit_leaf()'s frame walk would trace the
+# leaf to the handler rather than to the code that threw -- the least useful
+# answer available. conditionCall() carries the throwing call, so hand that in
+# instead. `call` may be NULL (conditions raised without one), in which case the
+# leaf simply carries no trace.
+#
+# Used by with_logging()'s calling handler and by global_error_action() (R/run.R).
+log_error_at <- function(msg, call) {
+  elevate_current_step("error")
+  emit_leaf("error", msg, trace = trace_from_call(call), capture = FALSE)
   invisible(NULL)
 }

@@ -1,5 +1,60 @@
 # logtree (development version)
 
+* New `trace` theme slot: an opt-in call-site column, so a line can say *where
+  in your code* it came from as well as what happened. `logtree_theme(list(trace
+  = list(show = "problems")))` annotates only warning and error leaves plus
+  steps that were interrupted -- the lines you go looking for a source location
+  on -- and `show = TRUE` extends that to every line that can carry one. When
+  that bundle is more than you want, `show` also takes the statuses themselves:
+  `"error"` annotates errors and leaves tolerated warnings bare, `c("error",
+  "interrupted")` adds the steps that never finished, `"running"` names open
+  lines. An ordinary close line never carries a call site whatever you name --
+  its site is its own open line's. The same filter applies to
+  `logtree_summary()`'s digest, so a status named once means the same thing
+  everywhere (a line pinned into the digest with `summary = TRUE` therefore
+  carries a call site only when its own status is in the set), and
+  `logtree_summary(trace = )` pins the digest's column for a single call the way
+  `gap` and `rule` already pin its layout -- for when the tree was quiet and the
+  digest is where you want the locations, or the reverse. It can only narrow or
+  reshape what was captured, since capture is decided while the run happens --
+  which is what the slot's `capture` field is for: `list(trace = list(show =
+  FALSE, capture = TRUE))` records a call site on every line while printing
+  none, so a tree that stays exactly as quiet as it was can still hand locations
+  to the digest or a `"json"` sink. It only ever adds; a `show` that asks for a
+  column already implies capture. The column's
+  content is a template over `{fn}`, `{file}` and `{line}` (default
+  `"{file}:{line} {fn}()"`), styled by the slot's `color` -- which takes a
+  `list(base=, location=, fn=)` so the parts can be told apart, as the presets
+  do: all of it dim, location in silver, function name in cyan. The location is
+  printed relative to the working directory and is a single terminal hyperlink
+  to that file and line, separator included, so a click anywhere on it opens
+  your editor there where the terminal supports it. It is appended to the message rather than given a column
+  of its own, so it wraps with the message and never shears the tree. Defaults leave output completely unchanged: `show` is `FALSE`
+  in all five presets, and with it off nothing is captured at all, so the cost
+  of the feature to a run that does not use it is a single list lookup per line.
+
+  Two things worth knowing before switching it on. First, `{file}` and `{line}`
+  depend on R's source references, which exist when code was parsed with
+  `keep.source = TRUE` -- the default interactively and under
+  `devtools::load_all()`, but not under plain `Rscript` or for an installed
+  package. `{fn}` always works, and rather than print `NA` the expander drops
+  any run of the template whose placeholders are all missing, so the default
+  degrades to `load_data()`. Second, the trace also reaches
+  `logtree_summary()`'s digest lines (where it is arguably most useful, that
+  being the view you read after a failed run) and the `fn` / `file` / `line`
+  fields of a `"json"` sink. `logtree_sink_file()` gains a `trace` argument so a
+  file sink can record call sites while the console column stays off, or pin
+  itself independently of whatever the console is doing.
+
+  Two call sites needed fixing to make this honest rather than merely present.
+  An error caught by `with_logging()` is logged from inside a calling handler, so
+  a naive frame walk would report the handler as the origin of every uncaught
+  error; it now uses the condition's own call, which makes this the most useful
+  trace in the package -- it points at the line that actually threw. Likewise a
+  `logger` line routed through `layout_logtree()` would have traced to
+  `layout_logtree` itself; it now uses the `.topcall` that `logger` has always
+  passed in and that logtree previously documented as unused.
+
 * `logtree_theme()` gains `connector_gap`, the spaces between a *leaf or close*
   line's own connector and its status glyph -- the middle one of logtree's
   three horizontal knobs, between `compact` (the per-level rail column) and

@@ -27,7 +27,10 @@ print_run_summary <- function(status, elapsed) {
 global_error_action <- function(cnd, summary) {
   if (length(the$stack) == 0L) return(invisible(NULL))
   mark_open_steps("error")
-  log_error(conditionMessage(cnd))
+  # log_error_at(), not log_error(): we are inside a handler frame, so the usual
+  # frame walk would trace this leaf to the handler. conditionCall() names the
+  # call that threw instead (R/leaves.R).
+  log_error_at(conditionMessage(cnd), conditionCall(cnd))
   if (summary) print_run_summary("error", now() - the$global_start)
   invisible(NULL)
 }
@@ -119,7 +122,9 @@ with_logging <- function(expr, summary = TRUE, global = FALSE) {
       expr,
       error = function(cnd) {
         mark_open_steps("error")
-        log_error(conditionMessage(cnd))
+        # See global_error_action(): the call site that matters is the one that
+        # threw, not this handler.
+        log_error_at(conditionMessage(cnd), conditionCall(cnd))
       }
     ),
     error = function(cnd) {

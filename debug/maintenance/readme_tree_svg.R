@@ -232,16 +232,18 @@ plain  <- vapply(ansi_lines, strip_ansi, character(1))
 
 # Every prefix unit -- rail_unit() and connector_str() alike -- is exactly
 # 3 characters wide ("│  ", "├─ ", "└─ "), so the
-# prefix is always a whole multiple of 3 chars. Status glyphs (step/info/
-# success/warning/error/group) are never box-drawing or space characters,
-# so the prefix simply ends at the first character outside that set.
-box_chars <- c("│", "├", "─", "└", " ")
+# prefix is always a whole multiple of 3 chars, so the prefix is matched
+# cell by cell rather than character by character: matching single
+# characters would read the leading "── " of logtree_summary()'s
+# cli::rule() as a rail unit and open a column that never closes, drawing
+# a stray vertical line from the rule down to the foot of the figure.
+prefix_units <- c("│  ", "├─ ", "└─ ", "   ")
 prefix_len <- function(line) {
-  chars <- strsplit(line, "")[[1]]
   n <- 0L
-  for (ch in chars) {
-    if (!(ch %in% box_chars)) break
-    n <- n + 1L
+  repeat {
+    cell <- substr(line, n + 1L, n + 3L)
+    if (!(cell %in% prefix_units)) break
+    n <- n + 3L
   }
   n
 }
