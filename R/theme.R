@@ -21,6 +21,16 @@ resolve_compact <- function(x) {
   match.arg(x, c("medium", "tight"))
 }
 
+# Resolve the `connector_gap` argument of logtree_theme() to NULL (leave as
+# is) or a non-negative integer count of spaces.
+resolve_connector_gap <- function(x) {
+  if (is.null(x)) return(NULL)
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) || x < 0) {
+    stop("`connector_gap` must be a single non-negative number.", call. = FALSE)
+  }
+  as.integer(x)
+}
+
 # Resolve the `glyph_gap` argument of logtree_theme() to NULL (leave as is) or
 # a non-negative integer count of spaces.
 resolve_glyph_gap <- function(x) {
@@ -133,6 +143,17 @@ apply_overrides <- function(overrides) {
 #'   [with_logging()] run-summary line -- so the message column stays aligned.
 #'   Like `compact`, it applies to the active (console) theme and is cleared by
 #'   a subsequent preset swap such as `logtree_theme("unicode")`.
+#' @param connector_gap Number of spaces printed between a *leaf or close*
+#'   line's own connector and its status glyph -- `log_info()`/`log_warn()`/
+#'   etc. lines and a step's own `Done` line, never a step's *open* line
+#'   (which always renders flush, at any `compact` density). `NULL` (the
+#'   default) leaves the active setting alone, which tracks `col_gap` (so
+#'   every built-in preset, and `compact = "medium"`/`"tight"`, render exactly
+#'   as before). Set it explicitly to diverge from `col_gap` -- e.g. pair it
+#'   with `compact = "tight"` to keep every rail column flush (`col_gap = 0`,
+#'   including step-open lines) while still spacing leaf/close glyphs off
+#'   their own connector. Like `glyph_gap`, it applies to the active (console)
+#'   theme and is cleared by a subsequent preset swap.
 #' @param wrap Column budget a rendered line is wrapped to, instead of letting
 #'   a long message run off the right edge. `FALSE` never wraps (the built-in
 #'   behaviour); `TRUE` wraps at [cli::console_width()], measured at render
@@ -241,6 +262,9 @@ apply_overrides <- function(overrides) {
 #' logtree_theme("unicode", compact = "medium")
 #' logtree_theme("unicode", compact = "tight")
 #'
+#' # Tight rails, but with the glyph spaced off its connector.
+#' logtree_theme("unicode", compact = "tight", connector_gap = 1)
+#'
 #' # Spacing between the glyph and the message.
 #' logtree_theme(glyph_gap = 0)   # tightest: no space after the glyph
 #' logtree_theme(glyph_gap = 2)   # roomier message column
@@ -255,7 +279,7 @@ apply_overrides <- function(overrides) {
 #' logtree_theme("ci")            # [ok] / [warn] / [fail], no colour
 #' logtree_theme("unicode")       # back to the default
 logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
-                          glyph_gap = NULL, wrap = NULL) {
+                          glyph_gap = NULL, connector_gap = NULL, wrap = NULL) {
   if (is.character(theme)) {
     theme <- match.arg(theme, theme_presets)
     the$theme <- theme_preset(theme)
@@ -278,6 +302,14 @@ logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
   # set here, carried by the theme object, cleared by the next preset swap.
   glyph_gap <- resolve_glyph_gap(glyph_gap)
   if (!is.null(glyph_gap)) the$theme$glyph_gap <- glyph_gap
+
+  # The connector-to-glyph gap rides the same mechanism, one level shallower:
+  # it spaces a *leaf or close* line's own connector from its status glyph
+  # without touching `col_gap`, so `compact = "tight"` can keep every rail
+  # column -- including step-open lines -- flush while still airing out
+  # leaf/close glyphs.
+  connector_gap <- resolve_connector_gap(connector_gap)
+  if (!is.null(connector_gap)) the$theme$connector_gap <- connector_gap
 
   # So does the wrap width -- the third scalar carried by the theme object
   # rather than an override slot.
@@ -355,6 +387,17 @@ theme_col_gap <- function(theme = the$theme) {
 # the glyph, 2L+ airs the two columns apart.
 theme_glyph_gap <- function(theme = the$theme) {
   if (is.null(theme$glyph_gap)) 1L else theme$glyph_gap
+}
+
+# Spaces between a leaf or close line's own branch/corner connector and its
+# status glyph (never a step-open line's, which always renders flush).
+# Defaults to `col_gap` when the theme carries no `connector_gap` of its own,
+# so a preset or a compact density that only sets `col_gap` renders exactly as
+# before -- `connector_gap` only diverges once set explicitly, which is what
+# lets `compact = "tight"` (col_gap 0, slimmed connectors) still air out
+# leaf/close glyphs without widening any rail column.
+theme_connector_gap <- function(theme = the$theme) {
+  if (is.null(theme$connector_gap)) theme_col_gap(theme) else theme$connector_gap
 }
 
 glyph_pad <- function(theme = the$theme) {
