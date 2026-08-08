@@ -62,7 +62,7 @@ pipeline()
 #> │  ├─ ℹ Reading config.yml
 #> │  ├─ ✔ Validated 12 parameters
 #> │  └─ ✔ Done  0.00s
-#> └─ ✔ Done  0.00s
+#> └─ ✔ Done  0.01s
 logtree_summary()
 #> 
 #> ── Summary: nothing to report ──────────────────────────────────────────────────
@@ -72,18 +72,15 @@ logtree_summary()
 auto-closes when the function that opened it returns – normally, early,
 or via an uncaught error – so nesting depth never gets stuck out of
 sync. (At top level, with no function frame to close on, reach for
-`log_open()` / `log_close()` instead.) `logtree_summary()` prints a
-digest of anything worth noting since the last reset – see [Run
-summary](#run-summary) below for what it looks like when a run actually
-breaks.
+`log_open()` / `log_close()` instead.)
 
 ## Status levels & verbosity
 
 Five leaf levels – `log_debug()`, `log_info()`, `log_success()`,
 `log_warn()`, `log_error()` – plus `logtree_threshold()` to filter them.
 `log_warn()`/ `log_error()` also elevate the enclosing step’s glyph,
-even when suppressed by verbosity; step lines always render regardless
-of threshold.
+even when hidden by verbosity; step lines always render regardless of
+threshold.
 
 ``` r
 fetch <- function() {
@@ -114,31 +111,9 @@ logtree_threshold("info")
 
 ## Error handling
 
-`log_error()` from code that itself returns normally elevates the
-enclosing step’s glyph but lets the run continue – pass
-`status = "success"` to `log_close()` once you know recovery actually
-worked:
-
-``` r
-connect_db <- function() {
-  log_step("Connect primary")
-  log_error("primary unreachable")
-  log_info("failing over to replica")
-  log_success("connected to replica")
-  log_close(status = "success") # recovered: override the elevated glyph
-}
-
-with_logging(connect_db(), summary = FALSE)
-#> ▶ Connect primary
-#> ├─ ✖ primary unreachable
-#> ├─ ℹ failing over to replica
-#> ├─ ✔ connected to replica
-#> └─ ✔ Done  0.00s
-```
-
-A step whose code actually throws is different: `with_logging()` marks
-every currently-open step failed, logs the condition as a leaf, prints a
-run summary, then rethrows – it never silently swallows errors.
+When a step actually throws, `with_logging()` marks every currently-open
+step failed, logs the condition as a leaf, prints a run summary, then
+rethrows – it never silently swallows errors.
 
 ``` r
 apply_migration <- function() {
@@ -155,15 +130,17 @@ try(with_logging(apply_migration()), silent = TRUE)
 #> ✖ Run failed in 0.00s
 ```
 
+A `log_error()` from code that returns normally is softer: it elevates
+the enclosing step’s glyph but lets the run continue, and
+`log_close(status = "success")` overrides it once you know recovery
+worked.
+
 ## Run summary
 
-When a run ends, `logtree_summary()` prints a breadcrumb digest of every
-error, warning, and pinned leaf since the last reset – so you see *what*
-went wrong without scrolling back through the tree. `filter` restricts
-by status; `depth` trims each breadcrumb to its `N` deepest nodes. A
-blank gap and a `cli` rule set the digest off from the tree, and the
-breadcrumb emphasises the path so it reads apart from the message – both
-are theme settings.
+`logtree_summary()` prints a breadcrumb digest of every error, warning,
+and pinned leaf since the last reset – so you see *what* went wrong
+without scrolling back through the tree. `filter` restricts by status,
+`depth` trims each breadcrumb to its `N` deepest nodes.
 
 ``` r
 logtree_reset()
@@ -201,9 +178,8 @@ logtree_summary()
 ## Call sites
 
 The digest tells you *what* went wrong; the `trace` theme slot tells you
-*where*. It is off by default – capturing a call site costs a frame walk
-per line, so you opt in. `show = "problems"` annotates only warning and
-error leaves plus interrupted steps, which is usually all you want:
+*where*. It is off by default – `show = "problems"` annotates warnings,
+errors and interrupted steps, which is usually all you want:
 
 ``` r
 logtree_reset()
@@ -233,56 +209,19 @@ logtree_summary()
 #> ⚠ Load data › Parse rows › coerced 3 rows  parse_rows()
 ```
 
-The column’s content is a template over `{fn}`, `{file}` and `{line}`.
-The default is `"{file}:{line} {fn}()"`, which in a real script reads:
+The column is a template over `{fn}`, `{file}` and `{line}`, defaulting
+to `"{file}:{line} {fn}()"` – in a real script (where source references
+exist, unlike this README’s knitted chunks) it reads:
 
     ▶ Load data  R/pipeline.R:12 load_data()
     ├─ ▶ Parse rows  R/pipeline.R:18 parse_rows()
     │  ├─ ⚠ coerced 3 rows  R/pipeline.R:20 parse_rows()
 
-The whole column is dim, with the location and the function name styled
-apart (`color` takes a `list(base=, location=, fn=)` to change that).
-The location is printed relative to the working directory and is a
-single terminal hyperlink to the file at that line – click it and your
-editor opens there; terminals without hyperlink support print the same
-text unlinked.
-
-When `"problems"` is more than you want, `show` takes the statuses
-themselves – `"running"` for open lines,
-`"info"`/`"debug"`/`"success"`/`"warning"`/`"error"` for leaves,
-`"interrupted"` for a step that never finished:
-
-``` r
-logtree_theme(list(trace = list(show = "error")))              # errors only
-logtree_theme(list(trace = list(show = c("error", "interrupted"))))
-```
-
-The same filter applies to the digest, so `show = "error"` means errors
-only wherever you read them; `logtree_summary(trace = )` pins the
-digest’s column for a single call when you want it to disagree with the
-tree.
-
-Recording and printing are separate, and only printing can be decided
-afterwards – a call site not captured during the run is gone.
-`capture = TRUE` records on every line whatever `show` prints, so a tree
-that stays quiet can still hand locations to the digest or a `"json"`
-sink:
-
-``` r
-logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))
-job()                            # tree unchanged, no call sites printed
-logtree_summary(trace = TRUE)    # ... but the digest has them
-```
-
-The example above pins `format = "{fn}()"` because `{file}` and `{line}`
-come from R’s source references, and those exist only when code was
-parsed with `keep.source = TRUE` – true interactively and under
-`devtools::load_all()`, but not under plain `Rscript`, and not inside
-this README’s own knitted chunks. `{fn}` always works, and rather than
-print `NA` the template drops any run whose placeholders are all
-missing, so the default degrades to `load_data()` on its own.
-`logtree_sink_file()` takes a `trace` argument too, so a log file can
-record call sites while the console stays quiet.
+The location is a terminal hyperlink – click it and your editor opens at
+that line. `show` also takes the statuses themselves, and file sinks and
+the digest can carry call sites while the console stays quiet. See
+[`?logtree_theme`](https://IvanSortino.github.io/logtree/reference/logtree_theme.html)
+for the full set of options.
 
 ## Grouping
 
@@ -333,8 +272,8 @@ with_logging(run_pipeline(), summary = FALSE)
 
 ## Themes
 
-`logtree_theme()` swaps the whole glyph/color preset (`"unicode"`,
-`"ascii"`, `"emoji"`) or merges per-glyph overrides onto the active one:
+`logtree_theme()` swaps the whole glyph/color preset – `"unicode"`,
+`"ascii"`, `"emoji"`, `"minimal"`, `"ci"`:
 
 ``` r
 demo_build <- function() {
@@ -363,64 +302,27 @@ demo_build()
 #> └─ ⚠️ Done  0.00s
 
 logtree_theme("unicode")
-demo_build()
-#> ▶ Build
-#> ├─ ℹ compiling
-#> ├─ ⚠ 3 deprecation warnings
-#> ├─ ✔ build ok
-#> └─ ⚠ Done  0.00s
 ```
 
-Or override individual slots with `overrides` – a list keyed by slot,
-each holding only the fields to change (everything else is kept from the
-active theme):
+Any preset can be tuned: `overrides` restyles individual slots (glyph,
+color, brackets), while `compact` and `glyph_gap` tighten the tree’s
+horizontal spacing.
 
 ``` r
-logtree_theme("unicode", overrides = list(
-  success = list(glyph = "*", color = c("green", "bold")),
-  group   = list(bracket = TRUE)
-))
-demo_build()
-#> ▶ Build
-#> ├─ ℹ compiling
-#> ├─ ⚠ 3 deprecation warnings
-#> ├─ * build ok
-#> └─ ⚠ Done  0.00s
-logtree_theme("unicode")
-```
-
-Pass `compact` to tighten the tree’s per-level indentation – `"medium"`
-drops the trailing gap after each connector, `"tight"` also slims the
-connectors down to a single character:
-
-``` r
-logtree_theme("unicode", compact = "medium")
+logtree_theme("unicode",
+  overrides = list(success = list(glyph = "*", color = c("green", "bold"))),
+  compact = "medium"
+)
 demo_build()
 #> ▶ Build
 #> ├─ℹ compiling
 #> ├─⚠ 3 deprecation warnings
-#> ├─✔ build ok
+#> ├─* build ok
 #> └─⚠ Done  0.00s
 logtree_theme("unicode")
 ```
 
-`glyph_gap` tunes the other horizontal column – the space between a
-line’s status glyph and its message. `0` butts the message straight
-against the glyph for the tightest possible look, `2` or more gives the
-message column more air, and the two knobs compose
-(`logtree_theme("unicode", compact = "tight", glyph_gap = 0)` is the
-densest tree logtree draws). Like `compact`, it applies to the console
-theme and is cleared by the next preset swap; file sinks keep their
-built-in spacing either way.
-
-The `Done` line a step prints when it closes cleanly has its own `done`
-slot, distinct from the `success` slot used by `log_success()` leaves –
-they just ship the same tick by default, so either can be restyled on
-its own.
-
-The full list of overridable slots (`step`, `info`, `success`, `done`,
-`group`, `branch`, `corner`, …) and their fields (`glyph`, `width`,
-`color`, `bracket`) is in the [Themes section of the
+The full list of slots and fields is in the [Themes section of the
 vignette](https://IvanSortino.github.io/logtree/articles/logtree.html#themes)
 and `?logtree_theme`.
 
@@ -435,17 +337,11 @@ and `?logtree_theme`.
   in one call, so `logger::log_info()` and friends render as logtree
   leaves.
 - **Manual step control** – `log_open()`/`log_close()` open and close
-  steps by hand (with an explicit `parent`) instead of relying on frame
-  exit, useful at top level or across script blocks. Opening a step at
-  the same depth as an open one (e.g. sharing a `parent`) retires the
-  earlier sibling automatically, so you can stream siblings without an
-  explicit `log_close()` on each.
-- **Re-running top-level lines** – at top level (e.g. re-running
-  selected lines in RStudio/Positron while iterating),
-  `log_step()`/`log_open()` key each step on its label and call site, so
-  re-running the same line re-anchors to that node instead of nesting
-  deeper on every run. Pass an explicit `key` to opt out, or to keep two
-  same-label steps open at once distinct.
+  steps by hand instead of relying on frame exit, useful at top level or
+  across script blocks.
+- **Re-running top-level lines** – re-running the same line in
+  RStudio/Positron re-anchors to the same node instead of nesting deeper
+  on every run.
 
 See `vignette("logtree")` and the [documentation
 site](https://IvanSortino.github.io/logtree/) for full details on error
