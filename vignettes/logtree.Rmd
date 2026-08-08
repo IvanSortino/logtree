@@ -104,6 +104,30 @@ risky <- function() {
 tryCatch(risky(), error = function(e) invisible(NULL))
 ```
 
+`with_logging(warnings = TRUE)` extends the same idea to R's other conditions:
+a `warning()` raised by wrapped code becomes a `log_warn()` leaf and a
+`message()` becomes a `log_info()` leaf, at the depth where they happened,
+instead of going to stderr outside the tree.
+
+```{r}
+logtree_reset()
+
+noisy <- function() {
+  log_step("Load data")
+  warning("3 rows coerced to NA")
+  log_info("1200 rows")
+}
+
+with_logging(noisy(), summary = FALSE, warnings = TRUE)
+```
+
+It is opt-in because routing means muffling: a routed condition stops at the
+leaf, so it no longer reaches `warnings()`, your own handlers, or stderr. The
+tree becomes the single record of the run, which is the point -- but it is a
+trade, and a routed warning also elevates its enclosing step, so wrapping
+third-party code that warns freely will turn steps yellow. Pass
+`warnings = "warning"` to route warnings and leave `message()` alone.
+
 ## Grouping
 
 `log_step(label, group = value)` collapses adjacent steps that share the
@@ -362,6 +386,29 @@ job()                            # tree unchanged, not one call site printed
 logtree_summary(trace = TRUE)    # ... but the digest has them
 ```
 
+### Timestamps
+
+A tree says how *long* each step took but not *when* any of it happened, which
+matters once the log is read after the fact rather than watched as it runs. The
+`timestamp` slot puts a wall-clock column in front of every line. It is off in
+every preset -- `format = NULL` -- so it costs nothing until asked for.
+
+```{r}
+logtree_theme(list(timestamp = list(format = "%H:%M:%S")))
+logtree_reset()
+pipeline()
+logtree_theme(list(timestamp = list(format = NULL)))
+```
+
+The column is padded to a fixed width measured from a rendered sample, not from
+the format string, so a format whose width varies with the value cannot shear
+the tree from one line to the next. It counts against the wrapping budget like
+any other column, and a wrapped message's continuation rows carry a blank column
+rather than a repeated time. `logtree_summary()`'s digest is never stamped: it
+replays events that already happened, so the time it was printed would be the
+wrong answer. A file sink pins its own column with
+`logtree_sink_file(timestamp = )`.
+
 ### Wrapping long messages
 
 By default a long message runs off the right edge. `wrap` caps a rendered line
@@ -428,18 +475,65 @@ through the ascii preset with its built-in spacing.
 
 ## Output sinks
 
-The console sink is always on. `logtree_sink_file()` adds a plain-text or
-NDJSON file sink; every logged event fans out to all active sinks
-simultaneously.
+Every logged event fans out to every registered sink. The console sink is
+registered by default, under the reserved id `"console"`;
+`logtree_sink_file()` adds a plain-text or NDJSON file sink.
 
 ```{r}
 log_path <- tempfile(fileext = ".log")
-logtree_sink_file(log_path, format = "text")
+handle <- logtree_sink_file(log_path, format = "text")
 
 logtree_reset()
 pipeline()
 
 writeLines(readLines(log_path))
+```
+
+Every registration returns a handle, and `logtree_sink_remove()` takes the
+sink off again -- sinks deliberately survive `logtree_reset()`, so this is the
+only way to stop one. `logtree_sinks()` lists what is currently registered, in
+the order the sinks fire.
+
+```{r}
+logtree_sinks()
+logtree_sink_remove(handle)
+logtree_sinks()
+```
+
+`logtree_sink()` registers a sink of your own: any function of one argument,
+called with each event. A sink that throws is skipped rather than allowed to
+break the fanout -- the remaining sinks still run, and a warning naming the
+offender is raised once.
+
+```{r}
+kinds <- character(0)
+h <- logtree_sink(function(event) kinds <<- c(kinds, event$kind))
+
+logtree_reset()
+pipeline()
+table(kinds)
+
+logtree_sink_remove(h)
+```
+
+### Asserting on your own logging
+
+`logtree_sink_memory()` collects events in a capped buffer instead of writing
+them anywhere, and `logtree_sink_memory_events()` reads them back as a data
+frame -- one row per event, with the same columns a `"json"` sink writes. This
+is how you test that a pipeline logged what it should, without capturing
+console output and pattern-matching glyphs your test does not care about.
+
+```{r}
+h <- logtree_sink_memory()
+
+logtree_reset()
+pipeline()
+
+events <- logtree_sink_memory_events(h)
+events[, c("level", "depth", "label", "status")]
+
+logtree_sink_remove(h)
 ```
 
 ## Verbosity
@@ -448,7 +542,8 @@ writeLines(readLines(log_path))
 (`"debug"`, `"info"`, `"warn"`, `"error"`). Step open/close lines always
 render regardless of verbosity, since hiding them would break the tree
 structure; a suppressed `log_warn()`/`log_error()` still elevates the
-enclosing step's close glyph.
+enclosing step's close glyph, and still reaches the `logtree_summary()`
+digest. Verbosity governs what is *rendered*, never what the run remembers.
 
 ```{r}
 logtree_threshold("warn")
@@ -484,6 +579,45 @@ fetch_verbose()
 logtree_threshold("info")
 ```
 
+
+`logtree_threshold()` is only the *default*, though: each sink can pin a level
+of its own, so a debug-level log file no longer drags the console down with it.
+
+```{r}
+verbose_path <- tempfile(fileext = ".log")
+h <- logtree_sink_file(verbose_path, format = "text", threshold = "debug")
+
+logtree_reset()
+fetch_verbose_demo <- function() {
+  log_step("Fetching")
+  log_debug("cache miss for key user:42")
+  log_info("200 OK")
+}
+fetch_verbose_demo()
+
+# The console showed only the info line; the file kept both.
+writeLines(readLines(verbose_path))
+logtree_sink_remove(h)
+```
+
+## Silencing logtree
+
+`logtree_mute()` stops every sink receiving events without unregistering any of
+them, which is what a library that logs with logtree reaches for to keep its own
+test suite quiet. `logtree_unmute()` turns it back on, and both return the state
+they replaced so a caller can restore what it found. A muted run is still
+recorded, so `logtree_summary()` can still report what went wrong; step
+bookkeeping is untouched, so depth is right the moment output comes back.
+
+```{r}
+was <- logtree_mute()
+
+logtree_reset()
+pipeline()          # prints nothing
+
+logtree_unmute()
+length(logtree_summary())
+```
 
 ## Integrating with the `logger` package
 

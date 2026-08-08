@@ -125,8 +125,13 @@ never literal characters, for CRAN portability.
 
 ## Appenders & sinks
 
-`emit()` fans every event out to all registered `the$sinks`. The console
-sink is always on; `logtree_sink_file()` adds a text or JSON sink.
+`emit()` fans every event out to all registered `the$sinks`, a list keyed by
+sink id so a registration can be undone. The console sink is registered by
+default under the reserved id `"console"`; `logtree_sink_file()` adds a text or
+JSON sink, `logtree_sink_memory()` an in-memory buffer, and `logtree_sink()` any
+function of your own. Each carries its own verbosity threshold, defaulting to
+the global `logtree_threshold()`, and each call is wrapped so a sink that throws
+is skipped rather than allowed to break the fanout.
 
 Event kinds:
 

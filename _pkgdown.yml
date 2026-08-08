@@ -25,9 +25,16 @@ reference:
   contents:
   - logtree_theme
 - title: Output & control
+  desc: Where log events go, how much of them, and how to turn it off
   contents:
   - logtree_sink_file
+  - logtree_sink
+  - logtree_sinks
+  - logtree_sink_remove
+  - logtree_sink_memory
+  - logtree_sink_memory_events
   - logtree_threshold
+  - logtree_mute
   - logtree_reset
   - logtree_summary
 - title: logger package integration
