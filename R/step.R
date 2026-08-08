@@ -582,6 +582,36 @@ connector_str <- function(key, theme = the$theme, color = TRUE) {
   paste0(theme_connector(key, theme, color), strrep(" ", theme_col_gap(theme)))
 }
 
+# Like connector_str(), but spaced by `connector_gap` instead of `col_gap`.
+# Used only where a line's own connector sits immediately before its status
+# glyph -- a leaf or a step's close line -- never on a step's *open* line
+# (format_open, format_group_header), which keeps rendering flush at any
+# `compact` density: `connector_gap` widens the glyph's own approach, not
+# every rail column down the tree.
+own_connector_str <- function(key, theme = the$theme, color = TRUE) {
+  paste0(theme_connector(key, theme, color), strrep(" ", theme_connector_gap(theme)))
+}
+
+# Display width of a line's own branch/corner connector plus the gap after
+# it -- `connector_gap` rather than `col_gap`, so this column can widen
+# independently of the ancestor rail columns above it (rails() / tree_col_width()).
+# Every built-in preset's branch and corner glyphs are the same width, so the
+# caller's `key` only matters when a hand-built theme's diverge.
+own_connector_width <- function(key, theme = the$theme) {
+  nchar(theme[[key]]$glyph) + theme_connector_gap(theme)
+}
+
+# A pipe rail, padded out to `own_connector_width()` rather than
+# `tree_col_width()`: the segment an *open* line's own column collapses to
+# on its wrapped continuation rows, where more siblings may still follow
+# (see rail_unit(), its ancestor-column counterpart).
+own_rail <- function(key, theme = the$theme, color = TRUE) {
+  w <- own_connector_width(key, theme)
+  pipe_glyph <- theme$pipe$glyph
+  raw <- paste0(pipe_glyph, strrep(" ", max(w - nchar(pipe_glyph), 0L)))
+  colorize(raw, theme$pipe$color, color)
+}
+
 pad_custom_glyph <- function(glyph, theme = the$theme) {
   w <- theme_slot_width(theme)
   paste0(glyph, strrep(" ", max(w - 1L, 0L)))
@@ -686,20 +716,21 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
   d      <- entry$depth
   tcw    <- tree_col_width(theme)
   base   <- rails(d - 1L, theme, color)
-  prefix <- paste0(base, connector_str("corner", theme, color))
-  # Nothing follows a corner at its own column, so the continuation blanks that
-  # column out instead of carrying a rail down it.
+  prefix <- paste0(base, own_connector_str("corner", theme, color))
   status <- resolved_status(entry$status)
   glyph  <- theme_glyph(close_glyph_key(status, theme), theme, color)
   msg    <- close_message(entry, status, theme, color)
   # A theme that drops both the word and the time leaves a glyph-only close
   # line; skip the gap too rather than trailing a space off the end of it.
   if (!nzchar(msg)) return(paste0(prefix, glyph))
+  # Nothing follows a corner at its own column, so the continuation blanks that
+  # column out instead of carrying a rail down it.
   # cols/cont are passed inline, unevaluated -- see compose_line().
   compose_line(
     paste0(prefix, glyph, glyph_pad(theme)), msg,
-    cols = d * tcw + glyph_gutter(theme),
-    cont = paste0(base, strrep(" ", tcw), strrep(" ", glyph_gutter(theme))),
+    cols = (d - 1L) * tcw + own_connector_width("corner", theme) + glyph_gutter(theme),
+    cont = paste0(base, strrep(" ", own_connector_width("corner", theme)),
+                  strrep(" ", glyph_gutter(theme))),
     theme = theme
   )
 }
@@ -714,19 +745,19 @@ format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
   # `base` is needed for the prefix either way, so computing it here costs
   # nothing extra; the corner branch reuses it for the continuation too.
   base <- if (depth == 0L) "" else rails(depth - 1L, theme, color)
-  prefix <- if (depth == 0L) "" else {
-    paste0(base, connector_str(if (isTRUE(corner)) "corner" else "branch",
-                               theme, color))
-  }
+  own_key <- if (isTRUE(corner)) "corner" else "branch"
+  prefix <- if (depth == 0L) "" else paste0(base, own_connector_str(own_key, theme, color))
   # cols/cont are passed inline, unevaluated -- see compose_line().
   compose_line(
     paste0(prefix, theme_glyph(status, theme, color), glyph_pad(theme)), msg,
-    cols = depth * tcw + glyph_gutter(theme),
+    cols = if (depth == 0L) glyph_gutter(theme) else {
+      (depth - 1L) * tcw + own_connector_width(own_key, theme) + glyph_gutter(theme)
+    },
     cont = paste0(
       if (depth == 0L) "" else if (isTRUE(corner)) {
-        paste0(base, strrep(" ", tcw))
+        paste0(base, strrep(" ", own_connector_width("corner", theme)))
       } else {
-        rails(depth, theme, color)
+        paste0(base, own_rail("branch", theme, color))
       },
       strrep(" ", glyph_gutter(theme))
     ),

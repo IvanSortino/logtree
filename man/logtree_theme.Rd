@@ -9,6 +9,7 @@ logtree_theme(
   overrides = list(),
   compact = FALSE,
   glyph_gap = NULL,
+  connector_gap = NULL,
   wrap = NULL
 )
 }
@@ -55,6 +56,18 @@ kind -- step open, \code{Done} close, leaf, group header and the
 \code{\link[=with_logging]{with_logging()}} run-summary line -- so the message column stays aligned.
 Like \code{compact}, it applies to the active (console) theme and is cleared by
 a subsequent preset swap such as \code{logtree_theme("unicode")}.}
+
+\item{connector_gap}{Number of spaces printed between a \emph{leaf or close}
+line's own connector and its status glyph -- \code{log_info()}/\code{log_warn()}/
+etc. lines and a step's own \code{Done} line, never a step's \emph{open} line
+(which always renders flush, at any \code{compact} density). \code{NULL} (the
+default) leaves the active setting alone, which tracks \code{col_gap} (so
+every built-in preset, and \code{compact = "medium"}/\code{"tight"}, render exactly
+as before). Set it explicitly to diverge from \code{col_gap} -- e.g. pair it
+with \code{compact = "tight"} to keep every rail column flush (\code{col_gap = 0},
+including step-open lines) while still spacing leaf/close glyphs off
+their own connector. Like \code{glyph_gap}, it applies to the active (console)
+theme and is cleared by a subsequent preset swap.}
 
 \item{wrap}{Column budget a rendered line is wrapped to, instead of letting
 a long message run off the right edge. \code{FALSE} never wraps (the built-in
@@ -168,6 +181,9 @@ logtree_theme(list(elapsed = list(show = FALSE)))
 logtree_theme("unicode")
 logtree_theme("unicode", compact = "medium")
 logtree_theme("unicode", compact = "tight")
+
+# Tight rails, but with the glyph spaced off its connector.
+logtree_theme("unicode", compact = "tight", connector_gap = 1)
 
 # Spacing between the glyph and the message.
 logtree_theme(glyph_gap = 0)   # tightest: no space after the glyph
