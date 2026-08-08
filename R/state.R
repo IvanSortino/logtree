@@ -17,6 +17,12 @@ the$sink_stores  <- list()
 # deliberately not cleared by logtree_reset().
 the$trace_sinks <- character(0)
 
+# Set while a condition is being routed into the tree by
+# with_logging(warnings = TRUE). The leaf reaches every sink, and a sink that
+# warns while we are handling a warning would arrive straight back in the
+# handler; this is what stops that recursing (R/run.R).
+the$routing <- FALSE
+
 # Sinks that have already thrown once, so the warning emit() raises about a
 # broken sink is not repeated on every subsequent event. Unlike `sinks` this
 # *is* cleared by logtree_reset(): it is noise suppression, not configuration.

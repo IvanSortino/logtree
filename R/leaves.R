@@ -230,17 +230,26 @@ log_error <- function(msg, close = FALSE, summary = NA) {
   invisible(NULL)
 }
 
-# log_error() for a condition caught by a handler.
+# A leaf logged for a condition caught by a handler.
 #
 # A handler logs from its own frame, so emit_leaf()'s frame walk would trace the
-# leaf to the handler rather than to the code that threw -- the least useful
-# answer available. conditionCall() carries the throwing call, so hand that in
-# instead. `call` may be NULL (conditions raised without one), in which case the
-# leaf simply carries no trace.
+# leaf to the handler rather than to the code that raised the condition -- the
+# least useful answer available. conditionCall() carries the raising call, so
+# hand that in instead. `call` may be NULL (conditions raised without one), in
+# which case the leaf simply carries no trace.
 #
-# Used by with_logging()'s calling handler and by global_error_action() (R/run.R).
-log_error_at <- function(msg, call) {
-  elevate_current_step("error")
-  emit_leaf("error", msg, trace = trace_from_call(call), capture = FALSE)
+# Status elevation is status-driven here as it is in the leaf functions:
+# warnings and errors elevate the enclosing step, an `info` routed from an R
+# message does not.
+#
+# Used by with_logging()'s calling handlers and by global_error_action()
+# (R/run.R).
+log_condition_at <- function(status, msg, call) {
+  if (status %in% c("warning", "error")) elevate_current_step(status)
+  emit_leaf(status, msg, trace = trace_from_call(call), capture = FALSE)
   invisible(NULL)
+}
+
+log_error_at <- function(msg, call) {
+  log_condition_at("error", msg, call)
 }
