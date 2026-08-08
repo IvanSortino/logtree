@@ -10,7 +10,13 @@ mark_open_steps <- function(status) {
 
 print_run_summary <- function(status, elapsed) {
   label <- if (identical(status, "error")) "Run failed" else "Run complete"
-  cat(theme_glyph(status), " ", label, " in ", format_elapsed(elapsed), "\n", sep = "")
+  # gate = FALSE: this line reads "Run complete in <time>", so it takes the
+  # `elapsed` slot's colouring but never its hiding rules -- a suppressed time
+  # would leave the sentence hanging.
+  cat(compose_flat_line(
+        theme_glyph(status),
+        paste0(label, " in ", format_elapsed_field(elapsed, gate = FALSE))
+      ), "\n", sep = "")
 }
 
 # The action run by the global (top-level) error handler installed via

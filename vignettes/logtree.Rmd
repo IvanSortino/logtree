@@ -141,14 +141,46 @@ import_datasets()
 
 ## Themes
 
-Three built-in presets are available: `"unicode"` (default), `"ascii"`
-(safe for log files, CI, and non-UTF-8 terminals), and `"emoji"`. Every
-glyph is overridable, and switching themes never breaks column alignment,
-since each glyph declares its own rendered width rather than having that
-width measured from the string.
+Five built-in presets are available. Every glyph is overridable, and
+switching themes never breaks column alignment, since each glyph declares its
+own rendered width rather than having that width measured from the string.
+
+| Preset | What it is for |
+| ------ | -------------- |
+| `"unicode"` | The default. Box-drawing connectors and coloured symbol glyphs, for an interactive terminal. |
+| `"ascii"` | Plain ASCII, no colour. Safe for log files, CI, and non-UTF-8 terminals; also what every file sink renders through. |
+| `"emoji"` | Emoji status glyphs (width-2 cells) over box-drawing connectors. |
+| `"minimal"` | No connectors at all -- depth is carried by indentation alone. |
+| `"ci"` | Bracketed word glyphs over pure-ASCII connectors, no colour. |
 
 ```{r}
 logtree_theme("ascii")
+pipeline()
+
+logtree_theme("unicode")
+```
+
+`"minimal"` drops the connectors entirely: `branch`, `corner` and `pipe` are
+empty strings, so a level costs nothing but its indentation. It also ships a
+lighter glyph vocabulary, dimmed times, and wordless close lines. The trade is
+worth knowing -- `info`, `debug` and `interrupted` all render the middle dot
+and are told apart by colour alone.
+
+```{r}
+logtree_theme("minimal")
+pipeline()
+
+logtree_theme("unicode")
+```
+
+`"ci"` is built for log capture rather than a terminal: bracketed word glyphs,
+pure-ASCII connectors, and no colour in any slot, so a captured build log
+survives a runner that strips ANSI and a failure greps as `[fail]`. The words
+are different lengths on purpose; each declares its true width, so the message
+column still lines up.
+
+```{r}
+logtree_theme("ci")
 pipeline()
 
 logtree_theme("unicode")
@@ -187,14 +219,17 @@ logtree_theme("unicode")
 | `info` | `log_info()` leaf | `glyph`, `width`, `color` |
 | `debug` | `log_debug()` leaf | `glyph`, `width`, `color` |
 | `success` | `log_success()` leaf | `glyph`, `width`, `color` |
-| `done` | a step's own `Done` line on a clean close | `glyph`, `width`, `color` |
-| `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color` |
-| `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color` |
-| `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color` |
+| `done` | a step's own close line on a clean close | `glyph`, `width`, `color`, `text` |
+| `warning` | `log_warn()` / elevated step glyph | `glyph`, `width`, `color`, `text` |
+| `error` | `log_error()` / elevated step glyph | `glyph`, `width`, `color`, `text` |
+| `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color`, `text` |
 | `group` | group header marker | `glyph`, `color`, `bracket` |
+| `elapsed` | the elapsed-time column printed on every close line | `show`, `min`, `color`, `slow`, `slow_color` |
 | `branch` | child connector (`├─`) | `glyph`, `color` |
 | `corner` | close-line connector (`└─`) | `glyph`, `color` |
 | `pipe` | vertical rail (`│`) | `glyph`, `color` |
+| `crumb` | `logtree_summary()` breadcrumb separator | `glyph`, `color`, `path_color` |
+| `summary` | `logtree_summary()` divider above the digest | `gap`, `rule`, `line` |
 
 **Accepted fields** (valid names inside a slot):
 
@@ -203,7 +238,116 @@ logtree_theme("unicode")
 | `glyph` | `character(1)` | Any string, including `""`. |
 | `width` | `integer(1)` | Rendered display width of the glyph (`1` normal, `2` emoji/wide). Sets column alignment; status slots only. |
 | `color` | `character` / `NULL` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. |
+| `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its time; `""` drops it. Expands `{label}` and `{elapsed}`. |
+| `show` | `logical(1)` | `elapsed` slot only. `FALSE` drops the time column entirely. |
+| `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds. |
+| `slow` | `numeric(1)` / `NULL` | `elapsed` slot only. Times at or over this count as slow. |
+| `slow_color` | `character` / `NULL` | `elapsed` slot only. Styles a slow time in place of `color`. |
 | `bracket` | `logical(1)` | `group` slot only. `TRUE` wraps the header name in `< >`. |
+| `path_color` | `character` / `NULL` | `crumb` slot only. Styles the breadcrumb's path nodes. |
+| `gap` | `integer(1)` | `summary` slot only. Blank lines above the digest. |
+| `rule` | `logical(1)` / `character(1)` | `summary` slot only. The divider drawn above the digest. |
+| `line` | `integer(1)` / `character(1)` | `summary` slot only. The rule's line type. |
+
+### Close lines and elapsed time
+
+The word a step prints when it closes is the `text` field of a theme slot. It
+is read from the closing status's own slot, falling back to `done`'s and then
+to the built-in `"Done"` -- so one call renames every close line, and a
+narrower one renames only the outcomes that went wrong. Two placeholders are
+expanded: `{label}` (the step's own label, or a group's name) and `{elapsed}`.
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  done  = list(text = "{label} ok"),
+  error = list(text = "{label} FAILED")
+))
+pipeline()
+logtree_theme("unicode")
+```
+
+`text` governs close lines only -- a `log_error()` leaf keeps its own message
+-- and `text = ""` drops the word entirely, leaving the glyph and the time.
+
+The time itself is the `elapsed` slot. `min` hides anything faster than a
+threshold, which is how you silence the `0.00s` noise on trivial steps, while
+`slow` and `slow_color` flag the ones worth noticing:
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  elapsed = list(min = 0.001, color = "silver", slow = 1, slow_color = "red")
+))
+pipeline()
+logtree_theme("unicode")
+```
+
+`show = FALSE` drops the column outright. The `with_logging()` run-summary line
+takes the slot's colouring but never its hiding rules, since
+`Run complete in <time>` would read as an unfinished sentence without its time.
+
+### Wrapping long messages
+
+By default a long message runs off the right edge. `wrap` caps a rendered line
+at a column budget instead: `TRUE` follows `cli::console_width()`, measured at
+render time so a terminal resized mid-run is picked up on its own, and a number
+pins a fixed width.
+
+```{r}
+logtree_theme("unicode", wrap = 56)
+
+long <- function() {
+  log_step("Deploy")
+  log_info("uploading layers to the internal registry at registry.example.internal, 412 MB across 14 layers")
+}
+long()
+
+logtree_theme("unicode")
+```
+
+Continuation lines indent to the message column and carry the rails down, so a
+wrapped message still reads as one node of the tree: after a branch connector
+the vertical rail continues, after a corner it does not. A token with no break
+opportunity -- a long path, a URL -- is split by display width rather than left
+to overflow, and a budget narrower than the tree is deep degrades to no
+wrapping rather than to an unusable one-column line. Wrapping covers every line
+logtree renders, including the `logtree_summary()` digest and the
+`with_logging()` run-summary line.
+
+### Density and spacing
+
+Three arguments control horizontal space, independently of any glyph, each
+governing one column of a rendered line:
+
+| Argument | The gap it sets |
+| -------- | --------------- |
+| `compact` | the per-level tree column: `"medium"` drops the trailing gap after each connector, `"tight"` also slims the connectors to one character |
+| `connector_gap` | a *leaf or close* line's own connector, to its status glyph |
+| `glyph_gap` | the status glyph, to the message text -- `1` by default, `0` for the tightest look, `2` or more for a roomier message column |
+
+```{r}
+logtree_theme("unicode", compact = "tight", glyph_gap = 0)
+pipeline()
+logtree_theme("unicode")
+```
+
+`connector_gap` is unset by default and tracks `col_gap`, so every preset and
+every `compact` density renders as it always has. Setting it lets the two
+diverge -- which is what it is for: `compact = "tight"` keeps every rail column
+flush while leaf and close glyphs still get air. It never touches a step's
+*open* line or a group header, since those are rail columns rather than the
+glyph's own approach, and it does not compound with depth.
+
+```{r}
+logtree_theme("unicode", compact = "tight", connector_gap = 1)
+pipeline()
+logtree_theme("unicode")
+```
+
+These three and `wrap` are *scalars* carried on the theme, not override slots:
+they are set through `logtree_theme()`'s own arguments rather than through
+`overrides`. All four ride the active theme and are cleared by the next preset
+swap (`logtree_theme("unicode")`). None of them reaches file sinks, which render
+through the ascii preset with its built-in spacing.
 
 ## Output sinks
 

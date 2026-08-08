@@ -4,26 +4,42 @@
 \alias{logtree_theme}
 \title{Set the active glyph/color theme}
 \usage{
-logtree_theme(theme = NULL, overrides = list(), compact = FALSE)
+logtree_theme(
+  theme = NULL,
+  overrides = list(),
+  compact = FALSE,
+  glyph_gap = NULL,
+  connector_gap = NULL,
+  wrap = NULL
+)
 }
 \arguments{
-\item{theme}{Either a preset name (\code{"unicode"}, \code{"ascii"}, \code{"emoji"}) to
-swap the whole glyph set, or a named list of per-key overrides to merge
-onto the currently active theme (matching the two calling styles shown
-in the package documentation). \code{NULL} (the default) keeps the active
-preset: \strong{a preset is swapped only when you name one}, so a call that
-sets just \code{overrides} or \code{compact} merges onto whatever theme is active.
-Reset with \code{logtree_theme("unicode")}.}
+\item{theme}{Either a preset name to swap the whole glyph set, or a named
+list of per-key overrides to merge onto the currently active theme
+(matching the two calling styles shown in the package documentation).
+\code{NULL} (the default) keeps the active preset: \strong{a preset is swapped only
+when you name one}, so a call that sets just \code{overrides}, \code{compact},
+\code{glyph_gap}, \code{connector_gap} or \code{wrap} merges onto whatever theme is
+active. Reset with
+\code{logtree_theme("unicode")}. Five presets ship with the package:\tabular{ll}{
+   Preset \tab What it is for \cr
+   \code{"unicode"} \tab The default. Box-drawing connectors and coloured symbol glyphs, for an interactive terminal. \cr
+   \code{"ascii"} \tab Plain ASCII, no colour. Safe for log files, CI, and non-UTF-8 terminals; also what every file sink renders through. \cr
+   \code{"emoji"} \tab Emoji status glyphs (width-2 cells) over box-drawing connectors. \cr
+   \code{"minimal"} \tab No connectors at all: \code{branch}, \code{corner} and \code{pipe} are empty, so depth is carried by indentation alone (two columns per level). Lighter glyphs, dimmed times, wordless close lines. \code{info}, \code{debug} and \code{interrupted} share the middle dot and are told apart by colour. \cr
+   \code{"ci"} \tab Bracketed word glyphs (\verb{[step]}, \verb{[ok]}, \verb{[warn]}, \verb{[fail]}, ...) over pure-ASCII connectors, with no colour in any slot -- so a captured build log survives a runner that strips ANSI, and a failure greps as \verb{[fail]}. \cr
+}}
 
 \item{overrides}{A named list of per-slot overrides applied on top of
 \code{theme} once it is resolved -- on top of the \emph{active} theme when \code{theme}
 is \code{NULL}. An unknown slot name is an error, listing the valid ones. Each
-entry may specify \code{glyph}, \code{width},
-and/or \code{color}; unspecified fields are kept from the existing entry. The
-\code{group} slot also accepts \code{bracket} (logical, default \code{FALSE}): when
-\code{TRUE} the header name is wrapped in \verb{< >}. The two non-glyph slots
-\code{crumb} and \code{summary} carry \code{\link[=logtree_summary]{logtree_summary()}}'s appearance -- see the
-slot table below.}
+entry names only the fields to change; unspecified fields are kept from
+the existing entry. Status slots take \code{glyph}, \code{width} and \code{color}; the
+close-line statuses (\code{done}, \code{warning}, \code{error}, \code{interrupted}) also take
+\code{text}. The \code{group} slot takes \code{bracket}, the \code{elapsed} slot governs the
+time column on close lines, and the two non-glyph slots \code{crumb} and
+\code{summary} carry \code{\link[=logtree_summary]{logtree_summary()}}'s appearance. See the slot and field
+tables below for the complete set.}
 
 \item{compact}{Density of the tree's per-level indentation. \code{FALSE} (the
 default) keeps the normal spacing (three columns per level in the unicode
@@ -32,6 +48,53 @@ per level); \code{"tight"} additionally slims the branch and corner connectors
 to a single character (one column per level). \code{TRUE} is an alias for
 \code{"tight"}. Compact applies to the active (console) theme and is cleared by a
 subsequent preset swap such as \code{logtree_theme("unicode")}.}
+
+\item{glyph_gap}{Number of spaces printed between a line's status glyph and
+its message text. \code{NULL} (the default) leaves the active setting alone;
+\code{1} is the built-in spacing, \code{0} butts the message straight against the
+glyph, and \code{2} or more airs the two columns apart. Applies to every line
+kind -- step open, \code{Done} close, leaf, group header and the
+\code{\link[=with_logging]{with_logging()}} run-summary line -- so the message column stays aligned.
+Like \code{compact}, it applies to the active (console) theme and is cleared by
+a subsequent preset swap such as \code{logtree_theme("unicode")}.}
+
+\item{connector_gap}{Number of spaces printed between a \emph{leaf or close}
+line's own connector and its status glyph -- \code{log_info()}/\code{log_warn()}/
+etc. lines and a step's own \code{Done} line, never a step's \emph{open} line
+(which always renders flush, at any \code{compact} density). \code{NULL} (the
+default) leaves the active setting alone, which tracks \code{col_gap} (so
+every built-in preset, and \code{compact = "medium"}/\code{"tight"}, render exactly
+as before). Set it explicitly to diverge from \code{col_gap} -- e.g. pair it
+with \code{compact = "tight"} to keep every rail column flush (\code{col_gap = 0},
+including step-open lines) while still spacing leaf/close glyphs off
+their own connector. Like \code{glyph_gap}, it applies to the active (console)
+theme and is cleared by a subsequent preset swap.}
+
+\item{wrap}{Column budget a rendered line is wrapped to, instead of letting
+a long message run off the right edge. \code{TRUE} wraps at
+\code{\link[cli:console_width]{cli::console_width()}}, measured at render time so a terminal resized
+mid-run is picked up on its own -- this is the console default; a
+positive number pins a fixed width; \code{FALSE} never wraps, letting long
+lines overflow. \code{NULL} (the argument default) leaves the active setting
+alone.
+
+Continuation lines indent to the message column and carry the rails down,
+so a wrapped message still reads as one node of the tree: after a branch
+connector the vertical rail continues, after a corner it does not. A
+step-open line (and a group header) also rails its own glyph column,
+which is where its children hang -- on a depth-1 root that is the only
+rail there is. A leaf's glyph column stays blank: nothing nests under a
+leaf. A token with no break opportunity -- a long path, a URL -- is split
+by display width rather than left to overflow, and a budget narrower than
+the tree is deep degrades to no wrapping rather than to an unusable
+one-column line.
+It applies to every line logtree renders, including the
+\code{\link[=logtree_summary]{logtree_summary()}} digest and the \code{\link[=with_logging]{with_logging()}} run-summary line.
+
+Like \code{compact} and \code{glyph_gap}, it applies to the active (console) theme,
+and a subsequent preset swap returns it to the \code{TRUE} default. File sinks
+are never wrapped: they render through the ascii preset, and a file has no
+width to wrap to.}
 }
 \value{
 \code{NULL}, invisibly.
@@ -50,11 +113,12 @@ kept from the active theme.
    \code{info} \tab \code{log_info()} leaf \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{debug} \tab \code{log_debug()} leaf \tab \code{glyph}, \code{width}, \code{color} \cr
    \code{success} \tab \code{log_success()} leaf \tab \code{glyph}, \code{width}, \code{color} \cr
-   \code{done} \tab a step's own \code{Done} line on a clean close \tab \code{glyph}, \code{width}, \code{color} \cr
-   \code{warning} \tab \code{log_warn()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color} \cr
-   \code{error} \tab \code{log_error()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color} \cr
-   \code{interrupted} \tab abnormal-exit (dimmed) glyph \tab \code{glyph}, \code{width}, \code{color} \cr
+   \code{done} \tab a step's own close line on a clean close \tab \code{glyph}, \code{width}, \code{color}, \code{text} \cr
+   \code{warning} \tab \code{log_warn()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color}, \code{text} \cr
+   \code{error} \tab \code{log_error()} / elevated step glyph \tab \code{glyph}, \code{width}, \code{color}, \code{text} \cr
+   \code{interrupted} \tab abnormal-exit (dimmed) glyph \tab \code{glyph}, \code{width}, \code{color}, \code{text} \cr
    \code{group} \tab group header marker \tab \code{glyph}, \code{color}, \code{bracket} \cr
+   \code{elapsed} \tab the elapsed-time column printed on every close line \tab \code{show}, \code{min}, \code{color}, \code{slow}, \code{slow_color} \cr
    \code{branch} \tab child connector: the "tee" drawn before every child line \tab \code{glyph}, \code{color} \cr
    \code{corner} \tab close-line connector: the "elbow" drawn on a step's own close line \tab \code{glyph}, \code{color} \cr
    \code{pipe} \tab vertical rail carried down the left of nested lines \tab \code{glyph}, \code{color} \cr
@@ -70,11 +134,25 @@ it closes cleanly. Override one and the other is untouched. A step that
 closes elevated still renders \code{warning} / \code{error} / \code{interrupted}, so \code{done}
 only ever governs the clean close.
 
+The same split governs the \code{text} field, the word a close line prints before
+its elapsed time. It is read from the closing status's own slot, falling back
+to \code{done}'s and then to the built-in \code{"Done"} -- so
+\code{list(done = list(text = "Complete"))} renames every close line, while
+\code{list(error = list(text = "Failed"))} renames only the ones that went wrong.
+\code{success} has no \code{text} of its own precisely because a clean close reads
+\code{done}. \code{text} is a close-line concern only: it never touches the message a
+\code{\link[=log_warn]{log_warn()}} or \code{\link[=log_error]{log_error()}} leaf prints.
+
 \strong{Fields} (valid names inside a slot):\tabular{lll}{
    Field \tab Type \tab Accepted values \cr
    \code{glyph} \tab \code{character(1)} \tab Any string, including \code{""}. In package source, non-ASCII must be written as \verb{\\u}/\verb{\\U} escapes, never literal characters. \cr
    \code{width} \tab \code{integer(1)} \tab Rendered display width of \code{glyph} (\code{1} for normal, \code{2} for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (\code{step}, \code{info}, \code{debug}, \code{success}, \code{done}, \code{warning}, \code{error}, \code{interrupted}). \cr
-   \code{color} \tab \code{character} or \code{NULL} \tab One or more cli styles, or \code{NULL} for no styling. Named colors (\code{"red"}, \code{"cyan"}, \code{"silver"}, ...), bright variants (\code{"br_red"}), backgrounds (\code{"bg_blue"}), text styles (\code{"bold"}, \code{"italic"}, \code{"dim"}), or a hex string (\code{"#ff8800"}). A character vector combines styles, e.g. \code{c("red", "bold")}. See \code{\link[cli:combine_ansi_styles]{cli::combine_ansi_styles()}}. \cr
+   \code{color} \tab \code{character} or \code{NULL} \tab One or more cli styles, or \code{NULL} for no styling. Named colors (\code{"red"}, \code{"cyan"}, \code{"silver"}, ...), bright variants (\code{"br_red"}), backgrounds (\code{"bg_blue"}), text styles (\code{"bold"}, \code{"italic"}, \code{"dim"}), or a hex string (\code{"#ff8800"}). A character vector combines styles, e.g. \code{c("red", "bold")}. On the \code{elapsed} slot it styles the time itself. See \code{\link[cli:combine_ansi_styles]{cli::combine_ansi_styles()}}. \cr
+   \code{text} \tab \code{character(1)} \tab Close-line status slots only (\code{done}, \code{warning}, \code{error}, \code{interrupted}). The word a close line prints before its elapsed time; \code{""} drops it, leaving the glyph and the time. Two placeholders are expanded: \code{{label}} (the closing step's own label, or a group's name) and \code{{elapsed}} (the formatted time). A template that places \code{{elapsed}} itself owns that column, so the time is not appended after it a second time. \cr
+   \code{show} \tab \code{logical(1)} \tab \code{elapsed} slot only. \code{FALSE} drops the elapsed-time column entirely. Default \code{TRUE}. \cr
+   \code{min} \tab \code{numeric(1)} \tab \code{elapsed} slot only. Hide times below this many seconds -- \code{min = 0.1} silences the \verb{0.00s} noise on trivial steps. Default \code{0} (show everything). \cr
+   \code{slow} \tab \code{numeric(1)} or \code{NULL} \tab \code{elapsed} slot only. Times at or over this many seconds count as slow and are styled with \code{slow_color} instead of \code{color}. \code{NULL} (the default) means nothing is ever flagged. \cr
+   \code{slow_color} \tab \code{character} or \code{NULL} \tab \code{elapsed} slot only. Styles applied to a slow time in place of \code{color}. Same accepted values as \code{color}; \code{"yellow"} in the unicode, emoji and minimal presets, \code{NULL} in the colourless ascii and ci presets. \cr
    \code{bracket} \tab \code{logical(1)} \tab \code{group} slot only. \code{TRUE} wraps the header name in \verb{< >}; default \code{FALSE}. \cr
    \code{path_color} \tab \code{character} or \code{NULL} \tab \code{crumb} slot only. Styles the breadcrumb's path nodes, setting them apart from a leaf's message (which stays unstyled). Same accepted values as \code{color}; \code{"bold"} in the unicode and emoji presets, \code{NULL} in ascii. \cr
    \code{gap} \tab \code{integer(1)} \tab \code{summary} slot only. Blank lines printed above the digest; \code{0} prints it flush against the tree. \cr
@@ -94,9 +172,37 @@ logtree_theme(list(group = list(glyph = "#", bracket = TRUE)))
 logtree_theme(list(crumb = list(glyph = " / ", path_color = "cyan")))
 logtree_theme(list(summary = list(gap = 2, rule = "Run report")))
 
+# The word on a close line: every one at once, or only the failures.
+logtree_theme(list(done = list(text = "Complete")))
+logtree_theme(list(error = list(text = "Failed")))
+logtree_theme(list(done = list(text = "{label} took {elapsed}")))
+logtree_theme(list(done = list(text = "")))  # glyph + time only
+
+# The elapsed-time column: hide the trivial, flag the slow.
+logtree_theme(list(elapsed = list(min = 0.1)))
+logtree_theme(list(elapsed = list(color = "silver", slow = 5,
+                                  slow_color = "red")))
+logtree_theme(list(elapsed = list(show = FALSE)))
+
 # Naming one swaps the whole preset, clearing every override above.
 logtree_theme("unicode")
 logtree_theme("unicode", compact = "medium")
 logtree_theme("unicode", compact = "tight")
-logtree_theme("unicode")
+
+# Tight rails, but with the glyph spaced off its connector.
+logtree_theme("unicode", compact = "tight", connector_gap = 1)
+
+# Spacing between the glyph and the message.
+logtree_theme(glyph_gap = 0)   # tightest: no space after the glyph
+logtree_theme(glyph_gap = 2)   # roomier message column
+
+# Wrapping long messages (on by default, at the console width).
+logtree_theme(wrap = 72)       # pin a fixed width
+logtree_theme(wrap = FALSE)    # let long lines overflow instead
+logtree_theme(wrap = TRUE)     # back to the console width
+
+# The other two presets.
+logtree_theme("minimal")       # no connectors: indentation only
+logtree_theme("ci")            # [ok] / [warn] / [fail], no colour
+logtree_theme("unicode")       # back to the default
 }

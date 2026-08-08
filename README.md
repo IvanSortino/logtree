@@ -318,6 +318,15 @@ demo_build()
 logtree_theme("unicode")
 ```
 
+`glyph_gap` tunes the other horizontal column – the space between a
+line’s status glyph and its message. `0` butts the message straight
+against the glyph for the tightest possible look, `2` or more gives the
+message column more air, and the two knobs compose
+(`logtree_theme("unicode", compact = "tight", glyph_gap = 0)` is the
+densest tree logtree draws). Like `compact`, it applies to the console
+theme and is cleared by the next preset swap; file sinks keep their
+built-in spacing either way.
+
 The `Done` line a step prints when it closes cleanly has its own `done`
 slot, distinct from the `success` slot used by `log_success()` leaves –
 they just ship the same tick by default, so either can be restyled on

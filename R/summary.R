@@ -53,16 +53,9 @@ record_summary <- function(event) {
 # The digest is printed straight after the last log line, which makes it read
 # as one more branch of the tree. A blank gap plus a cli rule sets it apart as
 # its own block. The defaults live in the active theme's `summary` slot
-# (gap / rule / line), so appearance is customised in one place --
-# logtree_theme() -- and logtree_summary()'s own `gap` / `rule` arguments are
-# per-call overrides of it.
-
-# Field lookup with a fallback, for themes predating these slots (a
-# user-supplied preset need not carry them).
-theme_field <- function(slot, field, default, theme = the$theme) {
-  value <- theme[[slot]][[field]]
-  if (is.null(value)) default else value
-}
+# (gap / rule / line), read through theme_field() (R/theme.R), so appearance is
+# customised in one place -- logtree_theme() -- and logtree_summary()'s own
+# `gap` / `rule` arguments are per-call overrides of it.
 
 resolve_gap <- function(gap, theme = the$theme) {
   if (is.null(gap)) gap <- theme_field("summary", "gap", 1L, theme)
@@ -227,7 +220,7 @@ logtree_summary <- function(filter = NULL, depth = NULL,
       # the ancestor path with the same separator -- but unstyled, so the
       # emphasised path reads as the trail leading to it.
       crumb <- format_crumb(clip(c(e$path, e$msg)), plain_last = TRUE)
-      cat(theme_glyph(e$status), " ", crumb, "\n", sep = "")
+      cat(compose_flat_line(theme_glyph(e$status), crumb), "\n", sep = "")
     } else {
       # Step entries carry no message; render the switch()-mapped outcome word
       # after the path, set off by two spaces (a description, not a path node).
@@ -238,7 +231,8 @@ logtree_summary <- function(filter = NULL, depth = NULL,
         interrupted = "did not complete",
         e$status
       )
-      cat(theme_glyph(e$status), " ", path, "  ", detail, "\n", sep = "")
+      cat(compose_flat_line(theme_glyph(e$status), paste0(path, "  ", detail)),
+          "\n", sep = "")
     }
   }
   invisible(entries)

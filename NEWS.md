@@ -1,3 +1,87 @@
+# logtree (development version)
+
+* `logtree_theme()` gains `connector_gap`, the spaces between a *leaf or close*
+  line's own connector and its status glyph -- the middle one of logtree's
+  three horizontal knobs, between `compact` (the per-level rail column) and
+  `glyph_gap` (glyph to message). Unset it tracks `col_gap`, so every preset
+  and every `compact` density renders exactly as before; set it and the two
+  diverge, which is the point: `compact = "tight"` can keep every rail column
+  flush while leaf and close glyphs still get air (`|- i msg` rather than
+  `|-i msg`). It deliberately never touches a step's *open* line or a group
+  header -- those are rail columns, not the glyph's own approach, so they stay
+  flush at any density -- and the gap does not compound with depth, so a deeper
+  tree does not fan out to the right.
+
+* Console output now wraps by default: a long message is word-wrapped at
+  `cli::console_width()` instead of running off the right edge. The new
+  `logtree_theme(wrap = )` governs it -- `TRUE` (the console default) follows
+  the terminal, measured at render time so a mid-run resize is picked up on its
+  own, a number pins a fixed width, and `FALSE` restores the old overflowing
+  behaviour. Continuation lines indent to the message column and carry the
+  rails down, so a wrapped message still reads as one node of the tree: after a
+  branch connector the rail continues, after a corner it does not, and a
+  step-open line or group header also rails its own glyph/marker column, which
+  is where its children hang. A token with no break opportunity (a long path, a
+  URL) is split by display width rather than left to overflow, and a budget
+  narrower than the tree is deep degrades to no wrapping rather than to an
+  unusable one-column line. It covers every line logtree renders, including the
+  `logtree_summary()` digest and the `with_logging()` run-summary line. File
+  sinks are never wrapped -- a file has no width to wrap to.
+
+* New `"ci"` theme preset: `logtree_theme("ci")` renders bracketed word glyphs
+  -- `[step]`, `[info]`, `[debug]`, `[ok]`, `[done]`, `[warn]`, `[fail]`,
+  `[break]` -- over pure-ASCII connectors with no colour in any slot, so a
+  captured build log survives a runner that strips ANSI and mangles UTF-8, and
+  a failure greps as `[fail]` rather than as a glyph you cannot type into a
+  search box. The words are different lengths on purpose: each declares its
+  true width, so the message column still lines up. Unlike the `ascii` preset
+  it spells the corner (`\-`) differently from the branch (`|-`), which makes a
+  closed subtree obvious in a wall of output.
+
+* New `"minimal"` theme preset: `logtree_theme("minimal")` draws no tree
+  connectors at all -- `branch`, `corner` and `pipe` are empty, so depth is
+  carried by indentation alone (two columns per level) and the output stays
+  legible when pasted somewhere box-drawing characters do not survive. It also
+  ships a lighter glyph vocabulary, dimmed elapsed times, no group marker, and
+  wordless close lines, so a closing step is a tick and a time. The trade is
+  deliberate and worth knowing: `info`, `debug` and `interrupted` all render
+  the middle dot and are told apart by colour alone.
+
+* New `elapsed` theme slot controls the time column on close lines, with five
+  fields: `show = FALSE` drops it entirely, `min` hides anything faster than a
+  threshold (`logtree_theme(list(elapsed = list(min = 0.1)))` silences the
+  `0.00s` noise on trivial steps), `color` styles the time, and `slow` +
+  `slow_color` restyle the ones worth noticing -- so a step that ran long is
+  visible at a glance without reading every number. It is an ordinary override
+  slot, so it needs no new `logtree_theme()` argument. The `with_logging()`
+  run-summary line takes the colouring but never the hiding rules, since
+  `Run complete in <time>` would read as an unfinished sentence without its
+  time. The defaults (`show = TRUE`, `min = 0`, no `slow`) leave output
+  unchanged.
+
+* The word a step prints when it closes is themeable: the new `text` field on a
+  status slot replaces the hard-coded `Done`. It is read from the closing
+  status's own slot, falling back to `done`'s and then to `"Done"`, so
+  `logtree_theme(list(done = list(text = "Complete")))` renames every close
+  line while `list(error = list(text = "Failed"))` renames only the ones that
+  went wrong -- which is also all localisation needs. `text = ""` drops the
+  word, leaving the glyph and the elapsed time. Two placeholders are expanded:
+  `{label}` (the step's own label, or a group's name) and `{elapsed}` (the
+  formatted time); a template that places `{elapsed}` itself owns that column
+  rather than having the time appended twice. `text` governs close lines only
+  -- `log_error()`'s own message is untouched -- and every preset ships
+  `text = "Done"`, so existing output is unchanged.
+
+* `logtree_theme()` gains `glyph_gap`, the number of spaces between a line's
+  status glyph and its message: `0` butts the message against the glyph for a
+  minimal look, `2` or more airs the message column out. It applies to every
+  line kind (step open, `Done` close, leaf, group header, and the
+  `with_logging()` run-summary line) so the message column stays aligned, and
+  composes with `compact`, which tunes the other horizontal column. Like
+  `compact`, it rides the active console theme and is cleared by a preset swap;
+  file sinks keep their built-in spacing. The default of one space leaves
+  existing output byte-for-byte unchanged.
+
 # logtree 0.2.0
 
 * New `done` theme slot: a step's own `Done` line (a clean close) is styled
