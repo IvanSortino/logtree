@@ -13,12 +13,18 @@
 # U+2699 = GEAR (unicode debug glyph)
 # U+203A = SINGLE RIGHT-POINTING ANGLE QUOTATION MARK (breadcrumb separator)
 #
-# Beyond the glyph slots, each preset carries three non-glyph slots: `elapsed`
-# (how a close line's time column is gated and styled), plus `crumb`
-# (breadcrumb separator + the styling that sets the path apart from the
-# message) and `summary` (the digest's divider layout), both used only by
-# logtree_summary(). They live in the theme so there is one place to customise
-# appearance -- logtree_theme() -- rather than a second, options-based channel.
+# Beyond the glyph slots, each preset carries four non-glyph slots: `elapsed`
+# (how a close line's time column is gated and styled), `trace` (the optional
+# call-site column), plus `crumb` (breadcrumb separator + the styling that sets
+# the path apart from the message) and `summary` (the digest's divider layout),
+# the last two used only by logtree_summary(). They live in the theme so there
+# is one place to customise appearance -- logtree_theme() -- rather than a
+# second, options-based channel.
+#
+# `trace` ships `show = FALSE` in every preset: capturing a call site costs a
+# frame walk and a srcref lookup per logged line, so it is opt-in and the
+# default path pays nothing. Its `format` is deliberately ASCII-only, like any
+# other default that lands in package source.
 #
 # The `done` slot also carries `text`, the word a close line prints before its
 # elapsed time. It is read per status (falling back to `done`'s, then to
@@ -42,6 +48,7 @@ glyphs_unicode <- list(
   corner      = list(glyph = "\u2514\u2500", color = "dim"),
   pipe        = list(glyph = "\u2502", color = "dim"),
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = "yellow"),
+  trace       = list(show = FALSE, format = "{fn}() {file}:{line}", color = "dim"),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
@@ -67,6 +74,7 @@ glyphs_ascii <- list(
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = NULL),
   # Plain ASCII throughout, colorless like every other slot of this preset --
   # which is what makes ascii output stable and easy to pattern-match in tests.
+  trace       = list(show = FALSE, format = "{fn}() {file}:{line}", color = NULL),
   crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
   summary     = list(gap = 1L, rule = TRUE, line = "-")
 )
@@ -92,6 +100,7 @@ glyphs_emoji <- list(
   corner      = list(glyph = "\u2514\u2500", color = "dim"),
   pipe        = list(glyph = "\u2502", color = "dim"),
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = "yellow"),
+  trace       = list(show = FALSE, format = "{fn}() {file}:{line}", color = "dim"),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L)
 )
@@ -126,6 +135,7 @@ glyphs_minimal <- list(
   corner      = list(glyph = "", color = NULL),
   pipe        = list(glyph = "", color = NULL),
   elapsed     = list(show = TRUE, min = 0, color = "dim", slow = NULL, slow_color = "yellow"),
+  trace       = list(show = FALSE, format = "{fn}() {file}:{line}", color = "dim"),
   crumb       = list(glyph = " \u203a ", color = "dim", path_color = "bold"),
   summary     = list(gap = 1L, rule = TRUE, line = 1L),
   # Two spaces per level. With empty connectors this scalar is the entire
@@ -158,6 +168,7 @@ glyphs_ci <- list(
   corner      = list(glyph = "\\-", color = NULL),
   pipe        = list(glyph = "|",  color = NULL),
   elapsed     = list(show = TRUE, min = 0, color = NULL, slow = NULL, slow_color = NULL),
+  trace       = list(show = FALSE, format = "{fn}() {file}:{line}", color = NULL),
   crumb       = list(glyph = " > ", color = NULL, path_color = NULL),
   summary     = list(gap = 1L, rule = TRUE, line = "-")
 )

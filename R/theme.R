@@ -212,6 +212,7 @@ apply_overrides <- function(overrides) {
 #' | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color`, `text` |
 #' | `group` | group header marker | `glyph`, `color`, `bracket` |
 #' | `elapsed` | the elapsed-time column printed on every close line | `show`, `min`, `color`, `slow`, `slow_color` |
+#' | `trace` | the optional call-site column: where in your code a line came from | `show`, `format`, `color` |
 #' | `branch` | child connector: the "tee" drawn before every child line | `glyph`, `color` |
 #' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
 #' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
@@ -234,15 +235,40 @@ apply_overrides <- function(overrides) {
 #' `done`. `text` is a close-line concern only: it never touches the message a
 #' [log_warn()] or [log_error()] leaf prints.
 #'
+#' The `trace` slot is off in every preset, and deliberately so: capturing a call
+#' site costs a frame walk and a source-reference lookup on every logged line, so
+#' you opt in and the default path pays nothing. Switch it on with
+#' `list(trace = list(show = "problems"))` to annotate only what went wrong, or
+#' `show = TRUE` for every open line and leaf. The column is appended to the
+#' message, so it wraps with it rather than shearing the tree.
+#'
+#' **On source references.** `{file}` and `{line}` come from R's source
+#' references, which exist only when the code was parsed with `keep.source =
+#' TRUE`. That is the default in an interactive session and under
+#' `devtools::load_all()`, but **not** under plain `Rscript` and not for an
+#' installed package. `{fn}` is always available. Rather than print `NA`, the
+#' expander drops any whitespace-separated run of the template whose placeholders
+#' are all unavailable -- so the default format degrades from
+#' `load_data() pipeline.R:12` to `load_data()`, and a `"{file}:{line}"` format
+#' degrades to no column at all. Set `options(keep.source = TRUE)` at the top of
+#' a script if you want locations under `Rscript`.
+#'
+#' Two places outside the tree also report call sites when the slot is on:
+#' [logtree_summary()]'s digest lines, and the `fn` / `file` / `line` fields of a
+#' `"json"` sink (which carries them whenever they were captured, regardless of
+#' `show`). See [logtree_sink_file()] for pinning a file sink's column
+#' independently of the console's.
+#'
 #' **Fields** (valid names inside a slot):
 #'
 #' | Field | Type | Accepted values |
 #' | ----- | ---- | --------------- |
 #' | `glyph` | `character(1)` | Any string, including `""`. In package source, non-ASCII must be written as `\u`/`\U` escapes, never literal characters. |
 #' | `width` | `integer(1)` | Rendered display width of `glyph` (`1` for normal, `2` for emoji / wide cells). Drives column alignment and cannot be measured, so set it to the true width. Status slots only (`step`, `info`, `debug`, `success`, `done`, `warning`, `error`, `interrupted`). |
-#' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself. See [cli::combine_ansi_styles()]. |
+#' | `color` | `character` or `NULL` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself; on `trace`, the call-site column (`"dim"` in the unicode, emoji and minimal presets, `NULL` in the colourless ascii and ci presets). See [cli::combine_ansi_styles()]. |
 #' | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its elapsed time; `""` drops it, leaving the glyph and the time. Two placeholders are expanded: `{label}` (the closing step's own label, or a group's name) and `{elapsed}` (the formatted time). A template that places `{elapsed}` itself owns that column, so the time is not appended after it a second time. |
-#' | `show` | `logical(1)` | `elapsed` slot only. `FALSE` drops the elapsed-time column entirely. Default `TRUE`. |
+#' | `show` | `logical(1)`, or `character(1)` on `trace` | On `elapsed`: `FALSE` drops the elapsed-time column entirely, default `TRUE`. On `trace`: `FALSE` (the default in every preset) off entirely, `"problems"` only on warning/error leaves and interrupted close lines, `TRUE` on every open line and leaf as well. `TRUE` is a superset of `"problems"`. Anything unrecognised reads as `FALSE`. |
+#' | `format` | `character(1)` | `trace` slot only. Template for the call-site column over three placeholders: `{fn}` (the enclosing function's name), `{file}` and `{line}` (where the log call sits). Default `"{fn}() {file}:{line}"`. A whitespace-separated run whose placeholders are *all* unavailable is dropped whole, so the default degrades to `load_data()` rather than printing `NA` -- see the note on source references below. |
 #' | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds -- `min = 0.1` silences the `0.00s` noise on trivial steps. Default `0` (show everything). |
 #' | `slow` | `numeric(1)` or `NULL` | `elapsed` slot only. Times at or over this many seconds count as slow and are styled with `slow_color` instead of `color`. `NULL` (the default) means nothing is ever flagged. |
 #' | `slow_color` | `character` or `NULL` | `elapsed` slot only. Styles applied to a slow time in place of `color`. Same accepted values as `color`; `"yellow"` in the unicode, emoji and minimal presets, `NULL` in the colourless ascii and ci presets. |
@@ -275,6 +301,13 @@ apply_overrides <- function(overrides) {
 #' logtree_theme(list(elapsed = list(color = "silver", slow = 5,
 #'                                   slow_color = "red")))
 #' logtree_theme(list(elapsed = list(show = FALSE)))
+#'
+#' # The call-site column: off by default, loudest on the lines that matter.
+#' logtree_theme(list(trace = list(show = "problems")))
+#' logtree_theme(list(trace = list(show = TRUE)))
+#' logtree_theme(list(trace = list(show = TRUE, format = "{fn}()")))
+#' logtree_theme(list(trace = list(format = "{file}:{line}", color = "silver")))
+#' logtree_theme(list(trace = list(show = FALSE)))  # back off again
 #'
 #' # Naming one swaps the whole preset, clearing every override above.
 #' logtree_theme("unicode")

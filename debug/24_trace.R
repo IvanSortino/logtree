@@ -1,0 +1,143 @@
+# Call-site trace: the `trace` theme slot annotates log lines with where in
+# your code they came from.
+#
+#   show   -- FALSE (default) off entirely; "problems" only on warnings, errors
+#             and interrupted steps; TRUE on every open line and leaf too
+#   format -- a template over {fn}, {file} and {line}
+#   color  -- cli styles for the column
+#
+# It is an ordinary override slot, so it goes through logtree_theme()'s
+# `overrides` like any glyph slot -- no new argument.
+#
+# The one thing worth understanding before reading the output: {file} and {line}
+# come from source references, which exist only when code was parsed with
+# keep.source = TRUE. That is the default interactively and under
+# devtools::load_all(), but NOT under plain `Rscript`. {fn} always works. So the
+# default format degrades from "load_data() pipeline.R:12" to "load_data()"
+# rather than printing NA -- section G shows that on purpose.
+#
+#   Rscript -e 'devtools::load_all(); source("debug/24_trace.R")'
+devtools::load_all()
+
+section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")
+run_section <- function(title, ...) {
+  section(title)
+  logtree_reset()
+  logtree_theme("unicode", ...)
+  on.exit(logtree_theme("unicode"), add = TRUE)
+  with_logging(tree(), summary = FALSE)
+}
+
+# One shared fixture, nested three deep, with a warning and an error at
+# different levels so the "problems" mode has something to single out.
+tree <- function() {
+  log_step("Pipeline")
+  log_info("config loaded")
+  load_data()
+  summarise()
+}
+load_data <- function() {
+  log_step("Load data")
+  log_info("reading records.csv")
+  parse_rows()
+}
+parse_rows <- function() {
+  log_step("Parse rows")
+  log_info("1200 rows")
+  log_warn("coerced 3 rows")
+}
+summarise <- function() {
+  log_step("Summarise")
+  log_error("no numeric columns")
+}
+
+run_section("A. default -- trace off, output unchanged")
+
+run_section("B. show = \"problems\" -- only where something went wrong",
+            overrides = list(trace = list(show = "problems")))
+
+run_section("C. show = TRUE -- every open line and leaf",
+            overrides = list(trace = list(show = TRUE)))
+
+run_section("D. format = \"{fn}()\" -- the half that never degrades",
+            overrides = list(trace = list(show = TRUE, format = "{fn}()")))
+
+run_section("E. format = \"{file}:{line}\" -- clickable in most terminals",
+            overrides = list(trace = list(show = TRUE,
+                                          format = "{file}:{line}")))
+
+# --- F. the digest -----------------------------------------------------------
+# The digest is arguably where a trace earns its keep: it is what you read after
+# a run failed, and it is the one view that already answers "what went wrong"
+# without answering "where".
+section("F. the summary digest carries call sites too")
+logtree_reset()
+logtree_theme("unicode", overrides = list(trace = list(show = "problems")))
+with_logging(tree(), summary = FALSE)
+logtree_summary()
+logtree_theme("unicode")
+
+# --- G. degradation ----------------------------------------------------------
+# Evaluate the same logging with keep.source = FALSE, so no srcrefs exist. The
+# {file}:{line} run drops out of the template whole rather than rendering "NA".
+section("G. no source refs (keep.source = FALSE) -- {fn}() survives alone")
+logtree_reset()
+logtree_theme("unicode", overrides = list(trace = list(show = TRUE)))
+block <- parse(
+  text = paste(
+    'noloc <- function() { log_step("No srcrefs here"); log_info("still traced") }',
+    'noloc()',
+    sep = "\n"
+  ),
+  keep.source = FALSE
+)
+eval(block, envir = globalenv())
+logtree_reset()
+logtree_theme("unicode")
+
+# --- H. file sinks -----------------------------------------------------------
+# A text sink follows the console by default; pass `trace =` to pin it. Both
+# paths target tempfile() -- writing to the working directory is a CRAN no.
+section("H. file sinks: text follows the console, json always carries the fields")
+logtree_reset()
+logtree_theme("unicode", overrides = list(trace = list(show = "problems")))
+
+txt  <- tempfile(fileext = ".log")
+json <- tempfile(fileext = ".ndjson")
+logtree_sink_file(txt,  format = "text")
+logtree_sink_file(json, format = "json")
+with_logging(tree(), summary = FALSE)
+
+cat("\n-- text sink --\n")
+cat(readLines(txt), sep = "\n")
+cat("\n\n-- json sink (last two events) --\n")
+cat(utils::tail(readLines(json), 2), sep = "\n")
+cat("\n")
+
+# A quiet console with a log file that still records call sites: the sink's own
+# `trace =` switches capture on by itself.
+#
+# Sinks are additive and deliberately NOT cleared by logtree_reset(), and there
+# is as yet no logtree_sink_remove() (debug/feature-plan.md item 4). A demo with
+# more than one sink section therefore has to reach into internals to unregister
+# the previous one -- the same `logtree:::the` poking 14_srckey_replay.R does.
+# Do not copy this into real code.
+drop_sinks <- function() {
+  logtree:::the$sinks       <- list(logtree:::console_sink)
+  logtree:::the$trace_sinks <- 0L
+}
+
+section("I. trace = TRUE on the sink only -- console stays clean")
+drop_sinks()
+logtree_reset()
+logtree_theme("unicode")
+quiet <- tempfile(fileext = ".log")
+logtree_sink_file(quiet, format = "text", trace = TRUE)
+with_logging(tree(), summary = FALSE)
+cat("\n-- the file, which has traces the console did not show --\n")
+cat(readLines(quiet), sep = "\n")
+cat("\n")
+
+drop_sinks()
+logtree_theme("unicode")
+logtree_reset()

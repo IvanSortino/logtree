@@ -27,7 +27,7 @@ record_summary <- function(event) {
     if (!keep) return(invisible(NULL))
     the$summary[[length(the$summary) + 1L]] <- list(
       kind = "leaf", status = event$status, msg = event$label,
-      path = current_path(), elapsed = NA_real_
+      path = current_path(), elapsed = NA_real_, trace = event$trace
     )
     return(invisible(NULL))
   }
@@ -43,7 +43,8 @@ record_summary <- function(event) {
     if (covered) return(invisible(NULL))
     the$summary[[length(the$summary) + 1L]] <- list(
       kind = "step", status = st, msg = NULL,
-      path = this_path, elapsed = event$entry$elapsed
+      path = this_path, elapsed = event$entry$elapsed,
+      trace = event$entry$trace
     )
   }
   invisible(NULL)
@@ -153,7 +154,9 @@ print_summary_header <- function(header, gap, rule) {
 #'   the header line below it. `NULL` (the default) takes the active theme's
 #'   `summary$rule` (`TRUE` in every built-in preset).
 #' @return The recorded entries, invisibly: a list of records, each a list with
-#'   `kind`, `status`, `msg`, `path` (character vector), and `elapsed`.
+#'   `kind`, `status`, `msg`, `path` (character vector), `elapsed`, and `trace`
+#'   (the call site: a list of `fn`, `file` and `line`, or `NULL` when the
+#'   `trace` theme slot was off and nothing was captured).
 #' @seealso [with_logging()], [logtree_reset()]
 #' @export
 #' @examples
@@ -219,7 +222,10 @@ logtree_summary <- function(filter = NULL, depth = NULL,
       # The leaf's message is the terminal node of its breadcrumb, so join it to
       # the ancestor path with the same separator -- but unstyled, so the
       # emphasised path reads as the trail leading to it.
-      crumb <- format_crumb(clip(c(e$path, e$msg)), plain_last = TRUE)
+      crumb <- with_trace(
+        format_crumb(clip(c(e$path, e$msg)), plain_last = TRUE),
+        format_trace_digest(e$trace)
+      )
       cat(compose_flat_line(theme_glyph(e$status), crumb), "\n", sep = "")
     } else {
       # Step entries carry no message; render the switch()-mapped outcome word
@@ -231,8 +237,10 @@ logtree_summary <- function(filter = NULL, depth = NULL,
         interrupted = "did not complete",
         e$status
       )
-      cat(compose_flat_line(theme_glyph(e$status), paste0(path, "  ", detail)),
-          "\n", sep = "")
+      cat(compose_flat_line(
+            theme_glyph(e$status),
+            with_trace(paste0(path, "  ", detail), format_trace_digest(e$trace))
+          ), "\n", sep = "")
     }
   }
   invisible(entries)

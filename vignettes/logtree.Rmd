@@ -225,6 +225,7 @@ logtree_theme("unicode")
 | `interrupted` | abnormal-exit (dimmed) glyph | `glyph`, `width`, `color`, `text` |
 | `group` | group header marker | `glyph`, `color`, `bracket` |
 | `elapsed` | the elapsed-time column printed on every close line | `show`, `min`, `color`, `slow`, `slow_color` |
+| `trace` | the optional call-site column: where in your code a line came from | `show`, `format`, `color` |
 | `branch` | child connector (`├─`) | `glyph`, `color` |
 | `corner` | close-line connector (`└─`) | `glyph`, `color` |
 | `pipe` | vertical rail (`│`) | `glyph`, `color` |
@@ -239,7 +240,8 @@ logtree_theme("unicode")
 | `width` | `integer(1)` | Rendered display width of the glyph (`1` normal, `2` emoji/wide). Sets column alignment; status slots only. |
 | `color` | `character` / `NULL` | One or more cli styles, or `NULL`. Named (`"red"`, `"cyan"`, ...), bright (`"br_red"`), backgrounds (`"bg_blue"`), styles (`"bold"`, `"dim"`, `"italic"`), or hex (`"#ff8800"`). A vector combines them, e.g. `c("red", "bold")`. |
 | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its time; `""` drops it. Expands `{label}` and `{elapsed}`. |
-| `show` | `logical(1)` | `elapsed` slot only. `FALSE` drops the time column entirely. |
+| `show` | `logical(1)` / `character(1)` | On `elapsed`, `FALSE` drops the time column entirely. On `trace`, `FALSE` (default) is off, `"problems"` marks only warnings/errors/interrupted steps, `TRUE` adds every open line and leaf. |
+| `format` | `character(1)` | `trace` slot only. Template over `{fn}`, `{file}`, `{line}`. Default `"{fn}() {file}:{line}"`. |
 | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds. |
 | `slow` | `numeric(1)` / `NULL` | `elapsed` slot only. Times at or over this count as slow. |
 | `slow_color` | `character` / `NULL` | `elapsed` slot only. Styles a slow time in place of `color`. |
@@ -284,6 +286,44 @@ logtree_theme("unicode")
 `show = FALSE` drops the column outright. The `with_logging()` run-summary line
 takes the slot's colouring but never its hiding rules, since
 `Run complete in <time>` would read as an unfinished sentence without its time.
+
+### Call sites
+
+The `trace` slot annotates a line with where in your code it came from. It is
+off in every preset -- capturing a call site costs a frame walk per logged line,
+so you opt in and the default path pays nothing. `show = "problems"` marks only
+warning and error leaves plus interrupted steps; `show = TRUE` adds every open
+line and leaf.
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  trace = list(show = "problems", format = "{fn}()")
+))
+
+flaky <- function() {
+  log_step("Parse rows")
+  log_info("1200 rows")
+  log_warn("coerced 3 rows")
+}
+flaky()
+logtree_theme("unicode")
+```
+
+`format` is a template over `{fn}`, `{file}` and `{line}`; the default is
+`"{fn}() {file}:{line}"`. The example pins `"{fn}()"` because `{file}` and
+`{line}` come from R's source references, which exist only when code was parsed
+with `keep.source = TRUE` -- the default interactively and under
+`devtools::load_all()`, but not under plain `Rscript`, and not in this
+vignette's knitted chunks. `{fn}` always works, and rather than print `NA` the
+template drops any whitespace-separated run whose placeholders are all
+unavailable, so the default degrades to `flaky()` on its own.
+
+The column is appended to the message rather than given a column of its own, so
+it wraps with the message instead of shearing the tree. It also reaches
+`logtree_summary()`'s digest lines and the `fn` / `file` / `line` fields of a
+`"json"` sink; `logtree_sink_file(trace = )` pins a file sink's column
+independently of the console's, so a log file can record call sites while the
+terminal stays quiet.
 
 ### Wrapping long messages
 

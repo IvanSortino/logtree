@@ -9,7 +9,7 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `log_step` `[export]` | `msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE, key = NULL` |
 | `log_open` `[export]` | `msg, glyph = NULL, parent = NULL, group = NULL, close = FALSE, key = NULL` |
 | `log_close` `[export]` | `id = NULL, status = NULL` |
-| `push_step` | `label, glyph = NULL, group = NULL, parent = NULL, key = NULL, srcref = NULL` |
+| `push_step` | `label, glyph = NULL, group = NULL, parent = NULL, key = NULL, srcref = NULL, trace = NULL` |
 | `close_step` | `id, silent = FALSE` |
 | `close_current_section_silent` | *(none)* |
 | `finalize_step` | `id, sentinel` |
@@ -44,8 +44,25 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `format_elapsed_field` | `seconds, theme = the$theme, color = TRUE, gate = TRUE` |
 | `close_message` | `entry, status, theme = the$theme, color = TRUE` |
 | `format_close` | `entry, theme = the$theme, color = TRUE` |
-| `format_leaf` | `status, msg, depth, theme = the$theme, color = TRUE, corner = FALSE` |
+| `format_leaf` | `status, msg, depth, theme = the$theme, color = TRUE, corner = FALSE, trace = NULL` |
 | `format_group_header` | `entry, theme = the$theme, color = TRUE` |
+| `trace_value` | `key, trace` |
+| `expand_trace_text` | `template, trace` |
+| `format_trace_field` | `trace, kind, status = NULL, theme = the$theme, color = TRUE` |
+| `render_trace_text` | `trace, theme = the$theme, color = TRUE` |
+| `format_trace_digest` | `trace, theme = the$theme, color = TRUE` |
+| `with_trace` | `msg, trace_text` |
+
+## Call-site capture (R/trace.R)
+
+| Function | Params |
+|---|---|
+| `resolve_trace_show` | `theme = the$theme` |
+| `trace_enabled` | `theme = the$theme` |
+| `src_parts` | `call` |
+| `call_fn_name` | `call` |
+| `capture_trace` | `call, up = 1L` |
+| `trace_from_call` | `call` |
 
 ## Leaf logging (R/leaves.R)
 
@@ -56,11 +73,12 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 | `log_success` `[export]` | `msg, close = FALSE, summary = NA` |
 | `log_warn` `[export]` | `msg, close = FALSE, summary = NA` |
 | `log_error` `[export]` | `msg, close = FALSE, summary = NA` |
+| `log_error_at` | `msg, call` |
 | `status_severity` | `status` |
 | `nearest_open_step` | *(none)* |
 | `elevate_current_step` | `new_status` |
 | `should_emit_leaf` | `status` |
-| `emit_leaf` | `status, msg, close = FALSE, summary = NA` |
+| `emit_leaf` | `status, msg, close = FALSE, summary = NA, trace = NULL, capture = TRUE` |
 
 ## Run wrapper (R/run.R)
 
@@ -121,10 +139,11 @@ Full inventory of functions in `R/`, params, and source file. Exported fns marke
 
 | Function | Params |
 |---|---|
-| `logtree_sink_file` `[export]` | `path, format = c("text", "json")` |
+| `logtree_sink_file` `[export]` | `path, format = c("text", "json"), trace = NULL` |
 | `emit` | `event` |
 | `console_sink` | `event` |
-| `file_text_sink` | `path` |
+| `file_text_sink` | `path, trace = NULL` |
+| `text_sink_theme` | `trace` |
 | `file_json_sink` | `path` |
 | `esc_json_string` | `x` |
 | `json_scalar` | `x` |

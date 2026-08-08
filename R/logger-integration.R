@@ -25,13 +25,22 @@
 #' independent, second gate applied on top of that -- both legitimately
 #' apply at once, this is not a bug.
 #'
+#' When the `trace` theme slot is on, the leaf's call site is taken from
+#' `logger`'s own `.topcall` rather than from logtree's usual frame walk. That
+#' matters: this layout is what calls the leaf, so a frame walk would report
+#' `layout_logtree` as the origin of every routed line instead of the
+#' `logger::log_info()` call in your code.
+#'
 #' @param level A `logger` log level object (e.g. `logger::INFO`), as
 #'   passed in by `logger`'s internal dispatch.
 #' @param msg Character scalar, already formatted by `logger`'s formatter
 #'   stage (glue interpolation has already happened by this point).
-#' @param namespace,.logcall,.topcall,.topenv,.timestamp Unused; accepted
-#'   only because `logger`'s dispatcher calls every layout with this exact
-#'   signature (see `logger::layout_simple`).
+#' @param namespace,.logcall,.timestamp Unused; accepted only because
+#'   `logger`'s dispatcher calls every layout with this exact signature (see
+#'   `logger::layout_simple`).
+#' @param .topcall The call `logger` was invoked from, supplied by its
+#'   dispatcher. Used as the leaf's call site for the `trace` column.
+#' @param .topenv Unused; part of `logger`'s layout signature.
 #' @return `character(0)`, invisibly. The record is discarded by
 #'   `logger::appender_void()` regardless, so its content is irrelevant;
 #'   a zero-length character vector matches `logger`'s layout contract.
@@ -50,17 +59,25 @@ layout_logtree <- function(level, msg,
                             .topcall   = sys.call(-1),
                             .topenv    = parent.frame(),
                             .timestamp = Sys.time()) {
-  leaf_fn <- switch(attr(level, "level"),
-    FATAL   = log_error,
-    ERROR   = log_error,
-    WARN    = log_warn,
-    SUCCESS = log_success,
-    INFO    = log_info,
-    DEBUG   = log_debug,
-    TRACE   = log_debug,
-    log_info  # unrecognized/future level: degrade rather than crash the caller
+  # Map to a leaf *status* rather than to a leaf function, then emit once. Going
+  # through log_error()/log_warn()/... would put another frame between the user's
+  # code and emit_leaf()'s call-site capture, and that frame is this layout --
+  # every routed line would trace to layout_logtree. `.topcall` is the call
+  # logger itself was invoked from, which is the answer we actually want.
+  status <- switch(attr(level, "level"),
+    FATAL   = "error",
+    ERROR   = "error",
+    WARN    = "warning",
+    SUCCESS = "success",
+    INFO    = "info",
+    DEBUG   = "debug",
+    TRACE   = "debug",
+    "info"  # unrecognized/future level: degrade rather than crash the caller
   )
-  leaf_fn(msg)
+  # Status elevation is the leaf functions' other job, and it is status-driven:
+  # warning and error elevate the enclosing step, the rest never do.
+  if (status %in% c("warning", "error")) elevate_current_step(status)
+  emit_leaf(status, msg, trace = trace_from_call(.topcall), capture = FALSE)
   invisible(character(0))
 }
 

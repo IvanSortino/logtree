@@ -82,9 +82,29 @@ connector is only ever a step's own close line (see design doc §3.5) — requir
 because this is a *live* streaming logger that can't know in advance whether a line
 is the last sibling.
 
+### Call-site trace (`R/trace.R`)
+
+The opt-in `trace` theme slot annotates lines with `fn() file.R:line`.
+`capture_trace()` walks the frame stack for the enclosing function's name;
+`src_parts()` reads the srcref for file/line (and `src_location()`, the older
+"file:line" view used by the srckey reconcile, now delegates to it). Capture is
+gated by `trace_enabled()` and so costs nothing on the default path — `show` is
+`FALSE` in every preset. **`{file}`/`{line}` require `keep.source`**, absent
+under plain `Rscript`, so `expand_trace_text()` drops any template run whose
+placeholders are all unavailable rather than rendering `NA`.
+
+The column is appended to the *message* before it reaches `compose_line()`, which
+is why none of the `cols`/`cont` layout arithmetic changed. Two handlers are
+handed their call site rather than walking for it, because they log from inside a
+frame of their own and a walk would name the handler: `with_logging()` via
+`conditionCall()` (`log_error_at()`), and `layout_logtree()` via `logger`'s
+`.topcall`. Both pass `emit_leaf(capture = FALSE)` so a NULL call site cannot
+silently fall through to the wrong answer.
+
 ### Theme system (`R/glyphs.R`, `R/theme.R`)
 
-Three built-in presets (`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji`) are plain
+Five built-in presets (`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji`,
+`glyphs_minimal`, `glyphs_ci`) are plain
 named lists keyed by status/connector, each glyph entry declaring its own `width`
 explicitly rather than measured (`nchar()`/`ansi_nchar()` can't reliably size emoji
 cells) — this is what keeps message text column-aligned across themes.
