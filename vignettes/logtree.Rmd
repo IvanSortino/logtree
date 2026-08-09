@@ -629,7 +629,7 @@ top of your script: it registers `logtree`'s custom layout, pairs it with
 opens `logger`'s own threshold so that `logtree_threshold()` becomes the single
 gate on what is shown.
 
-```{r, eval = requireNamespace("logger", quietly = TRUE)}
+```{r, eval = rlang::is_installed("logger", version = "0.3.0")}
 logtree_reset()
 logtree_threshold("debug")  # the only gate, now that logtree_logger() opened logger's
 

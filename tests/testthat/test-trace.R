@@ -754,7 +754,7 @@ test_that("with_logging traces a thrown error to the throwing call", {
 })
 
 test_that("a logger-routed leaf traces to the logger call, not the layout", {
-  skip_if_not_installed("logger")
+  skip_if_not_installed("logger", "0.3.0")
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
@@ -780,7 +780,7 @@ test_that("a logger-routed leaf traces to the logger call, not the layout", {
 })
 
 test_that("logger severities still map onto the right leaf glyphs", {
-  skip_if_not_installed("logger")
+  skip_if_not_installed("logger", "0.3.0")
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()

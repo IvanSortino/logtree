@@ -1,5 +1,14 @@
 # logtree (development version)
 
+* The `logger` integration now declares the version it actually needs:
+  `Suggests: logger (>= 0.3.0)`. `logtree_logger()` pairs logtree's layout with
+  `logger::appender_void`, which arrived in `logger` 0.3.0, so against an older
+  one it failed with `'appender_void' is not an exported object` -- and since
+  every guard asked only whether `logger` was *installed*, that failure surfaced
+  in examples, the vignette and the tests rather than being skipped. The guards
+  check the version now, and `logtree_logger()` refuses an old `logger` up front
+  with a message naming the requirement.
+
 * New sink registry. `the$sinks` used to be an append-only list with no way to
   add a sink of your own and no way to take any of them off again; a test that
   registered one leaked it into every later test in the same session.
