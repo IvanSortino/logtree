@@ -1,5 +1,110 @@
 # logtree (development version)
 
+* The `logger` integration now declares the version it actually needs:
+  `Suggests: logger (>= 0.3.0)`. `logtree_logger()` pairs logtree's layout with
+  `logger::appender_void`, which arrived in `logger` 0.3.0, so against an older
+  one it failed with `'appender_void' is not an exported object` -- and since
+  every guard asked only whether `logger` was *installed*, that failure surfaced
+  in examples, the vignette and the tests rather than being skipped. The guards
+  check the version now, and `logtree_logger()` refuses an old `logger` up front
+  with a message naming the requirement.
+
+* New sink registry. `the$sinks` used to be an append-only list with no way to
+  add a sink of your own and no way to take any of them off again; a test that
+  registered one leaked it into every later test in the same session.
+  `logtree_sink(fn)` registers any function of one argument and returns its id,
+  `logtree_sinks()` lists the ids in the order they fire, and
+  `logtree_sink_remove(id)` unregisters -- handing back the functions it removed,
+  so the removal can be undone. `logtree_sink_file()` returns an id too, where it
+  previously returned an invisible `NULL`, so a log file can be closed the same
+  way. The console sink sits under the reserved id `"console"` and can be
+  targeted like any other. `logtree_reset()` still leaves sinks alone: they are
+  configuration rather than run state, and removal is now the explicit path.
+  A sink that throws no longer breaks the fanout mid-flight -- it is skipped, the
+  remaining sinks still run, and a warning naming it is raised once.
+
+* New memory sink, for asserting on your own logging rather than eyeballing it.
+  `logtree_sink_memory(max = 1000)` collects events in a capped buffer and
+  `logtree_sink_memory_events(id)` reads them back as a data frame, one row per
+  event, so a test can ask *did this pipeline log what it should* without
+  capturing console output and pattern-matching glyphs and connectors it does not
+  care about. Its columns are the ones a `"json"` sink writes, and that is now
+  enforced rather than hoped for: both are built from one shared `event_record()`,
+  so a run replayed from a log file and the same run read from memory cannot
+  disagree.
+
+* Sinks can set their own verbosity. `logtree_threshold()` was global, so turning
+  it down to `"debug"` so a log file captured everything dragged the console down
+  with it. `logtree_sink_file()`, `logtree_sink()` and `logtree_sink_memory()`
+  now take `threshold = `, and the global level is simply the default for sinks
+  that do not pin one -- read afresh per event, so moving it still moves them.
+  Step open/close lines are never gated, whatever the threshold.
+
+  **Behaviour change**: verbosity is now a *rendering* gate only. A warning
+  suppressed by `logtree_threshold("error")` already elevated its step's close
+  glyph; it now also reaches the `logtree_summary()` digest, rather than being
+  forgotten because the console happened to be quiet. `summary = TRUE`/`FALSE`
+  still pin and exclude a line as before.
+
+* **Breaking change to the NDJSON schema**: a `"json"` sink's `ts` is now
+  ISO-8601 to the millisecond with a UTC offset
+  (`"2026-01-02T03:04:05.000+0000"`) rather than a bare epoch number no
+  aggregator could interpret, and each record carries a `run_id` so one run's
+  lines can be picked out of a file that many runs appended to. The id is derived
+  from the wall clock, the process id and a session counter rather than sampled,
+  so a logger cannot perturb the RNG stream of a script that has just called
+  `set.seed()` -- and two runs that start inside the same millisecond still get
+  different ids. It is refreshed per `with_logging()` call and per
+  `logtree_reset()`.
+
+* New `timestamp` theme slot: an opt-in wall-clock column in front of every line.
+  A live tree said how *long* each step took but never *when* any of it happened,
+  so a log read afterwards could not be lined up against anything else.
+  `logtree_theme(list(timestamp = list(format = "%H:%M:%S")))` switches it on;
+  `format` is a `strftime` template and `NULL` -- what all five presets ship --
+  is off, so default output is unchanged and the feature costs a single list
+  lookup per line until asked for.
+
+  The column is padded to a fixed width measured from a rendered sample rather
+  than from the format string, because a template is not its own width: `"%B"` is
+  five columns in March and eight in December, and trusting it would shear the
+  tree from one line to the next. It counts against the wrapping budget like any other
+  column, and a wrapped message's continuation rows carry a *blank* column rather
+  than a repeated time -- one event happened once. The `with_logging()`
+  run-summary line is stamped, being printed as the run ends; the
+  `logtree_summary()` digest is not, because it replays events that already
+  happened. `logtree_sink_file()` gains a matching `timestamp = ` argument so a
+  file can stamp its lines while the console stays bare, or the reverse.
+
+* `with_logging(warnings = TRUE)` routes R's own conditions into the tree: a
+  `warning()` raised by wrapped code becomes a `log_warn()` leaf and a `message()`
+  becomes a `log_info()` leaf, at the depth where they happened. Previously they
+  went to stderr, outside the tree, while a `log_warn()` call rendered inside it
+  -- the same severity in two different places. `warnings = "warning"` routes only
+  the one kind, for code that uses `message()` for progress chatter.
+
+  It is off by default, and deliberately: routing means **muffling**. A routed
+  condition stops at the leaf and no longer reaches `warnings()`, the caller's own
+  handlers, or stderr. That is the right trade when the tree is meant to be the
+  single record of a run, and the wrong one to make for somebody without asking.
+  A routed warning also elevates its enclosing step, exactly as `log_warn()` does,
+  so wrapping noisy third-party code will turn steps yellow. In global mode the
+  routing applies only while logtree steps are open, so a session-persistent
+  handler cannot swallow warnings from unrelated code.
+
+* New `logtree_mute()` / `logtree_unmute()`, plus a `logtree.silent` option read
+  at load. A library that logs with logtree had no way to keep its own test suite
+  quiet short of unregistering the console sink, which throws away the
+  configuration to get silence. Muting gates the fanout instead: every sink stops
+  receiving events while the registry is left exactly as it was. Both functions
+  return the state they replaced, so a function that mutes can restore what it
+  found. A muted run is still *recorded* -- the flag is checked after the digest
+  has seen the event -- so it can still be asked what went wrong at the end, and
+  `logtree_summary()` still prints when called, while `with_logging()`'s
+  run-summary line, which nobody asked for, is silenced. Step bookkeeping is
+  untouched, so depth is right the moment output comes back, and like registered
+  sinks the flag survives `logtree_reset()`.
+
 * New `trace` theme slot: an opt-in call-site column, so a line can say *where
   in your code* it came from as well as what happened. `logtree_theme(list(trace
   = list(show = "problems")))` annotates only warning and error leaves plus

@@ -20,7 +20,6 @@ while keeping nesting depth correct even when a step errors partway
 through.
 
 <p align="center">
-
 <img src="man/figures/README-tree-color.svg" alt="Annotated logtree console output" width="760" />
 </p>
 
@@ -61,8 +60,8 @@ pipeline()
 #> ├─ ▶ Load config
 #> │  ├─ ℹ Reading config.yml
 #> │  ├─ ✔ Validated 12 parameters
-#> │  └─ ✔ Done  0.00s
-#> └─ ✔ Done  0.01s
+#> │  └─ ✔ Done  0.03s
+#> └─ ✔ Done  0.05s
 logtree_summary()
 #> 
 #> ── Summary: nothing to report ──────────────────────────────────────────────────
@@ -166,8 +165,8 @@ with_logging(release(), summary = FALSE)
 #> │  └─ ✖ Done  0.00s
 #> ├─ ▶ Smoke test
 #> │  ├─ ✔ all endpoints 200
-#> │  └─ ✔ Done  0.00s
-#> └─ ✔ Done  0.00s
+#> │  └─ ✔ Done  0.04s
+#> └─ ✔ Done  0.05s
 logtree_summary()
 #> 
 #> ── Summary: 1 error, 1 warning ─────────────────────────────────────────────────
@@ -202,7 +201,7 @@ with_logging(load_data(), summary = FALSE)
 #> │  ├─ ℹ 1200 rows
 #> │  ├─ ⚠ coerced 3 rows  parse_rows()
 #> │  └─ ⚠ Done  0.00s
-#> └─ ✔ Done  0.00s
+#> └─ ✔ Done  0.01s
 logtree_summary()
 #> 
 #> ── Summary: 1 warning ──────────────────────────────────────────────────────────
@@ -256,7 +255,7 @@ with_logging(run_pipeline(), summary = FALSE)
 #> │  │  ├─ ℹ check bounds running
 #> │  │  ├─ ✔ check bounds ok
 #> │  │  └─ ✔ Done  0.00s
-#> │  └─ ✔ Done  0.00s
+#> │  └─ ✔ Done  0.01s
 #> ├─ ▣ Item 2
 #> │  ├─ ▶ validate schema
 #> │  │  ├─ ℹ validate schema running
@@ -266,8 +265,8 @@ with_logging(run_pipeline(), summary = FALSE)
 #> │  │  ├─ ℹ check bounds running
 #> │  │  ├─ ✔ check bounds ok
 #> │  │  └─ ✔ Done  0.00s
-#> │  └─ ✔ Done  0.00s
-#> └─ ✔ Done  0.00s
+#> │  └─ ✔ Done  0.01s
+#> └─ ✔ Done  0.01s
 ```
 
 ## Themes
@@ -331,7 +330,25 @@ and `?logtree_theme`.
 - **Output sinks** –
   `logtree_sink_file(path, format = c("text", "json"))` mirrors console
   output to a plain-text or NDJSON file; every registered sink runs
-  alongside the console sink.
+  alongside the console sink. `logtree_sink()` registers one of your
+  own, `logtree_sinks()` lists them and `logtree_sink_remove()` takes
+  one off again. Each sink can pin its own `threshold`, so a debug-level
+  log file does not drag the console down with it.
+- **Asserting on your logging** – `logtree_sink_memory()` collects
+  events in a buffer and `logtree_sink_memory_events()` reads them back
+  as a data frame, so a test can check what a pipeline logged without
+  pattern-matching rendered output.
+- **Timestamps** –
+  `logtree_theme(list(timestamp = list(format = "%H:%M:%S")))` puts a
+  fixed-width wall-clock column in front of every line, for logs read
+  after the fact rather than watched as they run.
+- **Routing R’s own conditions** – `with_logging(expr, warnings = TRUE)`
+  turns a `warning()` into a `log_warn()` leaf and a `message()` into a
+  `log_info()` leaf, in place, instead of letting them land on stderr
+  outside the tree.
+- **Silence** – `logtree_mute()` / `logtree_unmute()` stop every sink
+  receiving events without unregistering any of them, for a library that
+  logs with logtree and would rather its own test suite stayed quiet.
 - **`logger` integration** – `logtree_logger()` routes the
   [logger](https://daroczig.github.io/logger/) package through logtree
   in one call, so `logger::log_info()` and friends render as logtree

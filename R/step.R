@@ -545,6 +545,63 @@ hard_wrap <- function(x, width) {
   c(out, paste(chars[start:length(chars)], collapse = ""))
 }
 
+# --- The timestamp column (logtree_theme(list(timestamp = ...))) ------------
+#
+# A live tree already says how long each step took; what it never said is *when*
+# any of it happened, so a log read after the fact could not be lined up against
+# anything else. The `timestamp` slot puts a wall-clock column in front of the
+# rails, in front of every line kind, and it is off in every preset.
+#
+# The column sits before the rails rather than after the glyph for the same
+# reason `elapsed` sits at the end: a fixed left edge is scannable, and a value
+# that varies in width would push the whole tree around if it sat inside it.
+
+# The instant the column's width is measured from. Deliberately a wide one --
+# last hour, last day, last month of the year -- so that a format whose rendered
+# width varies with the value (`%e`, `%B`, and glibc's `%-d`) pads out to it
+# rather than being clipped down to it.
+timestamp_ref <- as.POSIXct("2000-12-31 23:59:59", tz = "UTC")
+
+# The active timestamp format, or NULL when the column is off. NULL is what
+# every preset ships, and modifyList() deletes a field set to NULL, so a theme
+# can also turn the column off by clearing the field outright.
+timestamp_format <- function(theme = the$theme) {
+  fmt <- theme_field("timestamp", "format", NULL, theme)
+  if (!is.character(fmt) || length(fmt) != 1L || is.na(fmt) || !nzchar(fmt)) {
+    return(NULL)
+  }
+  fmt
+}
+
+# Pad or clip `x` to exactly `w` display columns. Timestamps are ASCII in
+# practice, so clipping by character is clipping by column; the reference
+# instant above is chosen wide precisely so that clipping is the rare branch.
+fit_to_width <- function(x, w) {
+  n <- cli::ansi_nchar(x, type = "width")
+  if (n < w) return(paste0(x, strrep(" ", w - n)))
+  if (n > w) return(substring(x, 1L, w))
+  x
+}
+
+# The timestamp column for one line: its rendered text including the trailing
+# space, and its display width. Both together, because the width has to be
+# measured from a rendered sample -- a format string is not its own width -- and
+# rendering twice to ask two questions would be wasteful.
+#
+# Off (no stamp, or no format) is `list("", 0L)`, so callers add it
+# unconditionally and pay nothing when the feature is not in use.
+timestamp_column <- function(stamp, theme = the$theme, color = TRUE) {
+  fmt <- if (is.null(stamp)) NULL else timestamp_format(theme)
+  if (is.null(fmt)) return(list(text = "", width = 0L))
+  w    <- cli::ansi_nchar(format(timestamp_ref, fmt), type = "width")
+  text <- fit_to_width(format(stamp, fmt), w)
+  list(
+    text  = paste0(colorize(text, theme_field("timestamp", "color", NULL, theme),
+                            color), " "),
+    width = w + 1L
+  )
+}
+
 # Assemble one rendered line from a fully-rendered `head` (rails + connector +
 # glyph + gap) and its message.
 #
@@ -563,12 +620,24 @@ hard_wrap <- function(x, width) {
 # rail_unit(), and that costs a cli::combine_ansi_styles() -- about a sixth of
 # the time it takes to render a line. Callers must therefore pass the
 # expressions inline rather than assigning them to locals first.
-compose_line <- function(head, msg, cols, cont, theme = the$theme) {
+#
+# `stamp` is the event's wall-clock time, or NULL for a line that carries no
+# timestamp column. Prefixing it here is what gives every line kind the column
+# for free, continuation rows included -- those get a blank of the same width,
+# never a repeated time, since one event happened once.
+compose_line <- function(head, msg, cols, cont, theme = the$theme,
+                         stamp = NULL, color = TRUE) {
+  ts <- timestamp_column(stamp, theme, color)
+  if (nzchar(ts$text)) head <- paste0(ts$text, head)
   width <- theme_wrap_width(theme)
   if (is.na(width)) return(paste0(head, msg))
-  parts <- wrap_message(msg, width - cols)
+  # `cols` is only touched here, inside the wrapping branch, so it stays
+  # unevaluated on the default path -- see the note above.
+  parts <- wrap_message(msg, width - cols - ts$width)
   if (length(parts) < 2L) return(paste0(head, msg))
-  paste(c(paste0(head, parts[[1L]]), paste0(cont, parts[-1L])), collapse = "\n")
+  paste(c(paste0(head, parts[[1L]]),
+          paste0(strrep(" ", ts$width), cont, parts[-1L])),
+        collapse = "\n")
 }
 
 # `n` levels' worth of vertical rail, for an ancestor chain that is still open.
@@ -585,10 +654,11 @@ glyph_gutter <- function(theme = the$theme) {
 # A line that carries a status glyph but no position in the tree: the
 # logtree_summary() digest entries and the with_logging() run-summary line.
 # Same message column and same wrapping as a tree line, minus the rails.
-compose_flat_line <- function(glyph, msg, theme = the$theme) {
+compose_flat_line <- function(glyph, msg, theme = the$theme, stamp = NULL,
+                              color = TRUE) {
   gutter <- glyph_gutter(theme)
   compose_line(paste0(glyph, glyph_pad(theme)), msg, gutter,
-               strrep(" ", gutter), theme)
+               strrep(" ", gutter), theme, stamp = stamp, color = color)
 }
 
 rail_unit <- function(theme = the$theme, color = TRUE) {
@@ -651,7 +721,7 @@ pad_custom_glyph <- function(glyph, theme = the$theme) {
   paste0(glyph, strrep(" ", max(w - 1L, 0L)))
 }
 
-format_open <- function(entry, theme = the$theme, color = TRUE) {
+format_open <- function(entry, theme = the$theme, color = TRUE, stamp = NULL) {
   d <- entry$depth
   # An opening line sits one level shallower than its own children, so its
   # continuation carries the rails down to d - 1: after a branch connector the
@@ -674,7 +744,7 @@ format_open <- function(entry, theme = the$theme, color = TRUE) {
     cols = max(d - 1L, 0L) * tree_col_width(theme) + glyph_gutter(theme),
     cont = paste0(if (d == 1L) "" else rails(d - 1L, theme, color),
                   glyph_rail(theme, color)),
-    theme = theme
+    theme = theme, stamp = stamp, color = color
   )
 }
 
@@ -909,7 +979,7 @@ close_message <- function(entry, status, theme = the$theme, color = TRUE) {
   paste0(text, "  ", elapsed)
 }
 
-format_close <- function(entry, theme = the$theme, color = TRUE) {
+format_close <- function(entry, theme = the$theme, color = TRUE, stamp = NULL) {
   d      <- entry$depth
   tcw    <- tree_col_width(theme)
   base   <- rails(d - 1L, theme, color)
@@ -926,8 +996,12 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
     format_trace_field(entry$trace, "close", status, theme = theme, color = color)
   )
   # A theme that drops both the word and the time leaves a glyph-only close
-  # line; skip the gap too rather than trailing a space off the end of it.
-  if (!nzchar(msg)) return(paste0(prefix, glyph))
+  # line; skip the gap too rather than trailing a space off the end of it. The
+  # timestamp still goes in front of it -- it is a column of the line, not part
+  # of the message.
+  if (!nzchar(msg)) {
+    return(paste0(timestamp_column(stamp, theme, color)$text, prefix, glyph))
+  }
   # Nothing follows a corner at its own column, so the continuation blanks that
   # column out instead of carrying a rail down it.
   # cols/cont are passed inline, unevaluated -- see compose_line().
@@ -936,12 +1010,12 @@ format_close <- function(entry, theme = the$theme, color = TRUE) {
     cols = (d - 1L) * tcw + own_connector_width("corner", theme) + glyph_gutter(theme),
     cont = paste0(base, strrep(" ", own_connector_width("corner", theme)),
                   strrep(" ", glyph_gutter(theme))),
-    theme = theme
+    theme = theme, stamp = stamp, color = color
   )
 }
 
 format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
-                        corner = FALSE, trace = NULL) {
+                        corner = FALSE, trace = NULL, stamp = NULL) {
   # A `corner = TRUE` leaf is the terminal line of its section (the `close =`
   # force-close): it takes the corner connector instead of branch, standing in
   # for the suppressed close line -- and, like a close line, nothing follows it
@@ -971,14 +1045,15 @@ format_leaf <- function(status, msg, depth, theme = the$theme, color = TRUE,
       },
       strrep(" ", glyph_gutter(theme))
     ),
-    theme = theme
+    theme = theme, stamp = stamp, color = color
   )
 }
 
 # A group header carries no trace, by design rather than by omission: a group is
 # a synthetic node collapsing adjacent steps, so it has no call site of its own.
 # The site you want is on its member steps' own lines.
-format_group_header <- function(entry, theme = the$theme, color = TRUE) {
+format_group_header <- function(entry, theme = the$theme, color = TRUE,
+                                stamp = NULL) {
   d <- entry$depth
   prefix <- if (d == 1L) "" else {
     paste0(rails(d - 2L, theme, color), connector_str("branch", theme, color))
@@ -997,14 +1072,18 @@ format_group_header <- function(entry, theme = the$theme, color = TRUE) {
   # glyph, so its column is the marker plus the gap rather than glyph_gutter().
   # It returns before computing the continuation for the same reason
   # compose_line() defers -- rails() is the expensive part of rendering a line.
-  width <- theme_wrap_width(theme)
+  #
+  # It does share the timestamp column, though: that is a property of the line,
+  # not of the formatter, so a group header is stamped like everything else.
+  ts     <- timestamp_column(stamp, theme, color)
+  width  <- theme_wrap_width(theme)
   if (is.na(width)) {
-    return(paste0(prefix, colorize(paste0(mark, label), col, color)))
+    return(paste0(ts$text, prefix, colorize(paste0(mark, label), col, color)))
   }
   gutter <- if (has) nchar(g$glyph) + theme_glyph_gap(theme) else 0L
-  cols   <- max(d - 1L, 0L) * tree_col_width(theme) + gutter
+  cols   <- max(d - 1L, 0L) * tree_col_width(theme) + gutter + ts$width
   parts  <- wrap_message(label, width - cols)
-  first  <- paste0(prefix, colorize(paste0(mark, parts[[1L]]), col, color))
+  first  <- paste0(ts$text, prefix, colorize(paste0(mark, parts[[1L]]), col, color))
   if (length(parts) < 2L) return(first)
   # The marker column rails on the continuation for the same reason a step's
   # glyph column does: the group's members hang from it. A theme with no
@@ -1012,6 +1091,7 @@ format_group_header <- function(entry, theme = the$theme, color = TRUE) {
   # name itself starts where the members' connectors will -- so it stays blank.
   cont <- if (d == 1L) "" else rails(d - 1L, theme, color)
   mark_cont <- if (gutter > 0L) glyph_rail(theme, color, gutter) else ""
-  rest <- paste0(cont, mark_cont, colorize(parts[-1L], col, color))
+  rest <- paste0(strrep(" ", ts$width), cont, mark_cont,
+                 colorize(parts[-1L], col, color))
   paste(c(first, rest), collapse = "\n")
 }

@@ -68,7 +68,7 @@ matters: this layout is what calls the leaf, so a frame walk would report
 \code{logger::log_info()} call in your code.
 }
 \examples{
-if (requireNamespace("logger", quietly = TRUE)) {
+if (rlang::is_installed("logger", version = "0.3.0")) {
   logtree_reset()
   logger::log_layout(layout_logtree, namespace = "logtree_demo")
   logger::log_appender(logger::appender_void, namespace = "logtree_demo")

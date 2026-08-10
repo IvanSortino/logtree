@@ -73,7 +73,7 @@ resolve_trace_show <- function(theme = the$theme) {
 trace_enabled <- function(theme = the$theme) {
   !isFALSE(resolve_trace_show(theme)) ||
     isTRUE(theme_field("trace", "capture", FALSE, theme)) ||
-    the$trace_sinks > 0L
+    length(the$trace_sinks) > 0L
 }
 
 # The file and line of a call, or NA for all fields when no source reference is

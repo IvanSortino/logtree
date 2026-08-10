@@ -46,7 +46,7 @@
 #'   a zero-length character vector matches `logger`'s layout contract.
 #' @export
 #' @examples
-#' if (requireNamespace("logger", quietly = TRUE)) {
+#' if (rlang::is_installed("logger", version = "0.3.0")) {
 #'   logtree_reset()
 #'   logger::log_layout(layout_logtree, namespace = "logtree_demo")
 #'   logger::log_appender(logger::appender_void, namespace = "logtree_demo")
@@ -102,6 +102,11 @@ layout_logtree <- function(level, msg,
 #' line. The change is persistent for the session (matching `logger`'s own
 #' global configuration style); there is no automatic teardown.
 #'
+#' Needs `logger` >= 0.3.0, the release that added `appender_void` -- the no-op
+#' appender this pairs the layout with, so that logtree's rendering is the only
+#' visible output. An older `logger` is refused with a message saying so rather
+#' than failing later on a missing object.
+#'
 #' @param namespace `logger` namespace to route. Default `"global"`, the
 #'   namespace a bare `logger::log_info("x")` uses.
 #' @param threshold Open `logger`'s threshold to `TRACE` for `namespace` so
@@ -111,14 +116,16 @@ layout_logtree <- function(level, msg,
 #'   for top-level error handling.
 #' @export
 #' @examples
-#' if (requireNamespace("logger", quietly = TRUE)) {
+#' if (rlang::is_installed("logger", version = "0.3.0")) {
 #'   logtree_reset()
 #'   logtree_logger(namespace = "logtree_demo")
 #'   log_step("Demo step")
 #'   logger::log_info("hello", namespace = "logtree_demo")
 #' }
 logtree_logger <- function(namespace = "global", threshold = TRUE) {
-  rlang::check_installed("logger")
+  # 0.3.0 is where `appender_void` arrives; without the bound an older logger
+  # gets all the way to log_appender() before failing on a missing object.
+  rlang::check_installed("logger", version = "0.3.0")
   logger::log_layout(layout_logtree, namespace = namespace)
   logger::log_appender(logger::appender_void, namespace = namespace)
   if (threshold) {

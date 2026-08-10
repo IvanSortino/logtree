@@ -1,5 +1,5 @@
 test_that("layout_logtree maps every logger severity onto the right logtree leaf", {
-  skip_if_not_installed("logger")
+  skip_if_not_installed("logger", "0.3.0")
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
@@ -28,7 +28,7 @@ test_that("layout_logtree maps every logger severity onto the right logtree leaf
 })
 
 test_that("layout_logtree returns character(0) invisibly", {
-  skip_if_not_installed("logger")
+  skip_if_not_installed("logger", "0.3.0")
   logtree_reset()
   withr::defer(logtree_reset())
 
@@ -38,7 +38,7 @@ test_that("layout_logtree returns character(0) invisibly", {
 })
 
 test_that("logger::log_info() routed through layout_logtree renders as a logtree leaf", {
-  skip_if_not_installed("logger")
+  skip_if_not_installed("logger", "0.3.0")
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
@@ -61,7 +61,7 @@ test_that("logger::log_info() routed through layout_logtree renders as a logtree
 })
 
 test_that("logtree_logger() wires logger to render as logtree leaves", {
-  skip_if_not_installed("logger")
+  skip_if_not_installed("logger", "0.3.0")
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
@@ -89,7 +89,7 @@ test_that("logtree_logger() wires logger to render as logtree leaves", {
 })
 
 test_that("logtree_logger(threshold = FALSE) leaves logger's own gate in place", {
-  skip_if_not_installed("logger")
+  skip_if_not_installed("logger", "0.3.0")
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
@@ -118,7 +118,7 @@ test_that("logtree_logger(threshold = FALSE) leaves logger's own gate in place",
 })
 
 test_that("logtree_logger() returns NULL invisibly", {
-  skip_if_not_installed("logger")
+  skip_if_not_installed("logger", "0.3.0")
   logtree_reset()
   withr::defer(logtree_reset())
 

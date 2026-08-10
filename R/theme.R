@@ -213,6 +213,7 @@ apply_overrides <- function(overrides) {
 #' | `group` | group header marker | `glyph`, `color`, `bracket` |
 #' | `elapsed` | the elapsed-time column printed on every close line | `show`, `min`, `color`, `slow`, `slow_color` |
 #' | `trace` | the optional call-site column: where in your code a line came from | `show`, `capture`, `format`, `color` |
+#' | `timestamp` | the optional wall-clock column printed in front of every line | `format`, `color` |
 #' | `branch` | child connector: the "tee" drawn before every child line | `glyph`, `color` |
 #' | `corner` | close-line connector: the "elbow" drawn on a step's own close line | `glyph`, `color` |
 #' | `pipe` | vertical rail carried down the left of nested lines | `glyph`, `color` |
@@ -271,6 +272,23 @@ apply_overrides <- function(overrides) {
 #' locations to work with. The order matters -- capture happens as the run
 #' unfolds, so a call site not recorded then cannot be recovered afterwards.
 #'
+#' The `timestamp` slot is off in every preset for a different reason: a tree
+#' read as it happens does not need to be told the time, and a column that is not
+#' there is one the message has room for. It is the log read *afterwards* that
+#' wants it -- lining a run up against a monitoring graph, another service's log,
+#' or a report that something broke at about half past two. Switch it on with
+#' `list(timestamp = list(format = "%H:%M:%S"))`.
+#'
+#' The column is padded to a fixed width measured from a rendered sample, not
+#' from the format string, so a format whose width varies with the value (`"%B"`,
+#' `March` one month and `December` the next) cannot shear the tree from one
+#' line to the next. It counts against
+#' the wrapping budget like any other column, and a wrapped message's
+#' continuation rows carry a *blank* column rather than a repeated time -- one
+#' event happened once. [logtree_summary()]'s digest carries no timestamp at all:
+#' it replays events that already happened, so stamping those lines with the time
+#' the digest was printed would be a lie.
+#'
 #' Two places outside the tree also report call sites when the slot is on:
 #' [logtree_summary()]'s digest lines, which apply the same status filter as the
 #' tree does, and the `fn` / `file` / `line` fields of a `"json"` sink (which
@@ -287,7 +305,7 @@ apply_overrides <- function(overrides) {
 #' | `color` | `character`, `NULL`, or a named `list` on `trace` | One or more cli styles, or `NULL` for no styling. Named colors (`"red"`, `"cyan"`, `"silver"`, ...), bright variants (`"br_red"`), backgrounds (`"bg_blue"`), text styles (`"bold"`, `"italic"`, `"dim"`), or a hex string (`"#ff8800"`). A character vector combines styles, e.g. `c("red", "bold")`. On the `elapsed` slot it styles the time itself. On `trace` it also accepts a named list styling the parts of the column separately: `location` for a `{file}`/`{line}` run (the separator between them included -- the location is one thing, styled and linked whole), `fn` for the function name, and `base` for everything else, which in the default format is the `()`. That is what the coloured presets ship: all of it dim, with the location in silver and `fn` in cyan, so the two read apart. A plain character vector on `trace` styles the whole column. `NULL` in the colourless ascii and ci presets. See [cli::combine_ansi_styles()]. |
 #' | `text` | `character(1)` | Close-line status slots only (`done`, `warning`, `error`, `interrupted`). The word a close line prints before its elapsed time; `""` drops it, leaving the glyph and the time. Two placeholders are expanded: `{label}` (the closing step's own label, or a group's name) and `{elapsed}` (the formatted time). A template that places `{elapsed}` itself owns that column, so the time is not appended after it a second time. |
 #' | `show` | `logical(1)`, or `character` on `trace` | On `elapsed`: `FALSE` drops the elapsed-time column entirely, default `TRUE`. On `trace`: `FALSE` (the default in every preset) off entirely; `TRUE` every line that can carry a call site; `"problems"` a shorthand for `c("warning", "error", "interrupted")`; or a vector of statuses naming exactly what to annotate -- `"running"` (open lines), `"info"`, `"debug"`, `"success"`, `"warning"`, `"error"` (leaves of that status) and `"interrupted"` (a close line whose step unwound). `show = "error"` is errors without their warnings. An ordinary close line never carries one whatever the set: its site is its own open line's. Unknown tokens are dropped, and anything unrecognised reads as `FALSE`. |
-#' | `format` | `character(1)` | `trace` slot only. Template for the call-site column over three placeholders: `{fn}` (the enclosing function's name), `{file}` and `{line}` (where the log call sits). Default `"{file}:{line} {fn}()"`. A whitespace-separated run whose placeholders are *all* unavailable is dropped whole, so the default degrades to `load_data()` rather than printing `NA` -- see the note on source references below. |
+#' | `format` | `character(1)` | On `trace`: a template for the call-site column over three placeholders: `{fn}` (the enclosing function's name), `{file}` and `{line}` (where the log call sits). Default `"{file}:{line} {fn}()"`. A whitespace-separated run whose placeholders are *all* unavailable is dropped whole, so the default degrades to `load_data()` rather than printing `NA` -- see the note on source references below. On `timestamp`: a [strftime] format such as `"%H:%M:%S"` or `"%Y-%m-%d %H:%M:%S"`, or `NULL` (the default in every preset) for no column at all. |
 #' | `capture` | `logical(1)` | `trace` slot only. `TRUE` records a call site on every line even where `show` prints none, for "record, print later": a quiet console whose [logtree_summary()] digest or `"json"` sink still carries locations. Default `FALSE` in every preset. It only ever adds -- a `show` that asks for a column already implies capture, and `capture = FALSE` never takes that away. This is the one part of the feature that cannot be decided after the fact: a call site not recorded while the run happened is gone, because the frame stack it came from has unwound. |
 #' | `min` | `numeric(1)` | `elapsed` slot only. Hide times below this many seconds -- `min = 0.1` silences the `0.00s` noise on trivial steps. Default `0` (show everything). |
 #' | `slow` | `numeric(1)` or `NULL` | `elapsed` slot only. Times at or over this many seconds count as slow and are styled with `slow_color` instead of `color`. `NULL` (the default) means nothing is ever flagged. |
@@ -332,6 +350,12 @@ apply_overrides <- function(overrides) {
 #' logtree_theme(list(trace = list(show = TRUE, format = "{fn}()")))
 #' logtree_theme(list(trace = list(format = "{file}:{line}", color = "silver")))
 #' logtree_theme(list(trace = list(show = FALSE)))  # back off again
+#'
+#' # The wall-clock column: off by default, in front of every line when on.
+#' logtree_theme(list(timestamp = list(format = "%H:%M:%S")))
+#' logtree_theme(list(timestamp = list(format = "%Y-%m-%d %H:%M:%S",
+#'                                     color = "silver")))
+#' logtree_theme(list(timestamp = list(format = NULL)))   # back off again
 #'
 #' # Naming one swaps the whole preset, clearing every override above.
 #' logtree_theme("unicode")
@@ -403,11 +427,20 @@ logtree_theme <- function(theme = NULL, overrides = list(), compact = FALSE,
 #' `"debug"`, `log_info()` and `log_success()` count as `"info"`, `log_warn()`
 #' as `"warn"`, `log_error()` as `"error"`. Step open/close lines always
 #' render regardless of verbosity, since hiding them would break the tree
-#' structure. Suppressed `log_warn()`/`log_error()` calls still elevate the
-#' enclosing step's close glyph -- verbosity only hides the leaf line's own text.
+#' structure.
+#'
+#' This is the *default* for every sink; a sink registered with its own
+#' `threshold` ignores it (see [logtree_sink_file()] and [logtree_sink()]), which
+#' is what lets a debug-level log file coexist with an ordinary console.
+#'
+#' Verbosity governs rendering only, never what the run remembers. A suppressed
+#' `log_warn()`/`log_error()` still elevates the enclosing step's close glyph,
+#' and still reaches the [logtree_summary()] digest -- what is hidden is the leaf
+#' line's own text, not the fact that it happened.
 #'
 #' @param level One of `"debug"`, `"info"`, `"warn"`, `"error"` (case-insensitive).
 #' @return `NULL`, invisibly.
+#' @seealso [logtree_sink_file()] and [logtree_sink()] for per-sink thresholds.
 #' @export
 #' @examples
 #' logtree_threshold("info")

@@ -4,7 +4,13 @@
 \alias{logtree_sink_file}
 \title{Add a file sink}
 \usage{
-logtree_sink_file(path, format = c("text", "json"), trace = NULL)
+logtree_sink_file(
+  path,
+  format = c("text", "json"),
+  trace = NULL,
+  timestamp = NULL,
+  threshold = NULL
+)
 }
 \arguments{
 \item{path}{File path to append rendered log lines to.}
@@ -18,15 +24,41 @@ theme, read afresh for each event, so switching trace on reaches the file
 too; \code{FALSE}, \code{TRUE} or \code{"problems"} pins this sink independently of the
 console. Text sinks only: a \code{"json"} sink always carries the \code{fn}, \code{file}
 and \code{line} fields, \code{null} when there is no call site to report.}
+
+\item{timestamp}{Whether this sink prints the wall-clock column (see the
+\code{timestamp} slot in \code{\link[=logtree_theme]{logtree_theme()}}). \code{NULL} (the default) follows the
+active console theme, read afresh for each event; \code{FALSE} pins it off;
+\code{TRUE} turns it on with a date-and-time format suited to a file that
+outlives the session (\code{"\%Y-\%m-\%d \%H:\%M:\%S"}); a \code{strftime} format string
+pins that format. Text sinks only: a \code{"json"} sink always carries \code{ts}.}
+
+\item{threshold}{Minimum leaf level this file records: one of \code{"debug"},
+\code{"info"}, \code{"warn"}, \code{"error"}. \code{NULL} (the default) follows the global
+\code{\link[=logtree_threshold]{logtree_threshold()}}. This is per sink, so a \code{"debug"} file can record
+everything while the console stays at \code{"info"} -- or an \code{"error"} file can
+keep only what went wrong. Step open/close lines are never gated.}
 }
 \value{
-\code{NULL}, invisibly.
+The sink's id, invisibly -- pass it to \code{\link[=logtree_sink_remove]{logtree_sink_remove()}} to
+stop writing to this file.
 }
 \description{
 Registers an additional output destination. Every logged event fans out
-to the console sink (always on) and every registered file sink, so
-console, text-file, and NDJSON outputs can all run simultaneously
-(design doc section 6).
+to the console sink and every registered file sink, so console, text-file,
+and NDJSON outputs can all run simultaneously (design doc section 6).
+}
+\details{
+A \code{"json"} sink writes one NDJSON object per event, with these fields:\tabular{ll}{
+   Field \tab What it holds \cr
+   \code{ts} \tab when the event was emitted, ISO-8601 to the millisecond with UTC offset \cr
+   \code{run_id} \tab identifies the run, so one run's lines can be picked out of a shared file \cr
+   \code{level} \tab event kind: \code{"open"}, \code{"close"}, \code{"group"}, \code{"group_close"}, \code{"leaf"} \cr
+   \code{id}, \code{parent_id}, \code{depth} \tab the node's identity and place in the tree \cr
+   \code{label} \tab a step's label, a group's name, or a leaf's message \cr
+   \code{elapsed} \tab seconds, on close lines only; \code{null} elsewhere \cr
+   \code{status} \tab a leaf's status, \code{"step"}/\code{"group"} on an opening line, or the resolved status on a close \cr
+   \code{fn}, \code{file}, \code{line} \tab the call site, when the \code{trace} theme slot recorded one; \code{null} otherwise \cr
+}
 }
 \examples{
 logtree_reset()
@@ -37,4 +69,14 @@ with_logging({
 
 # A file that records call sites even with the console column off.
 logtree_sink_file(tempfile(), format = "text", trace = TRUE)
+
+# A debug-level record on disk while the console stays at "info".
+logtree_sink_file(tempfile(), format = "json", threshold = "debug")
+
+# A file that stamps every line with the date and time.
+logtree_sink_file(tempfile(), format = "text", timestamp = TRUE)
+}
+\seealso{
+\code{\link[=logtree_sink]{logtree_sink()}} for a sink of your own, \code{\link[=logtree_sinks]{logtree_sinks()}} and
+\code{\link[=logtree_sink_remove]{logtree_sink_remove()}} for the registry.
 }
