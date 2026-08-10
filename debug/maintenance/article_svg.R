@@ -1,21 +1,40 @@
-devtools::load_all()
+if (requireNamespace("pkgload", quietly = TRUE)) {
+  pkgload::load_all(".", quiet = TRUE)
+} else {
+  devtools::load_all()
+}
 source("debug/maintenance/ansi_svg.R")
 
-# Regenerates the two figures used by the "Timestamps and routed conditions"
-# article (vignettes/articles/timestamps-and-conditions.Rmd):
+# nchar()/regexpr() count bytes under a non-UTF-8 locale, which silently puts
+# every callout in the wrong column. See concept_svg.R for the same guard.
+if (!isTRUE(l10n_info()[["UTF-8"]])) {
+  stop("run this under a UTF-8 locale, e.g. LC_ALL=C.utf8 Rscript -e '...' ",
+       "(LC_CTYPE is currently ", Sys.getlocale("LC_CTYPE"), ")")
+}
+
+# Regenerates two figures used by the documentation site:
 #
-#   vignettes/articles/timestamp-silver.svg    the wall-clock column, in silver
-#   vignettes/articles/routed-conditions.svg   warning()/message() routed in
+#   vignettes/timestamp-silver.svg    the wall-clock column, in silver
+#                                       (vignettes/articles/themes.Rmd)
+#   vignettes/routed-conditions.svg   warning()/message() routed in
+#                                       (vignettes/logtree.Rmd)
 #
-# They sit next to the article rather than in man/figures/ because
-# vignettes/articles/ is .Rbuildignore'd: the site shows them, the built
-# package does not carry them.
+# Every figure a vignette or article references lives in vignettes/ and is
+# referenced by bare filename. The Get started guide is a real vignette, and a
+# vignette's images have to sit beside it: its HTML is built into inst/doc/,
+# which man/figures/ is not copied alongside, so "../man/figures/..." would
+# resolve on the pkgdown site and nowhere else. Articles can share the same
+# files because pkgdown renders vignettes/ and vignettes/articles/ into one
+# output directory, so the bare name resolves from either.
 #
-# pkgdown evaluates article chunks with no terminal attached, so cli emits no
-# ANSI and the rendered output on the site is monochrome. Both features are
-# *about* a colour -- a column faint enough to stay out of the way, a warning
-# that turns its step yellow -- so the article shows a rendered SVG of the real
-# ANSI alongside the plain chunk output.
+# man/figures/ is for README and index.Rmd assets only.
+#
+# Note that these are NOT here because pkgdown cannot show colour: it can.
+# pkgdown's build_rmarkdown_article() sets R_CLI_NUM_COLORS=256, so cli emits
+# real ANSI in article chunks and pkgdown converts it to HTML. These two are
+# rendered SVGs because they carry *annotations* -- callouts pointing at the
+# line that makes the point -- which chunk output cannot do, and because the
+# README needs them too and GitHub renders neither ANSI nor inline style.
 #
 #   Rscript -e 'source("debug/maintenance/article_svg.R")'
 
@@ -61,8 +80,15 @@ ts_lines <- capture.output(with_logging(etl()))
 
 logtree_theme("unicode")
 
+# Written twice, once beside each document that shows it. pkgdown validates an
+# image path relative to its article's own source directory, so a single copy
+# in vignettes/ would warn on every build of the cookbook even though both
+# articles render into one output directory and the bare name resolves there.
+# Both copies come from this one call, so they cannot drift.
+for (ts_path in c("vignettes/timestamp-silver.svg",
+                  "vignettes/articles/timestamp-silver.svg")) {
 ansi_svg_write(
-  ts_lines, "vignettes/articles/timestamp-silver.svg",
+  ts_lines, ts_path,
   # "%H:%M:%S" plus its single trailing space: the column the tree starts after.
   lead = 9L,
   annotations = list(
@@ -78,6 +104,7 @@ ansi_svg_write(
   title = "logtree timestamp column",
   label = "logtree console output with a silver wall-clock timestamp column"
 )
+}
 
 # --- 2. routed conditions ----------------------------------------------------
 
@@ -97,7 +124,7 @@ routed_lines <- capture.output({
 })
 
 ansi_svg_write(
-  routed_lines, "vignettes/articles/routed-conditions.svg",
+  routed_lines, "vignettes/routed-conditions.svg",
   annotations = list(
     list(match = "cached schema", color = palette[["34"]],
          text = "message() becomes an info leaf, at the depth it happened"),
