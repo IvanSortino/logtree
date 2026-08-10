@@ -2,7 +2,7 @@ name: pkgdown
 
 on:
   push:
-    branches: [master]
+    branches: [master, development]
   release:
     types: [published]
   workflow_dispatch:

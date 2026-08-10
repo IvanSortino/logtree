@@ -3,29 +3,80 @@ url: https://ivansortino.github.io/logtree/
 template:
   bootstrap: 5
 
+home:
+  title: Tree-style console logging for nested processes
+  description: >
+    Render nested process execution as a live, colored tree in the console --
+    tree connectors, status glyphs, and elapsed time per step -- with nesting
+    depth that stays correct even when a step errors partway through.
+  links:
+  - text: Report a bug
+    href: https://github.com/IvanSortino/logtree/issues
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+
+articles:
+- title: Guides
+  navbar: Guides
+  contents:
+  - articles/examples
+  - articles/themes
+  - articles/recipes
+- title: Internals
+  navbar: Internals
+  contents:
+  - articles/design
+
 reference:
 - title: Steps
-  desc: Open, close, and log a step in the tree
+  desc: >
+    The nodes of the tree. `log_step()` closes itself when the function that
+    opened it returns; `log_open()`/`log_close()` are the manual pair for code
+    with no function frame to close on.
   contents:
   - log_step
   - log_open
   - log_close
+
 - title: Leaf lines
-  desc: Status-tagged messages logged under the current step
+  desc: >
+    Status-tagged messages logged under the current step. `log_warn()` and
+    `log_error()` also elevate the enclosing step's own glyph.
   contents:
   - log_info
   - log_success
   - log_warn
   - log_error
   - log_debug
-- title: Error handling
+
+- title: Running a job
+  desc: >
+    Wrap a run so an uncaught error marks every open step before the stack
+    unwinds -- and, optionally, so R's own warnings and messages land in the
+    tree instead of on stderr.
   contents:
   - with_logging
-- title: Theming
+
+- title: The run digest
+  desc: >
+    What went wrong, without scrolling back through the tree.
+  contents:
+  - logtree_summary
+
+- title: Appearance
+  desc: >
+    Glyphs, colors, connectors, and the optional elapsed, call-site and
+    timestamp columns -- five presets, every slot overridable.
   contents:
   - logtree_theme
-- title: Output & control
-  desc: Where log events go, how much of them, and how to turn it off
+
+- title: Output sinks
+  desc: >
+    Every event fans out to every registered sink. The console sink is always
+    on; add files, buffers, or a function of your own.
   contents:
   - logtree_sink_file
   - logtree_sink
@@ -33,26 +84,29 @@ reference:
   - logtree_sink_remove
   - logtree_sink_memory
   - logtree_sink_memory_events
+
+- title: Verbosity and silence
+  desc: >
+    How much gets rendered, and how to turn it all off without unregistering
+    anything.
+  contents:
   - logtree_threshold
   - logtree_mute
+
+- title: State
+  desc: >
+    Clear the stack, the digest, and the run id.
+  contents:
   - logtree_reset
-  - logtree_summary
+
 - title: logger package integration
+  desc: >
+    Route an existing `logger` codebase through logtree without rewriting the
+    call sites.
   contents:
   - logtree_logger
   - layout_logtree
 
-navbar:
-  structure:
-    left: [reference, articles, news]
-    right: [github]
-  components:
-    articles:
-      text: Articles
-      menu:
-      - text: Get started
-        href: articles/logtree.html
-      - text: Timestamps and routed conditions
-        href: articles/timestamps-and-conditions.html
-      - text: Design philosophy
-        href: articles/design.html
+- title: Package
+  contents:
+  - logtree-package
