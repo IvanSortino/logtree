@@ -114,6 +114,7 @@ logtree_reset()
 
 noisy <- function() {
   log_step("Load data")
+  message("using cached schema")
   warning("3 rows coerced to NA")
   log_info("1200 rows")
 }
@@ -121,12 +122,29 @@ noisy <- function() {
 with_logging(noisy(), summary = FALSE, warnings = TRUE)
 ```
 
+Both lines are ordinary leaves once routed: they fan out to every sink, reach
+the `logtree_summary()` digest, and the routed warning elevates its step's
+close glyph exactly as `log_warn()` would.
+
 It is opt-in because routing means muffling: a routed condition stops at the
 leaf, so it no longer reaches `warnings()`, your own handlers, or stderr. The
 tree becomes the single record of the run, which is the point -- but it is a
 trade, and a routed warning also elevates its enclosing step, so wrapping
-third-party code that warns freely will turn steps yellow. Pass
-`warnings = "warning"` to route warnings and leave `message()` alone.
+third-party code that warns freely will turn steps yellow. Naming one kind
+routes only that kind, which is the usual way out of the trade:
+
+| `warnings =` | `warning()` | `message()` |
+| ------------ | ----------- | ----------- |
+| `FALSE` (default) | stderr, untouched | stderr, untouched |
+| `TRUE` | `log_warn()` leaf, muffled, elevates the step | `log_info()` leaf, muffled |
+| `"warning"` | `log_warn()` leaf, muffled, elevates the step | stderr, untouched |
+| `"message"` | stderr, untouched | `log_info()` leaf, muffled |
+
+`with_logging(global = TRUE, warnings = TRUE)` routes at the top level of a
+script too, but only while logtree steps are open, so a session-persistent
+handler cannot swallow warnings from unrelated code. The [Timestamps and routed
+conditions](https://IvanSortino.github.io/logtree/articles/timestamps-and-conditions.html)
+article works through the whole trade with coloured output.
 
 ## Grouping
 
@@ -408,6 +426,25 @@ rather than a repeated time. `logtree_summary()`'s digest is never stamped: it
 replays events that already happened, so the time it was printed would be the
 wrong answer. A file sink pins its own column with
 `logtree_sink_file(timestamp = )`.
+
+Its second field is `color`, which takes cli styles like any other slot. The
+coloured presets ship `"silver"`: the column is supporting detail -- you read
+the tree and consult the time only when you need it -- so it stays faint enough
+that the status glyphs remain what your eye lands on. `"ascii"` and `"ci"` ship
+`NULL` instead, since they exist for log capture rather than a terminal.
+
+```{r}
+logtree_theme(list(timestamp = list(format = "%H:%M:%S",
+                                    color = c("bold", "blue"))))
+logtree_reset()
+pipeline()
+logtree_theme(list(timestamp = list(format = NULL, color = "silver")))
+```
+
+The [Timestamps and routed
+conditions](https://IvanSortino.github.io/logtree/articles/timestamps-and-conditions.html)
+article covers the column end to end -- the silver default in real terminal
+colour, file sinks, and the ISO-8601 `ts` a `"json"` sink always carries.
 
 ### Wrapping long messages
 

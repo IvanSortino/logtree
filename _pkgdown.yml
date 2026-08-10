@@ -52,5 +52,7 @@ navbar:
       menu:
       - text: Get started
         href: articles/logtree.html
+      - text: Timestamps and routed conditions
+        href: articles/timestamps-and-conditions.html
       - text: Design philosophy
         href: articles/design.html
