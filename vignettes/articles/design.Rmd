@@ -138,6 +138,8 @@ Event kinds:
 - `open` — step opened
 - `close` — step closed
 - `group` — group header
+- `group_close` — a group's own corner/close line, rendered through the same
+  `format_close()` as a step's
 - `leaf` — message (info, success, warn, error, debug)
 
 JSON format is hand-rolled (no `jsonlite` dependency) because the event

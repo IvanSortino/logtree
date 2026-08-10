@@ -1,0 +1,216 @@
+---
+title: "Recipes"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(logtree)
+```
+
+Short answers to the questions that come up once logtree is in a real codebase.
+
+## Logging from a top-level script
+
+`log_step()` hangs its close on the calling function's frame. A script's top
+level has no such frame -- the global environment never returns -- so the step
+would stay open forever, and logtree prints a one-time nudge if you try.
+
+Use the manual pair instead:
+
+```{r}
+logtree_reset()
+
+id <- log_open("Load inputs")
+log_info("reading 3 files")
+log_success("9,412 rows")
+log_close(id)
+
+id <- log_open("Publish")
+log_success("uploaded", close = TRUE)
+```
+
+The functions those blocks *call* can still use `log_step()` freely -- they have
+frames. It is only the outermost, top-level step that needs opening by hand.
+
+For error handling at that level there is no expression to wrap either, so
+`with_logging(global = TRUE)` installs the handling for the rest of the script:
+
+```r
+# at the top of the script
+with_logging(global = TRUE, warnings = TRUE)
+
+id <- log_open("Nightly job")
+run_everything()          # an error anywhere below is logged, then rethrown
+log_close(id)
+```
+
+Global mode only acts while logtree steps are open, so a session-persistent
+handler cannot swallow warnings from unrelated code later on.
+
+## Re-running the same block interactively
+
+At the top level a step is keyed on its own source location. Re-running the same
+`log_open()` line in RStudio or Positron re-anchors to the same node instead of
+nesting a level deeper each time, so an afternoon of re-evaluating the same
+block does not walk the tree off the right edge of the console.
+
+Nothing to configure -- but it is worth knowing that this is *why* re-running
+behaves differently from calling the same function twice.
+
+## Logging from a package, quietly
+
+A package that logs with logtree should not make its own test suite noisy.
+`logtree_mute()` stops every sink receiving events without unregistering any of
+them, and both mute and unmute return the state they replaced, so a caller can
+restore what it found rather than assuming:
+
+```{r}
+quietly <- function(code) {
+  was <- logtree_mute()
+  on.exit(if (!was) logtree_unmute(), add = TRUE)
+  force(code)
+}
+
+logtree_reset()
+quietly({
+  id <- log_open("Internal work")
+  log_warn("something to remember")
+  log_close(id)
+})
+
+# nothing printed -- but the run was still recorded
+logtree_summary()
+```
+
+That last part matters: a muted run is recorded, not discarded. The digest can
+still report what went wrong, and step bookkeeping is untouched, so depth is
+right the moment output comes back.
+
+In `testthat`, scope it with `withr::defer()`:
+
+```r
+local_quiet_logtree <- function(.env = parent.frame()) {
+  was <- logtree_mute()
+  withr::defer(if (!was) logtree_unmute(), envir = .env)
+}
+```
+
+## Keeping a log file for a scheduled job
+
+A job nobody watches wants three things the console does not: a timestamp on
+every line, a file to write to, and enough verbosity to diagnose a failure
+after the fact.
+
+```{r}
+log_path <- tempfile(fileext = ".log")
+
+h <- logtree_sink_file(
+  log_path,
+  format    = "text",
+  timestamp = "%Y-%m-%d %H:%M:%S",
+  threshold = "debug"
+)
+
+logtree_reset()
+
+job <- function() {
+  log_step("Nightly sync")
+  log_debug("page size 500")
+  log_info("1,204 accounts fetched")
+  log_warn("12 accounts missing an email")
+}
+
+with_logging(job(), summary = FALSE)
+
+writeLines(readLines(log_path))
+logtree_sink_remove(h)
+```
+
+The console stayed at the default `"info"` and carried no timestamp; the file
+pinned both for itself. That is the general shape -- `logtree_threshold()` is
+the default for sinks that do not pin one, so moving it still moves them, but a
+sink that has an opinion keeps it.
+
+Use `format = "json"` instead when the file is going to an aggregator rather
+than a person; every record then carries a `run_id` so one run can be picked
+out of a file many runs appended to.
+
+## Choosing a threshold per sink
+
+A rough rule that covers most setups:
+
+| Destination | Threshold | Why |
+| --- | --- | --- |
+| Console, interactive | `"info"` (default) | you are watching it happen |
+| Console, CI | `"info"` | build logs are read on failure, and debug drowns the signal |
+| Text file next to a job | `"debug"` | the file exists precisely for the failure you did not anticipate |
+| NDJSON to an aggregator | `"debug"` | storage is cheap, and the query filters |
+
+Remember that verbosity is a *rendering* gate only: a warning suppressed
+everywhere still elevates its step's glyph and still reaches the digest.
+
+## Sending events somewhere logtree does not support
+
+`logtree_sink()` takes any function of one argument, called with each event.
+That is the extension point -- an HTTP post, a database insert, a counter.
+
+```{r}
+levels_seen <- character(0)
+h <- logtree_sink(function(event) {
+  if (identical(event$kind, "leaf")) {
+    levels_seen <<- c(levels_seen, event$status)
+  }
+})
+
+logtree_reset()
+job()
+table(levels_seen)
+
+logtree_sink_remove(h)
+```
+
+A sink that throws is skipped rather than allowed to break the fanout: the
+remaining sinks still run and a warning naming the offender is raised once. Do
+not rely on that as error handling, though -- a sink that talks to the network
+should have its own `tryCatch()`, or a slow endpoint will pace your pipeline.
+
+## Bridging an existing `logger` codebase
+
+One call, near the top of the script. It registers logtree's layout, pairs it
+with `logger::appender_void` so logtree does the rendering, and opens logger's
+own threshold so `logtree_threshold()` becomes the single gate.
+
+```{r, eval = rlang::is_installed("logger", version = "0.3.0")}
+logtree_reset()
+ns <- "my_app"
+logtree_logger(namespace = ns)
+
+process <- function() {
+  log_step("Process")
+  logger::log_info("reading input", namespace = ns)
+  logger::log_warn("2 malformed rows skipped", namespace = ns)
+}
+
+with_logging(process(), summary = FALSE)
+```
+
+```{r, echo = FALSE, eval = !rlang::is_installed("logger", version = "0.3.0")}
+cat("The `logger` package (>= 0.3.0) is not installed, so this example was not run.\n")
+```
+
+Severities map onto leaf levels: `FATAL`/`ERROR` to `log_error()`, `WARN` to
+`log_warn()`, `SUCCESS` to `log_success()`, `INFO` to `log_info()`, and
+`DEBUG`/`TRACE` both to `log_debug()`. Note that logger's own
+`log_threshold()` and `logtree_threshold()` are two independent gates applied
+on top of each other -- `logtree_logger()` opens logger's so that logtree's is
+the one that matters, but if you set logger's again afterwards, both apply.
+
+`logtree_logger()` requires `logger` 0.3.0 or newer, since that is when
+`appender_void` arrived; against an older one it refuses up front with a
+message naming the requirement rather than failing obscurely later.
