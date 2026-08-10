@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 533 192" width="533" height="192" role="img" aria-label="One logtree line with its timestamp, rails, connector, glyph, message and call-site columns labelled">
+<title>Anatomy of a logtree line</title>
+<rect x="0.5" y="0.5" width="532" height="191" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<g font-family="ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="14">
+<text x="24.00" y="36" xml:space="preserve"><tspan fill="#8b949e">18:43:40</tspan><tspan fill="#24292f"> </tspan><tspan fill="#8b949e">│  </tspan><tspan fill="#8b949e">├─</tspan><tspan fill="#24292f"> </tspan><tspan fill="#9a6700">⚠</tspan><tspan fill="#24292f"> coerced 3 rows to NA  </tspan><tspan fill="#8b949e">inner</tspan><tspan fill="#8b949e">()</tspan></text>
+</g>
+<g>
+<path d="M 24.00 44.00 L 24.00 48.00 L 100.05 48.00 L 100.05 44.00" fill="none" stroke="#8b949e" stroke-width="1.2"/>
+<line x1="62.02" y1="48.00" x2="62.02" y2="61.00" stroke="#8b949e" stroke-width="1" stroke-dasharray="1 3"/>
+<path d="M 100.05 44.00 L 100.05 48.00 L 125.40 48.00 L 125.40 44.00" fill="none" stroke="#8b949e" stroke-width="1.2"/>
+<line x1="112.72" y1="48.00" x2="112.72" y2="82.00" stroke="#8b949e" stroke-width="1" stroke-dasharray="1 3"/>
+<path d="M 125.40 44.00 L 125.40 48.00 L 150.75 48.00 L 150.75 44.00" fill="none" stroke="#8b949e" stroke-width="1.2"/>
+<line x1="138.07" y1="48.00" x2="138.07" y2="103.00" stroke="#8b949e" stroke-width="1" stroke-dasharray="1 3"/>
+<path d="M 150.75 44.00 L 150.75 48.00 L 167.65 48.00 L 167.65 44.00" fill="none" stroke="#9a6700" stroke-width="1.2"/>
+<line x1="159.20" y1="48.00" x2="159.20" y2="124.00" stroke="#9a6700" stroke-width="1" stroke-dasharray="1 3"/>
+<path d="M 167.65 44.00 L 167.65 48.00 L 336.65 48.00 L 336.65 44.00" fill="none" stroke="#24292f" stroke-width="1.2"/>
+<line x1="252.15" y1="48.00" x2="252.15" y2="145.00" stroke="#24292f" stroke-width="1" stroke-dasharray="1 3"/>
+<path d="M 353.55 44.00 L 353.55 48.00 L 412.70 48.00 L 412.70 44.00" fill="none" stroke="#1b7c83" stroke-width="1.2"/>
+<line x1="383.12" y1="48.00" x2="383.12" y2="166.00" stroke="#1b7c83" stroke-width="1" stroke-dasharray="1 3"/>
+</g>
+<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="12">
+<rect x="65.03" y="58.00" width="177.00" height="17.00" fill="#ffffff"/>
+<circle cx="62.02" cy="65.00" r="2" fill="#8b949e"/>
+<text x="69.03" y="69.00" fill="#8b949e">timestamp column (opt-in)</text>
+<rect x="115.72" y="79.00" width="196.80" height="17.00" fill="#ffffff"/>
+<circle cx="112.72" cy="86.00" r="2" fill="#8b949e"/>
+<text x="119.72" y="90.00" fill="#8b949e">rails: one per open ancestor</text>
+<rect x="141.07" y="100.00" width="71.40" height="17.00" fill="#ffffff"/>
+<circle cx="138.07" cy="107.00" r="2" fill="#8b949e"/>
+<text x="145.07" y="111.00" fill="#8b949e">connector</text>
+<rect x="162.20" y="121.00" width="91.20" height="17.00" fill="#ffffff"/>
+<circle cx="159.20" cy="128.00" r="2" fill="#9a6700"/>
+<text x="166.20" y="132.00" fill="#9a6700">status glyph</text>
+<rect x="255.15" y="142.00" width="58.20" height="17.00" fill="#ffffff"/>
+<circle cx="252.15" cy="149.00" r="2" fill="#24292f"/>
+<text x="259.15" y="153.00" fill="#24292f">message</text>
+<rect x="386.12" y="163.00" width="130.80" height="17.00" fill="#ffffff"/>
+<circle cx="383.12" cy="170.00" r="2" fill="#1b7c83"/>
+<text x="390.12" y="174.00" fill="#1b7c83">call site (opt-in)</text>
+</g>
+</svg>
+

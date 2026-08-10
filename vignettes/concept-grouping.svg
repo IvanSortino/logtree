@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 646 406" width="646" height="406" role="img" aria-label="A logtree tree showing adjacent steps grouped under one header and a non-adjacent recurrence opening a second">
+<title>Grouping is adjacency-based</title>
+<rect x="0.5" y="0.5" width="645" height="405" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<g stroke-linecap="round">
+<line x1="71.02" y1="73.00" x2="71.02" y2="101.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="130.00" x2="71.02" y2="158.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="54.00" x2="47.47" y2="177.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="225.00" x2="71.02" y2="253.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="206.00" x2="47.47" y2="272.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="320.00" x2="71.02" y2="348.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="301.00" x2="47.47" y2="367.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="35.00" x2="23.93" y2="386.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="44.50" x2="35.70" y2="44.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="63.50" x2="59.25" y2="63.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="82.50" x2="82.80" y2="82.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="101.50" x2="82.80" y2="101.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="120.50" x2="59.25" y2="120.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="139.50" x2="82.80" y2="139.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="158.50" x2="82.80" y2="158.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="177.50" x2="59.25" y2="177.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="196.50" x2="35.70" y2="196.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="215.50" x2="59.25" y2="215.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="234.50" x2="82.80" y2="234.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="253.50" x2="82.80" y2="253.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="272.50" x2="59.25" y2="272.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="291.50" x2="35.70" y2="291.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="310.50" x2="59.25" y2="310.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="329.50" x2="82.80" y2="329.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="71.02" y1="348.50" x2="82.80" y2="348.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="367.50" x2="59.25" y2="367.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="386.50" x2="35.70" y2="386.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+</g>
+<g font-family="ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="13">
+<text x="20.00" y="29" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> Import</tspan></text>
+<text x="43.55" y="48" xml:space="preserve"><tspan fill="#8250df">▣ sales</tspan></text>
+<text x="67.10" y="67" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> 2023.csv</tspan></text>
+<text x="90.65" y="86" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> merged</tspan></text>
+<text x="90.65" y="105" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  3.60s</tspan></text>
+<text x="67.10" y="124" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> 2024.csv</tspan></text>
+<text x="90.65" y="143" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> merged</tspan></text>
+<text x="90.65" y="162" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  1.40s</tspan></text>
+<text x="67.10" y="181" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  9.10s</tspan></text>
+<text x="43.55" y="200" xml:space="preserve"><tspan fill="#8250df">▣ returns</tspan></text>
+<text x="67.10" y="219" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> 2024.csv</tspan></text>
+<text x="90.65" y="238" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> merged</tspan></text>
+<text x="90.65" y="257" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  1.20s</tspan></text>
+<text x="67.10" y="276" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  6.20s</tspan></text>
+<text x="43.55" y="295" xml:space="preserve"><tspan fill="#8250df">▣ sales</tspan></text>
+<text x="67.10" y="314" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> 2025.csv</tspan></text>
+<text x="90.65" y="333" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> merged</tspan></text>
+<text x="90.65" y="352" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  3.60s</tspan></text>
+<text x="67.10" y="371" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  5.60s</tspan></text>
+<text x="43.55" y="390" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  27.30s</tspan></text>
+</g>
+<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="11">
+<line x1="153.60" y1="63.50" x2="243.00" y2="63.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="247.00" cy="63.50" r="2" fill="#8250df"/>
+<text x="253.00" y="67.17" fill="#8250df">adjacent steps sharing a value collapse under one header</text>
+<line x1="122.20" y1="196.50" x2="243.00" y2="196.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="247.00" cy="196.50" r="2" fill="#8250df"/>
+<text x="253.00" y="200.17" fill="#8250df">a different value settles the open group and starts a new one</text>
+<line x1="106.50" y1="291.50" x2="243.00" y2="291.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="247.00" cy="291.50" r="2" fill="#cf222e"/>
+<text x="253.00" y="295.17" fill="#cf222e">sales recurs, but not adjacently — so it opens a fresh header</text>
+</g>
+</svg>
+

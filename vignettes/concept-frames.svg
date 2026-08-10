@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 583 224" width="583" height="224" role="img" aria-label="An execution trace beside the logtree output it produces, with bars showing each function frame's lifetime">
+<title>How a logtree step knows when to close</title>
+<rect x="0.5" y="0.5" width="582" height="223" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<g>
+<rect x="20.00" y="37.00" width="4" height="148.00" rx="2.0" fill="#1b7c83" opacity="0.9"/>
+<rect x="29.00" y="81.00" width="4" height="82.00" rx="2.0" fill="#8250df" opacity="0.9"/>
+</g>
+<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="11">
+<text x="46.00" y="18" fill="#8b949e">what runs, in order</text>
+<text x="358.90" y="18" fill="#8b949e">what logtree prints</text>
+</g>
+<g font-family="ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="13">
+<text x="46.00" y="47.00" fill="#24292f" xml:space="preserve">pipeline()</text>
+<text x="46.00" y="69.00" fill="#24292f" xml:space="preserve">  log_step("Pipeline")</text>
+<text x="46.00" y="91.00" fill="#24292f" xml:space="preserve">  load_config()</text>
+<text x="46.00" y="113.00" fill="#24292f" xml:space="preserve">    log_step("Load config")</text>
+<text x="46.00" y="135.00" fill="#24292f" xml:space="preserve">    log_info("reading config.yml")</text>
+<text x="46.00" y="157.00" fill="#8b949e" xml:space="preserve">  # load_config() returns</text>
+<text x="46.00" y="179.00" fill="#8b949e" xml:space="preserve"># pipeline() returns</text>
+
+<text x="358.90" y="69.00" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> Pipeline</tspan></text>
+
+<text x="358.90" y="113.00" xml:space="preserve"><tspan fill="#8b949e">├─</tspan><tspan fill="#24292f"> </tspan><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> Load config</tspan></text>
+<text x="358.90" y="135.00" xml:space="preserve"><tspan fill="#8b949e">│  </tspan><tspan fill="#8b949e">├─</tspan><tspan fill="#24292f"> </tspan><tspan fill="#0969da">ℹ</tspan><tspan fill="#24292f"> reading config.yml</tspan></text>
+<text x="358.90" y="157.00" xml:space="preserve"><tspan fill="#8b949e">│  </tspan><tspan fill="#8b949e">└─</tspan><tspan fill="#24292f"> </tspan><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  0.80s</tspan></text>
+<text x="358.90" y="179.00" xml:space="preserve"><tspan fill="#8b949e">└─</tspan><tspan fill="#24292f"> </tspan><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  6.50s</tspan></text>
+</g>
+<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="11">
+<rect x="46.00" y="196.00" width="4" height="10" rx="2" fill="#1b7c83"/>
+<text x="56.00" y="204.00" fill="#8b949e">pipeline() frame</text>
+<rect x="177.20" y="196.00" width="4" height="10" rx="2" fill="#8250df"/>
+<text x="187.20" y="204.00" fill="#8b949e">load_config() frame</text>
+</g>
+</svg>
+
