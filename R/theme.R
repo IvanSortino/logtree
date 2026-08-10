@@ -280,8 +280,9 @@ apply_overrides <- function(overrides) {
 #' `list(timestamp = list(format = "%H:%M:%S"))`.
 #'
 #' The column is padded to a fixed width measured from a rendered sample, not
-#' from the format string, so a format whose width varies with the value (a bare
-#' `"%-d %b"`) cannot shear the tree from one line to the next. It counts against
+#' from the format string, so a format whose width varies with the value (`"%B"`,
+#' `March` one month and `December` the next) cannot shear the tree from one
+#' line to the next. It counts against
 #' the wrapping budget like any other column, and a wrapped message's
 #' continuation rows carry a *blank* column rather than a repeated time -- one
 #' event happened once. [logtree_summary()]'s digest carries no timestamp at all:

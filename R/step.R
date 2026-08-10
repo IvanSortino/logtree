@@ -558,8 +558,8 @@ hard_wrap <- function(x, width) {
 
 # The instant the column's width is measured from. Deliberately a wide one --
 # last hour, last day, last month of the year -- so that a format whose rendered
-# width varies with the value (`%e`, `%-d`, `%b`) pads out to it rather than
-# being clipped down to it.
+# width varies with the value (`%e`, `%B`, and glibc's `%-d`) pads out to it
+# rather than being clipped down to it.
 timestamp_ref <- as.POSIXct("2000-12-31 23:59:59", tz = "UTC")
 
 # The active timestamp format, or NULL when the column is off. NULL is what

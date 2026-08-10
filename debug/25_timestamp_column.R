@@ -58,13 +58,15 @@ run_section("C. format = \"%Y-%m-%d %H:%M:%S\" -- what a saved log wants",
             overrides = list(timestamp = list(format = "%Y-%m-%d %H:%M:%S")))
 
 # --- D. fixed width ----------------------------------------------------------
-# "%-d %b" renders as "5 Mar" on one day and "25 Dec" on another. Trusting the
+# "%B" renders as "March" in one month and "December" in another. Trusting the
 # format string's length would shear the tree between those two lines; the
 # column is measured from a rendered sample and padded, so it does not.
+# ("%-d", the unpadded day-of-month, is the sharper example, but the "-" flag is
+# a glibc extension: macOS and Windows render it literally.)
 section("D. a variable-width format is padded, not left to shear")
 logtree_reset()
 logtree_theme("unicode", wrap = FALSE,
-              overrides = list(timestamp = list(format = "%-d %b")))
+              overrides = list(timestamp = list(format = "%B")))
 at <- function(x) as.POSIXct(x, tz = "UTC")
 cat(logtree:::format_leaf("info", "early in the month", 1L,
                           stamp = at("2026-03-05 10:00:00")), "\n")

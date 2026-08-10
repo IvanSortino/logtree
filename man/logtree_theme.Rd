@@ -187,8 +187,9 @@ or a report that something broke at about half past two. Switch it on with
 \code{list(timestamp = list(format = "\%H:\%M:\%S"))}.
 
 The column is padded to a fixed width measured from a rendered sample, not
-from the format string, so a format whose width varies with the value (a bare
-\code{"\%-d \%b"}) cannot shear the tree from one line to the next. It counts against
+from the format string, so a format whose width varies with the value (\code{"\%B"},
+\code{March} one month and \code{December} the next) cannot shear the tree from one
+line to the next. It counts against
 the wrapping budget like any other column, and a wrapped message's
 continuation rows carry a \emph{blank} column rather than a repeated time -- one
 event happened once. \code{\link[=logtree_summary]{logtree_summary()}}'s digest carries no timestamp at all:

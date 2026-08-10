@@ -65,8 +65,12 @@ test_that("a variable-width format is padded to a fixed column", {
   logtree_reset()
   withr::defer(logtree_reset())
   local_ascii_theme()
-  # Bare day-of-month: one digit early in the month, two later.
-  local_timestamp("%-d %b")
+  # Full month name: 5 characters in March, 8 in December. A bare day-of-month
+  # ("%-d") would say the same thing more directly, but the "-" padding flag is
+  # a glibc extension -- macOS and Windows render it literally -- and a test
+  # that only holds on Linux is not testing the padding.
+  withr::local_locale(c(LC_TIME = "C"))
+  local_timestamp("%B")
 
   narrow <- format_leaf("info", "x", 1L, stamp = at("2026-03-05 10:00:00"))
   wide   <- format_leaf("info", "x", 1L, stamp = at("2026-12-25 10:00:00"))
@@ -74,8 +78,8 @@ test_that("a variable-width format is padded to a fixed column", {
   # Same width, so the tree does not shear between one line and the next.
   expect_equal(cli::ansi_nchar(narrow, type = "width"),
                cli::ansi_nchar(wide, type = "width"))
-  expect_match(narrow, "^5 Mar  \\|- i x$")
-  expect_match(wide,   "^25 Dec \\|- i x$")
+  expect_match(narrow, "^March    \\|- i x$")
+  expect_match(wide,   "^December \\|- i x$")
 })
 
 test_that("a format wider than the reference instant is clipped, not left to shear", {

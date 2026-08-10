@@ -35,9 +35,16 @@ the$sink_failed <- character(0)
 #
 # Built from the wall clock and the process id rather than drawn at random, on
 # purpose: sampling would consume the user's RNG stream, and a logger has no
-# business perturbing a reproducible script's random numbers.
+# business perturbing a reproducible script's random numbers. The clock alone is
+# not enough to tell two runs apart -- two short runs can start inside the same
+# millisecond -- so a session counter is appended: it costs nothing and makes
+# the id unique by construction rather than by being lucky about timing.
+the$run_seq <- 0L
+
 new_run_id <- function() {
-  sprintf("%s-%d", format(wall_clock(), "%Y%m%dT%H%M%OS3"), Sys.getpid())
+  the$run_seq <- the$run_seq + 1L
+  sprintf("%s-%d-%d", format(wall_clock(), "%Y%m%dT%H%M%OS3"),
+          Sys.getpid(), the$run_seq)
 }
 
 # with_logging(global = TRUE) installs a session-persistent global calling

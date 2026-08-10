@@ -51,9 +51,11 @@
   (`"2026-01-02T03:04:05.000+0000"`) rather than a bare epoch number no
   aggregator could interpret, and each record carries a `run_id` so one run's
   lines can be picked out of a file that many runs appended to. The id is derived
-  from the wall clock and the process id rather than sampled, so a logger cannot
-  perturb the RNG stream of a script that has just called `set.seed()`; it is
-  refreshed per `with_logging()` call and per `logtree_reset()`.
+  from the wall clock, the process id and a session counter rather than sampled,
+  so a logger cannot perturb the RNG stream of a script that has just called
+  `set.seed()` -- and two runs that start inside the same millisecond still get
+  different ids. It is refreshed per `with_logging()` call and per
+  `logtree_reset()`.
 
 * New `timestamp` theme slot: an opt-in wall-clock column in front of every line.
   A live tree said how *long* each step took but never *when* any of it happened,
@@ -64,9 +66,9 @@
   lookup per line until asked for.
 
   The column is padded to a fixed width measured from a rendered sample rather
-  than from the format string, because a template is not its own width: `"%-d %b"`
-  is five columns one day and six the next, and trusting it would shear the tree
-  from one line to the next. It counts against the wrapping budget like any other
+  than from the format string, because a template is not its own width: `"%B"` is
+  five columns in March and eight in December, and trusting it would shear the
+  tree from one line to the next. It counts against the wrapping budget like any other
   column, and a wrapped message's continuation rows carry a *blank* column rather
   than a repeated time -- one event happened once. The `with_logging()`
   run-summary line is stamped, being printed as the run ends; the

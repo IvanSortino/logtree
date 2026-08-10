@@ -111,7 +111,8 @@ if (requireNamespace("jsonlite", quietly = TRUE)) {
   cat("\ndistinct run ids in the file:", length(unique(ids)), "\n")
 }
 
-# It is built from the wall clock and the process id rather than sampled: a
+# It is built from the wall clock, the process id and a session counter (two
+# runs can start inside the same millisecond) rather than sampled: a
 # logger has no business consuming the RNG stream of a script that has just
 # called set.seed().
 set.seed(42); expected <- runif(1)
