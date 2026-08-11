@@ -21,9 +21,14 @@ passed in by \code{logger}'s internal dispatch.}
 \item{msg}{Character scalar, already formatted by \code{logger}'s formatter
 stage (glue interpolation has already happened by this point).}
 
-\item{namespace, .logcall, .topcall, .topenv, .timestamp}{Unused; accepted
-only because \code{logger}'s dispatcher calls every layout with this exact
-signature (see \code{logger::layout_simple}).}
+\item{namespace, .logcall, .timestamp}{Unused; accepted only because
+\code{logger}'s dispatcher calls every layout with this exact signature (see
+\code{logger::layout_simple}).}
+
+\item{.topcall}{The call \code{logger} was invoked from, supplied by its
+dispatcher. Used as the leaf's call site for the \code{trace} column.}
+
+\item{.topenv}{Unused; part of \code{logger}'s layout signature.}
 }
 \value{
 \code{character(0)}, invisibly. The record is discarded by
@@ -55,9 +60,15 @@ leaf). Note \code{logger}'s own \code{log_threshold()} already gates before the
 layout is ever invoked; \code{logtree_threshold()} is then an
 independent, second gate applied on top of that -- both legitimately
 apply at once, this is not a bug.
+
+When the \code{trace} theme slot is on, the leaf's call site is taken from
+\code{logger}'s own \code{.topcall} rather than from logtree's usual frame walk. That
+matters: this layout is what calls the leaf, so a frame walk would report
+\code{layout_logtree} as the origin of every routed line instead of the
+\code{logger::log_info()} call in your code.
 }
 \examples{
-if (requireNamespace("logger", quietly = TRUE)) {
+if (rlang::is_installed("logger", version = "0.3.0")) {
   logtree_reset()
   logger::log_layout(layout_logtree, namespace = "logtree_demo")
   logger::log_appender(logger::appender_void, namespace = "logtree_demo")

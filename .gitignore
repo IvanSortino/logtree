@@ -19,3 +19,7 @@ dev/lib/
 graphify-out/
 
 blog*
+
+# github_document render byproducts
+README.html
+index.html

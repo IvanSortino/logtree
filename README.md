@@ -26,18 +26,12 @@ through.
 
 ## Installation
 
-Install the development version from
-[GitHub](https://github.com/IvanSortino/logtree):
-
-``` r
-# install.packages("pak")
-pak::pak("IvanSortino/logtree")
-```
-
-Or install directly from CRAN:
-
 ``` r
 install.packages("logtree")
+
+# or the development version
+# install.packages("pak")
+pak::pak("IvanSortino/logtree")
 ```
 
 ## Quick start
@@ -45,304 +39,89 @@ install.packages("logtree")
 ``` r
 library(logtree)
 
-pipeline <- function() {
-  log_step("Pipeline")
-  load_config()
-}
-
 load_config <- function() {
   log_step("Load config")
-  log_info("Reading config.yml")
-  log_success("Validated 12 parameters")
+  log_info("reading config.yml")
+  log_success("validated 12 parameters")
 }
 
-pipeline()
-#> ▶ Pipeline
+fetch_rows <- function() {
+  log_step("Fetch rows")
+  log_info("requesting from API")
+  log_warn("rate limit at 80%")
+  log_success("fetched 1,204 rows")
+}
+
+pipeline <- function() {
+  log_step("Nightly pipeline")
+  load_config()
+  fetch_rows()
+}
+
+with_logging(pipeline())
+#> ▶ Nightly pipeline
 #> ├─ ▶ Load config
-#> │  ├─ ℹ Reading config.yml
-#> │  ├─ ✔ Validated 12 parameters
+#> │  ├─ ℹ reading config.yml
+#> │  ├─ ✔ validated 12 parameters
 #> │  └─ ✔ Done  0.00s
-#> └─ ✔ Done  0.00s
+#> ├─ ▶ Fetch rows
+#> │  ├─ ℹ requesting from API
+#> │  ├─ ⚠ rate limit at 80%
+#> │  ├─ ✔ fetched 1,204 rows
+#> │  └─ ⚠ Done  0.00s
+#> └─ ✔ Done  0.01s
+#> ✔ Run complete in 0.01s
 logtree_summary()
-#> Summary: nothing to report
+#> 
+#> ── Summary: 1 warning ──────────────────────────────────────────────────────────
+#> ⚠ Nightly pipeline › Fetch rows › rate limit at 80%
 ```
 
 `log_step()` is meant to be called from inside a function: the step
 auto-closes when the function that opened it returns – normally, early,
 or via an uncaught error – so nesting depth never gets stuck out of
 sync. (At top level, with no function frame to close on, reach for
-`log_open()` / `log_close()` instead.) `logtree_summary()` prints a
-digest of anything worth noting since the last reset – see [Run
-summary](#run-summary) below for what it looks like when a run actually
-breaks.
+`log_open()` / `log_close()` instead.)
 
-## Status levels & verbosity
+The `log_warn()` line turned its own step’s close glyph yellow without
+throwing anything, and `logtree_summary()` replayed it with the path it
+happened on.
 
-Five leaf levels – `log_debug()`, `log_info()`, `log_success()`,
-`log_warn()`, `log_error()` – plus `logtree_threshold()` to filter them.
-`log_warn()`/ `log_error()` also elevate the enclosing step’s glyph,
-even when suppressed by verbosity; step lines always render regardless
-of threshold.
+## What else it does
 
-``` r
-fetch <- function() {
-  log_step("Fetch")
-  log_debug("cache miss for key user:42")
-  log_info("requesting from API")
-  log_warn("rate limit at 80%")
-  log_success("fetched 128 rows")
-}
+- **Five leaf levels** and a threshold to filter them, globally or per
+  sink.
+- **Error handling** – `with_logging()` marks every open step failed,
+  logs the condition, and rethrows; it never swallows an error.
+- **Routing R’s own conditions** – `warning()` and `message()` become
+  leaves in the tree instead of stderr noise.
+- **Grouping** – adjacent steps sharing a value collapse under one
+  header.
+- **Call sites and timestamps** – opt-in columns telling you where a
+  line came from and when it happened.
+- **Themes** – five presets (unicode, ascii, emoji, minimal, ci), every
+  glyph, colour and gap overridable.
+- **Sinks** – mirror a run to a plain-text or NDJSON file, to a buffer
+  you can assert on in tests, or to any function of your own.
+- **A `logger` bridge** – route an existing
+  [logger](https://daroczig.github.io/logger/) codebase through logtree
+  in one call.
 
-with_logging(fetch(), summary = FALSE) # default verbosity ("info"): debug hidden
-#> ▶ Fetch
-#> ├─ ℹ requesting from API
-#> ├─ ⚠ rate limit at 80%
-#> ├─ ✔ fetched 128 rows
-#> └─ ⚠ Done  0.00s
+## Documentation
 
-logtree_threshold("debug")
-with_logging(fetch(), summary = FALSE) # verbosity raised: debug shown
-#> ▶ Fetch
-#> ├─ ⚙ cache miss for key user:42
-#> ├─ ℹ requesting from API
-#> ├─ ⚠ rate limit at 80%
-#> ├─ ✔ fetched 128 rows
-#> └─ ⚠ Done  0.00s
-logtree_threshold("info")
-```
-
-## Error handling
-
-`log_error()` from code that itself returns normally elevates the
-enclosing step’s glyph but lets the run continue – pass
-`status = "success"` to `log_close()` once you know recovery actually
-worked:
-
-``` r
-connect_db <- function() {
-  log_step("Connect primary")
-  log_error("primary unreachable")
-  log_info("failing over to replica")
-  log_success("connected to replica")
-  log_close(status = "success") # recovered: override the elevated glyph
-}
-
-with_logging(connect_db(), summary = FALSE)
-#> ▶ Connect primary
-#> ├─ ✖ primary unreachable
-#> ├─ ℹ failing over to replica
-#> ├─ ✔ connected to replica
-#> └─ ✔ Done  0.00s
-```
-
-A step whose code actually throws is different: `with_logging()` marks
-every currently-open step failed, logs the condition as a leaf, prints a
-run summary, then rethrows – it never silently swallows errors.
-
-``` r
-apply_migration <- function() {
-  log_step("Apply migration")
-  log_info("adding column users.tier")
-  stop("constraint violation on users.email")
-}
-
-try(with_logging(apply_migration()), silent = TRUE)
-#> ▶ Apply migration
-#> ├─ ℹ adding column users.tier
-#> ├─ ✖ constraint violation on users.email
-#> └─ ✖ Done  0.00s
-#> ✖ Run failed in 0.00s
-```
-
-## Run summary
-
-When a run ends, `logtree_summary()` prints a breadcrumb digest of every
-error, warning, and pinned leaf since the last reset – so you see *what*
-went wrong without scrolling back through the tree. `filter` restricts
-by status; `depth` trims each breadcrumb to its `N` deepest nodes.
-
-``` r
-logtree_reset()
-
-migrate <- function() {
-  log_step("Apply migration")
-  log_warn("table lock held 800ms")
-  log_error("constraint violation on users.email")
-}
-
-release <- function() {
-  log_step("Release v2.1")
-  migrate()
-  log_step("Smoke test")
-  log_success("all endpoints 200")
-}
-
-with_logging(release(), summary = FALSE)
-#> ▶ Release v2.1
-#> ├─ ▶ Apply migration
-#> │  ├─ ⚠ table lock held 800ms
-#> │  ├─ ✖ constraint violation on users.email
-#> │  └─ ✖ Done  0.00s
-#> ├─ ▶ Smoke test
-#> │  ├─ ✔ all endpoints 200
-#> │  └─ ✔ Done  0.00s
-#> └─ ✔ Done  0.00s
-logtree_summary()
-#> Summary: 1 error, 1 warning
-#> ⚠ Release v2.1 > Apply migration > table lock held 800ms
-#> ✖ Release v2.1 > Apply migration > constraint violation on users.email
-```
-
-## Grouping
-
-Adjacent `log_step()` calls that share a `group = c(name = value)` value
-collapse under one `< name >` header instead of stacking as siblings:
-
-``` r
-check <- function(item, label) {
-  log_step(label, group = stats::setNames(item, paste0("Item ", item)))
-  log_info(paste0(label, " running"))
-  log_success(paste0(label, " ok"))
-}
-
-process_item <- function(item) {
-  check(item, "validate schema")
-  check(item, "check bounds")
-}
-
-run_pipeline <- function() {
-  log_step("Pipeline run")
-  for (i in 1:2) process_item(i)
-}
-
-with_logging(run_pipeline(), summary = FALSE)
-#> ▶ Pipeline run
-#> ├─ ▣ Item 1
-#> │  ├─ ▶ validate schema
-#> │  │  ├─ ℹ validate schema running
-#> │  │  ├─ ✔ validate schema ok
-#> │  │  └─ ✔ Done  0.00s
-#> │  ├─ ▶ check bounds
-#> │  │  ├─ ℹ check bounds running
-#> │  │  ├─ ✔ check bounds ok
-#> │  │  └─ ✔ Done  0.00s
-#> │  └─ ✔ Done  0.00s
-#> ├─ ▣ Item 2
-#> │  ├─ ▶ validate schema
-#> │  │  ├─ ℹ validate schema running
-#> │  │  ├─ ✔ validate schema ok
-#> │  │  └─ ✔ Done  0.00s
-#> │  ├─ ▶ check bounds
-#> │  │  ├─ ℹ check bounds running
-#> │  │  ├─ ✔ check bounds ok
-#> │  │  └─ ✔ Done  0.00s
-#> │  └─ ✔ Done  0.00s
-#> └─ ✔ Done  0.01s
-```
-
-## Themes
-
-`logtree_theme()` swaps the whole glyph/color preset (`"unicode"`,
-`"ascii"`, `"emoji"`) or merges per-glyph overrides onto the active one:
-
-``` r
-demo_build <- function() {
-  with_logging({
-    log_step("Build")
-    log_info("compiling")
-    log_warn("3 deprecation warnings")
-    log_success("build ok")
-  }, summary = FALSE)
-}
-
-logtree_theme("ascii")
-demo_build()
-#> > Build
-#> |- i compiling
-#> |- ! 3 deprecation warnings
-#> |- + build ok
-#> |- ! Done  0.01s
-
-logtree_theme("emoji")
-demo_build()
-#> 🔹 Build
-#> ├─ 💡 compiling
-#> ├─ ⚠️ 3 deprecation warnings
-#> ├─ ✅ build ok
-#> └─ ⚠️ Done  0.00s
-
-logtree_theme("unicode")
-demo_build()
-#> ▶ Build
-#> ├─ ℹ compiling
-#> ├─ ⚠ 3 deprecation warnings
-#> ├─ ✔ build ok
-#> └─ ⚠ Done  0.00s
-```
-
-Or override individual slots with `overrides` – a list keyed by slot,
-each holding only the fields to change (everything else is kept from the
-active theme):
-
-``` r
-logtree_theme("unicode", overrides = list(
-  success = list(glyph = "*", color = c("green", "bold")),
-  group   = list(bracket = TRUE)
-))
-demo_build()
-#> ▶ Build
-#> ├─ ℹ compiling
-#> ├─ ⚠ 3 deprecation warnings
-#> ├─ * build ok
-#> └─ ⚠ Done  0.00s
-logtree_theme("unicode")
-```
-
-Pass `compact` to tighten the tree’s per-level indentation – `"medium"`
-drops the trailing gap after each connector, `"tight"` also slims the
-connectors down to a single character:
-
-``` r
-logtree_theme("unicode", compact = "medium")
-demo_build()
-#> ▶ Build
-#> ├─ℹ compiling
-#> ├─⚠ 3 deprecation warnings
-#> ├─✔ build ok
-#> └─⚠ Done  0.00s
-logtree_theme("unicode")
-```
-
-The full list of overridable slots (`step`, `info`, `success`, `group`,
-`branch`, `corner`, …) and their fields (`glyph`, `width`, `color`,
-`bracket`) is in the [Themes section of the
-vignette](https://IvanSortino.github.io/logtree/articles/logtree.html#themes)
-and `?logtree_theme`.
-
-## More
-
-- **Output sinks** –
-  `logtree_sink_file(path, format = c("text", "json"))` mirrors console
-  output to a plain-text or NDJSON file; every registered sink runs
-  alongside the console sink.
-- **`logger` integration** – `logtree_logger()` routes the
-  [logger](https://daroczig.github.io/logger/) package through logtree
-  in one call, so `logger::log_info()` and friends render as logtree
-  leaves.
-- **Manual step control** – `log_open()`/`log_close()` open and close
-  steps by hand (with an explicit `parent`) instead of relying on frame
-  exit, useful at top level or across script blocks. Opening a step at
-  the same depth as an open one (e.g. sharing a `parent`) retires the
-  earlier sibling automatically, so you can stream siblings without an
-  explicit `log_close()` on each.
-- **Re-running top-level lines** – at top level (e.g. re-running
-  selected lines in RStudio/Positron while iterating),
-  `log_step()`/`log_open()` key each step on its label and call site, so
-  re-running the same line re-anchors to that node instead of nesting
-  deeper on every run. Pass an explicit `key` to opt out, or to keep two
-  same-label steps open at once distinct.
-
-See `vignette("logtree")` and the [documentation
-site](https://IvanSortino.github.io/logtree/) for full details on error
-handling semantics, manual step control, and the design philosophy
-behind the tree renderer.
+- [**Get
+  started**](https://IvanSortino.github.io/logtree/articles/logtree.html)
+  – the full guide, one section per feature, each with a runnable
+  example.
+- [**Examples**](https://IvanSortino.github.io/logtree/articles/examples.html)
+  – complete end-to-end runs.
+- [**Themes
+  cookbook**](https://IvanSortino.github.io/logtree/articles/themes.html)
+  – every slot and field, and recipes for your own preset.
+- [**Recipes**](https://IvanSortino.github.io/logtree/articles/recipes.html)
+  – top-level scripts, library authors, scheduled jobs.
+- [**Reference**](https://IvanSortino.github.io/logtree/reference/index.html)
+  – all exported functions.
+- [**Design
+  philosophy**](https://IvanSortino.github.io/logtree/articles/design.html)
+  – why depth is tied to frames.
