@@ -1,4 +1,4 @@
-# logtree 0.2.0
+# logtree (development version)
 
 ## Breaking changes
 
