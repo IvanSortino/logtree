@@ -129,6 +129,24 @@ nearest_palette <- function(r, g, b) {
   targets[[which.min(d)]]
 }
 
+# A faint *colored* run -- cli emits both codes for a style like
+# c("dim", "cyan"), which the trace column's per-part defaults are built from
+# -- is neither the connector gray nor the full accent: a terminal renders it
+# as that accent, dimmed. Mixing it toward the background reproduces that.
+# Without this, "faint wins" would flatten every part of the trace column to
+# one gray and the figure would contradict the text it illustrates.
+fade <- function(hex, weight = 0.5) {
+  v <- c(strtoi(substr(hex, 2, 3), 16L),
+         strtoi(substr(hex, 4, 5), 16L),
+         strtoi(substr(hex, 6, 7), 16L))
+  bg <- c(strtoi(substr(bg_color, 2, 3), 16L),
+          strtoi(substr(bg_color, 4, 5), 16L),
+          strtoi(substr(bg_color, 6, 7), 16L))
+  sprintf("#%02x%02x%02x", round(v[1] + (bg[1] - v[1]) * weight),
+          round(v[2] + (bg[2] - v[2]) * weight),
+          round(v[3] + (bg[3] - v[3]) * weight))
+}
+
 parse_ansi_line <- function(line) {
   m <- gregexpr(sgr_re, line)[[1]]
   if (m[1] == -1L) return(list(list(text = line, color = default_color)))
@@ -140,7 +158,10 @@ parse_ansi_line <- function(line) {
   flush <- function(end) {
     if (end >= pos) {
       txt <- substr(line, pos, end)
-      col <- if (faint) dim_color else if (!is.na(fg)) fg else default_color
+      col <- if (faint && !is.na(fg)) fade(fg)
+             else if (faint) dim_color
+             else if (!is.na(fg)) fg
+             else default_color
       segs[[length(segs) + 1L]] <<- list(text = txt, color = col)
     }
   }
@@ -323,7 +344,11 @@ ansi_svg_write <- function(ansi_lines, out_path, annotations = list(),
 
   ann_svg <- character(0)
   for (a in annotations) {
-    i <- which(vapply(plain, function(p) grepl(a$match, p, fixed = TRUE), logical(1)))[1]
+    hits <- which(vapply(plain, function(p) grepl(a$match, p, fixed = TRUE), logical(1)))
+    # `nth` picks a later occurrence, for the case where the point being made
+    # is precisely that the same text appears twice (a group header that
+    # recurs non-adjacently, say) and the first hit is the wrong row.
+    i <- hits[if (is.null(a$nth)) 1L else a$nth]
     if (is.na(i)) next
     y  <- row_mid(i)
     x0 <- pad_x + nchar(plain[[i]]) * char_width + 8   # just past this row's text
@@ -355,6 +380,235 @@ ansi_svg_write <- function(ansi_lines, out_path, annotations = list(),
     paste(text_svg, collapse = "\n"), '\n</g>\n',
     '<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="', ann_font, '">\n',
     paste(ann_svg, collapse = "\n"), '\n</g>\n',
+    '</svg>\n'
+  )
+
+  dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
+  writeLines(svg, out_path)
+  cat("wrote", out_path, "(", width, "x", height, ")\n")
+  invisible(list(width = width, height = height))
+}
+
+# --- anatomy figures ---------------------------------------------------------
+
+# Render ONE captured line and label the columns it is built from.
+#
+# Unlike ansi_svg_write(), the connector prefix is drawn as text rather than as
+# vector strokes: a single line has no vertical runs to join up, and the point
+# of this figure is that the connector *occupies character cells*, which is
+# exactly what the bracket beneath it has to measure.
+#
+#   ansi_line  one console line, ANSI intact
+#   columns    list of list(from =, to =, label =, color =): character offsets
+#              into the plain (ANSI-stripped) line, 0-based and half-open.
+#              Brackets are drawn under [from, to) and labelled on staggered
+#              rows, left to right, so adjacent labels cannot collide.
+ansi_svg_anatomy <- function(ansi_line, out_path, columns,
+                             title = "Anatomy of a logtree line",
+                             label = "The columns of one rendered logtree line") {
+  segs  <- parse_ansi_line(ansi_line)
+  plain <- strip_ansi(ansi_line)
+
+  font_size   <- 14
+  char_width  <- 8.45
+  pad_x       <- 24
+  pad_top     <- 22
+  line_y      <- pad_top + font_size
+  bracket_y   <- line_y + 12
+  row_step    <- 21
+  ann_font    <- 12
+  ann_char    <- 6.6
+
+  col_x <- function(ch) pad_x + ch * char_width
+
+  # Label rows descend left to right, so a short column and its neighbour
+  # never land on the same baseline.
+  ord <- order(vapply(columns, function(c) c$from, numeric(1)))
+  row_of <- integer(length(columns))
+  row_of[ord] <- seq_along(ord)
+
+  bracket_svg <- character(0)
+  label_svg   <- character(0)
+  for (k in seq_along(columns)) {
+    cc <- columns[[k]]
+    x0 <- col_x(cc$from)
+    x1 <- col_x(cc$to)
+    xm <- (x0 + x1) / 2
+    y  <- bracket_y
+    ylab <- bracket_y + row_of[[k]] * row_step
+    col <- if (is.null(cc$color)) default_color else cc$color
+    # bracket: a short tick down at each end joined by a horizontal run
+    bracket_svg <- c(bracket_svg, sprintf(
+      '<path d="M %.2f %.2f L %.2f %.2f L %.2f %.2f L %.2f %.2f" fill="none" stroke="%s" stroke-width="1.2"/>',
+      x0, y - 4, x0, y, x1, y, x1, y - 4, col))
+    # leader from the bracket's midpoint down to its label row
+    bracket_svg <- c(bracket_svg, sprintf(
+      '<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="%s" stroke-width="1" stroke-dasharray="1 3"/>',
+      xm, y, xm, ylab - 8, col))
+    # A label sits on the row it was staggered onto, but the leaders of the
+    # columns to its right run straight down through that row. Painting an
+    # opaque plate under each label -- and drawing every label after every
+    # leader -- keeps the text legible where they cross.
+    lab_w <- nchar(cc$label) * ann_char
+    label_svg <- c(label_svg, sprintf(
+      '<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="%s"/>',
+      xm + 3, ylab - ann_font + 1, lab_w + 12, ann_font + 5, bg_color))
+    label_svg <- c(label_svg, sprintf(
+      '<circle cx="%.2f" cy="%.2f" r="2" fill="%s"/>', xm, ylab - 4, col))
+    label_svg <- c(label_svg, sprintf(
+      '<text x="%.2f" y="%.2f" fill="%s">%s</text>',
+      xm + 7, ylab, col, esc_xml(cc$label)))
+  }
+
+  text_spans <- paste(vapply(segs, function(s) {
+    sprintf('<tspan fill="%s">%s</tspan>', s$color, esc_xml(s$text))
+  }, character(1)), collapse = "")
+
+  widest_label <- max(vapply(seq_along(columns), function(k) {
+    cc <- columns[[k]]
+    (col_x(cc$from) + col_x(cc$to)) / 2 + 7 + nchar(cc$label) * ann_char
+  }, numeric(1)))
+  width  <- ceiling(max(pad_x * 2 + nchar(plain) * char_width, widest_label + pad_x))
+  height <- ceiling(bracket_y + length(columns) * row_step + 18)
+
+  svg <- paste0(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ', width, ' ', height,
+    '" width="', width, '" height="', height,
+    '" role="img" aria-label="', label, '">\n',
+    '<title>', title, '</title>\n',
+    '<rect x="0.5" y="0.5" width="', width - 1, '" height="', height - 1,
+    '" rx="8" fill="', bg_color, '" stroke="', border_color, '"/>\n',
+    '<g font-family="ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="', font_size, '">\n',
+    sprintf('<text x="%.2f" y="%s" xml:space="preserve">%s</text>', pad_x, line_y, text_spans),
+    '\n</g>\n',
+    '<g>\n', paste(bracket_svg, collapse = "\n"), '\n</g>\n',
+    '<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="', ann_font, '">\n',
+    paste(label_svg, collapse = "\n"), '\n</g>\n',
+    '</svg>\n'
+  )
+
+  dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
+  writeLines(svg, out_path)
+  cat("wrote", out_path, "(", width, "x", height, ")\n")
+  invisible(list(width = width, height = height))
+}
+
+
+# --- frame-lifetime figure ---------------------------------------------------
+
+# A two-panel diagram: an execution trace on the left, the line logtree printed
+# at that moment on the right, and vertical bars showing how long each
+# function's *frame* lives.
+#
+# The rows are runtime events in the order they happen, not source lines. That
+# distinction is the whole point: a frame's lifetime is an interval in time, so
+# bars drawn over source lines would only mark out function bodies, which
+# explains nothing. Laid out as a trace, the bars line up with the rows where
+# the close lines appear -- and those rows carry no log_*() call at all, which
+# is exactly the thing output alone cannot show.
+#
+# Rows align 1:1 across the two panels, so no leader lines are needed; pad
+# `tree_rows` with "" wherever a runtime event prints nothing.
+#
+#   trace_rows  character vector, the execution trace (plain text, no ANSI)
+#   tree_rows   character vector of the same length, ANSI intact, "" for none
+#   frames      list of list(start =, end =, label =, color =, depth =):
+#               1-based inclusive row indices, depth insetting nested frames
+frames_svg_write <- function(trace_rows, tree_rows, frames, out_path,
+                             title = "How a step knows when to close",
+                             label = "An execution trace beside the logtree output it produces, with bars showing each function frame's lifetime") {
+  stopifnot(length(trace_rows) == length(tree_rows))
+  parsed <- lapply(tree_rows, function(l) if (nzchar(l)) parse_ansi_line(l) else list())
+  plain  <- vapply(tree_rows, strip_ansi, character(1))
+
+  font_size   <- 13
+  line_height <- 22
+  char_width  <- 7.85
+  pad_x       <- 20
+  pad_top     <- 34
+  bar_w       <- 4
+  bar_gap     <- 9
+  hdr_font    <- 11
+  leg_font    <- 11
+
+  max_depth <- max(vapply(frames, function(f) f$depth, numeric(1)))
+  gutter_w  <- (max_depth + 1) * bar_gap + 8
+  trace_x   <- pad_x + gutter_w
+  trace_w   <- max(nchar(trace_rows)) * char_width
+  panel_gap <- 46
+  tree_x    <- trace_x + trace_w + panel_gap
+  tree_w    <- max(nchar(plain)) * char_width
+  width     <- ceiling(tree_x + tree_w + pad_x)
+  n_rows    <- length(trace_rows)
+  legend_h  <- 26
+  height    <- ceiling(pad_top + n_rows * line_height + legend_h + 10)
+
+  row_y   <- function(i) pad_top + (i - 1L) * line_height + font_size
+  row_mid <- function(i) pad_top + (i - 1L) * line_height + line_height / 2
+
+  # One rounded bar per frame, spanning the rows between the call that opened
+  # it and the return that closed it, inset by depth so nesting reads as depth.
+  bar_svg <- character(0)
+  for (f in frames) {
+    x  <- pad_x + f$depth * bar_gap
+    y0 <- row_mid(f$start) - line_height / 2 + 3
+    y1 <- row_mid(f$end) + line_height / 2 - 3
+    bar_svg <- c(bar_svg, sprintf(
+      '<rect x="%.2f" y="%.2f" width="%d" height="%.2f" rx="%.1f" fill="%s" opacity="0.9"/>',
+      x, y0, bar_w, y1 - y0, bar_w / 2, f$color))
+  }
+
+  trace_svg <- vapply(seq_along(trace_rows), function(i) {
+    if (!nzchar(trace_rows[[i]])) return("")
+    # A row that is a comment (a return, not a call) reads as supporting text.
+    col <- if (grepl("^\\s*#", trace_rows[[i]])) dim_color else default_color
+    sprintf('<text x="%.2f" y="%.2f" fill="%s" xml:space="preserve">%s</text>',
+            trace_x, row_y(i), col, esc_xml(trace_rows[[i]]))
+  }, character(1))
+
+  tree_svg <- vapply(seq_along(parsed), function(i) {
+    if (!length(parsed[[i]])) return("")
+    spans <- paste(vapply(parsed[[i]], function(s) {
+      sprintf('<tspan fill="%s">%s</tspan>', s$color, esc_xml(s$text))
+    }, character(1)), collapse = "")
+    sprintf('<text x="%.2f" y="%.2f" xml:space="preserve">%s</text>',
+            tree_x, row_y(i), spans)
+  }, character(1))
+
+  hdr_svg <- c(
+    sprintf('<text x="%.2f" y="%d" fill="%s">%s</text>', trace_x, 18, dim_color,
+            "what runs, in order"),
+    sprintf('<text x="%.2f" y="%d" fill="%s">%s</text>', tree_x, 18, dim_color,
+            "what logtree prints")
+  )
+
+  leg_y <- pad_top + n_rows * line_height + 16
+  leg_x <- trace_x
+  leg_svg <- character(0)
+  for (f in frames) {
+    leg_svg <- c(leg_svg, sprintf(
+      '<rect x="%.2f" y="%.2f" width="%d" height="10" rx="2" fill="%s"/>',
+      leg_x, leg_y - 8, bar_w, f$color))
+    leg_svg <- c(leg_svg, sprintf(
+      '<text x="%.2f" y="%.2f" fill="%s">%s</text>',
+      leg_x + 10, leg_y, dim_color, esc_xml(paste0(f$label, " frame"))))
+    leg_x <- leg_x + 10 + nchar(paste0(f$label, " frame")) * 6.2 + 22
+  }
+
+  svg <- paste0(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ', width, ' ', height,
+    '" width="', width, '" height="', height,
+    '" role="img" aria-label="', label, '">\n',
+    '<title>', title, '</title>\n',
+    '<rect x="0.5" y="0.5" width="', width - 1, '" height="', height - 1,
+    '" rx="8" fill="', bg_color, '" stroke="', border_color, '"/>\n',
+    '<g>\n', paste(bar_svg, collapse = "\n"), '\n</g>\n',
+    '<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="', hdr_font, '">\n',
+    paste(hdr_svg, collapse = "\n"), '\n</g>\n',
+    '<g font-family="ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="', font_size, '">\n',
+    paste(c(trace_svg, tree_svg), collapse = "\n"), '\n</g>\n',
+    '<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="', leg_font, '">\n',
+    paste(leg_svg, collapse = "\n"), '\n</g>\n',
     '</svg>\n'
   )
 

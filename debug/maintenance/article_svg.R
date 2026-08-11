@@ -1,21 +1,40 @@
-devtools::load_all()
+if (requireNamespace("pkgload", quietly = TRUE)) {
+  pkgload::load_all(".", quiet = TRUE)
+} else {
+  devtools::load_all()
+}
 source("debug/maintenance/ansi_svg.R")
 
-# Regenerates the two figures used by the "Timestamps and routed conditions"
-# article (vignettes/articles/timestamps-and-conditions.Rmd):
+# nchar()/regexpr() count bytes under a non-UTF-8 locale, which silently puts
+# every callout in the wrong column. See concept_svg.R for the same guard.
+if (!isTRUE(l10n_info()[["UTF-8"]])) {
+  stop("run this under a UTF-8 locale, e.g. LC_ALL=C.utf8 Rscript -e '...' ",
+       "(LC_CTYPE is currently ", Sys.getlocale("LC_CTYPE"), ")")
+}
+
+# Regenerates two figures used by the documentation site:
 #
-#   vignettes/articles/timestamp-silver.svg    the wall-clock column, in silver
-#   vignettes/articles/routed-conditions.svg   warning()/message() routed in
+#   vignettes/timestamp-silver.svg    the wall-clock column, in silver
+#                                       (vignettes/articles/themes.Rmd)
+#   vignettes/routed-conditions.svg   warning()/message() routed in
+#                                       (vignettes/logtree.Rmd)
 #
-# They sit next to the article rather than in man/figures/ because
-# vignettes/articles/ is .Rbuildignore'd: the site shows them, the built
-# package does not carry them.
+# Every figure a vignette or article references lives in vignettes/ and is
+# referenced by bare filename. The Get started guide is a real vignette, and a
+# vignette's images have to sit beside it: its HTML is built into inst/doc/,
+# which man/figures/ is not copied alongside, so "../man/figures/..." would
+# resolve on the pkgdown site and nowhere else. Articles can share the same
+# files because pkgdown renders vignettes/ and vignettes/articles/ into one
+# output directory, so the bare name resolves from either.
 #
-# pkgdown evaluates article chunks with no terminal attached, so cli emits no
-# ANSI and the rendered output on the site is monochrome. Both features are
-# *about* a colour -- a column faint enough to stay out of the way, a warning
-# that turns its step yellow -- so the article shows a rendered SVG of the real
-# ANSI alongside the plain chunk output.
+# man/figures/ is for README and index.Rmd assets only.
+#
+# Note that these are NOT here because pkgdown cannot show colour: it can.
+# pkgdown's build_rmarkdown_article() sets R_CLI_NUM_COLORS=256, so cli emits
+# real ANSI in article chunks and pkgdown converts it to HTML. These two are
+# rendered SVGs because they carry *annotations* -- callouts pointing at the
+# line that makes the point -- which chunk output cannot do, and because the
+# README needs them too and GitHub renders neither ANSI nor inline style.
 #
 #   Rscript -e 'source("debug/maintenance/article_svg.R")'
 
@@ -61,8 +80,15 @@ ts_lines <- capture.output(with_logging(etl()))
 
 logtree_theme("unicode")
 
+# Written twice, once beside each document that shows it. pkgdown validates an
+# image path relative to its article's own source directory, so a single copy
+# in vignettes/ would warn on every build of the cookbook even though both
+# articles render into one output directory and the bare name resolves there.
+# Both copies come from this one call, so they cannot drift.
+for (ts_path in c("vignettes/timestamp-silver.svg",
+                  "vignettes/articles/timestamp-silver.svg")) {
 ansi_svg_write(
-  ts_lines, "vignettes/articles/timestamp-silver.svg",
+  ts_lines, ts_path,
   # "%H:%M:%S" plus its single trailing space: the column the tree starts after.
   lead = 9L,
   annotations = list(
@@ -78,6 +104,7 @@ ansi_svg_write(
   title = "logtree timestamp column",
   label = "logtree console output with a silver wall-clock timestamp column"
 )
+}
 
 # --- 2. routed conditions ----------------------------------------------------
 
@@ -97,7 +124,7 @@ routed_lines <- capture.output({
 })
 
 ansi_svg_write(
-  routed_lines, "vignettes/articles/routed-conditions.svg",
+  routed_lines, "vignettes/routed-conditions.svg",
   annotations = list(
     list(match = "cached schema", color = palette[["34"]],
          text = "message() becomes an info leaf, at the depth it happened"),
@@ -110,4 +137,65 @@ ansi_svg_write(
   ),
   title = "R conditions routed into the logtree tree",
   label = "logtree console output with warning() and message() routed into the tree"
+)
+
+# --- 3. the call-site column -------------------------------------------------
+#
+# The one figure here that a chunk could not have produced even in principle.
+# `{file}` and `{line}` come from source references, which knitr's chunks do
+# not carry -- an article chunk can only ever show `fn()` -- and the printed
+# path is relative to the working directory. So the demo is written to a real
+# file inside a throwaway project and run from there, which is what makes the
+# figure read "R/pipeline.R:9": the same shape a reader sees from their own
+# package, rather than a tempdir path.
+trace_src <- c(
+  'load_data <- function() {',
+  '  log_step("Load data")',
+  '  log_info("reading warehouse.parquet")',
+  '  parse_rows()',
+  '}',
+  '',
+  'parse_rows <- function() {',
+  '  log_step("Parse rows")',
+  '  log_warn("coerced 3 rows to NA")',
+  '  log_success("1,200 rows")',
+  '}'
+)
+
+trace_lines <- local({
+  dir <- withr::local_tempdir()
+  dir.create(file.path(dir, "R"))
+  writeLines(trace_src, file.path(dir, "R", "pipeline.R"))
+  withr::local_dir(dir)
+  withr::local_options(keep.source = TRUE)
+
+  env <- new.env(parent = globalenv())
+  sys.source(file.path("R", "pipeline.R"), envir = env, keep.source = TRUE)
+
+  logtree_reset()
+  freeze_clocks()
+  logtree_theme("unicode", overrides = list(trace = list(show = TRUE)))
+  on.exit(logtree_theme("unicode"), add = TRUE)
+
+  # A location is also a terminal hyperlink. OSC 8 has no printable width but
+  # it is not an SGR sequence either, so it is stripped rather than handed to
+  # the parser -- the figure shows the styling, and the text says what the
+  # link does.
+  gsub("\033]8;;[^\a]*\a", "", capture.output(env$load_data()))
+})
+
+ansi_svg_write(
+  trace_lines, "vignettes/articles/trace-column.svg",
+  annotations = list(
+    list(match = "Load data", color = palette[["30"]],
+         text = "the location: file and line styled and linked as one unit"),
+    list(match = "warehouse", color = palette[["36"]],
+         text = "the function name is its own part, coloured apart from it"),
+    list(match = "coerced",   color = palette[["33"]],
+         text = "show = \"problems\" marks these lines and leaves the rest bare"),
+    list(match = "Done",      color = dim_color,
+         text = "an ordinary close carries none: its site is its open line's")
+  ),
+  title = "logtree call-site column",
+  label = "logtree console output with a call-site column showing file, line and function name"
 )

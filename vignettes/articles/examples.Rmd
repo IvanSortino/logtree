@@ -1,0 +1,393 @@
+---
+title: "Examples"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(logtree)
+```
+
+Complete runs rather than isolated features. Each example is self-contained --
+copy it, run it, change it. The **Features shown** line under each heading links
+back to the [Get started](https://IvanSortino.github.io/logtree/articles/logtree.html)
+section that explains the piece in question.
+
+## Nightly ETL
+
+The shape most pipelines have: a top-level job, a few phases, leaves reporting
+what each phase did. Nothing here is configured -- the nesting comes from the
+call structure alone.
+
+*Features shown:*
+[steps](https://IvanSortino.github.io/logtree/articles/logtree.html#steps-that-close-themselves),
+[leaf lines](https://IvanSortino.github.io/logtree/articles/logtree.html#leaf-lines-and-levels),
+[status elevation](https://IvanSortino.github.io/logtree/articles/logtree.html#status-elevation),
+[the run digest](https://IvanSortino.github.io/logtree/articles/logtree.html#the-run-digest)
+
+```{r}
+logtree_reset()
+
+extract <- function() {
+  log_step("Extract")
+  log_info("connecting to warehouse")
+  log_info("24,318 rows pulled")
+  log_success("staged")
+}
+
+transform <- function() {
+  log_step("Transform")
+  log_info("normalising currencies")
+  log_warn("112 rows missing fx rate, carried forward")
+  log_success("24,318 rows transformed")
+}
+
+load_rows <- function() {
+  log_step("Load")
+  log_info("upserting into analytics.sales")
+  log_success("24,318 rows written")
+}
+
+nightly_etl <- function() {
+  log_step("Nightly ETL")
+  extract()
+  transform()
+  load_rows()
+}
+
+with_logging(nightly_etl())
+logtree_summary()
+```
+
+The `Transform` step closes with a warning glyph even though it returned
+normally and reported success afterwards -- one `log_warn()` was enough to
+elevate it, and elevation never moves back down. The digest is the part you
+read when the run is forty steps long instead of three.
+
+## A migration that fails
+
+An error that nobody catches. `with_logging()` sees the condition before the
+stack unwinds, so every step still open is marked failed and the message is
+logged at the depth it happened -- then the error is rethrown unchanged.
+
+*Features shown:*
+[uncaught errors](https://IvanSortino.github.io/logtree/articles/logtree.html#uncaught-errors),
+[the run digest](https://IvanSortino.github.io/logtree/articles/logtree.html#the-run-digest)
+
+```{r, error = TRUE}
+logtree_reset()
+
+backup <- function() {
+  log_step("Backup")
+  log_success("snapshot analytics-2026-02-11 written")
+}
+
+apply_migration <- function() {
+  log_step("Apply migration 0042")
+  log_info("adding column users.tier")
+  log_warn("table lock held 800ms")
+  stop("constraint violation on users.email")
+}
+
+release <- function() {
+  log_step("Release v2.1")
+  backup()
+  apply_migration()
+  log_success("released")        # never reached
+}
+
+with_logging(release())
+```
+
+```{r}
+logtree_summary()
+```
+
+`Backup` keeps its tick: it had already closed successfully when the migration
+blew up, and the error handler only marks steps that are still open. That is
+the difference between "the run failed" and "this step failed", and it is what
+makes the tree readable after the fact.
+
+Wrapping the call in `tryCatch()` works exactly as it would without logtree --
+`with_logging()` rethrows rather than swallowing:
+
+```{r}
+logtree_reset()
+result <- tryCatch(with_logging(release(), summary = FALSE),
+                   error = function(e) conditionMessage(e))
+result
+```
+
+## Importing many files
+
+Twenty steps that are all the same kind of thing. Grouping collapses the
+adjacent ones under a header instead of stacking twenty siblings.
+
+*Features shown:*
+[grouping](https://IvanSortino.github.io/logtree/articles/logtree.html#grouping)
+
+```{r}
+logtree_reset()
+
+load_file <- function(dataset, file, rows, ok = TRUE) {
+  log_step(file, group = dataset)
+  log_info(sprintf("%s rows read", format(rows, big.mark = ",")))
+  if (ok) log_success("merged") else log_error("schema mismatch, skipped")
+}
+
+import_all <- function() {
+  log_step("Import datasets")
+  load_file("sales",   "2023.csv", 18422)
+  load_file("sales",   "2024.csv", 24318)
+  load_file("returns", "2024.csv",  1204, ok = FALSE)
+  load_file("returns", "2025.csv",   318)
+  load_file("sales",   "2025.csv",  9871)   # not adjacent: a fresh group
+}
+
+with_logging(import_all())
+logtree_summary()
+```
+
+Two things to notice. The `returns` group closes with an error glyph, because a
+group's status is aggregated from its members -- collapsing a group never hides
+a failure inside it. And the last `sales` file opens a *second* `sales` header
+rather than rejoining the first: grouping is adjacency-based, so the tree stays
+in the order things actually happened.
+
+## A recovered failure
+
+`log_error()` records a failure without throwing. When the recovery works, close
+the step explicitly to say so -- the error stays on the record, but the step
+reports the outcome it actually reached.
+
+*Features shown:*
+[status elevation](https://IvanSortino.github.io/logtree/articles/logtree.html#status-elevation),
+[manual step control](https://IvanSortino.github.io/logtree/articles/logtree.html#manual-step-control)
+
+```{r}
+logtree_reset()
+
+connect <- function() {
+  log_step("Connect to database")
+  log_error("primary unreachable (timeout after 5s)")
+  log_info("failing over to replica db-2")
+  log_success("connected, 12ms latency")
+  log_close(status = "success")
+}
+
+query <- function() {
+  log_step("Run report query")
+  log_success("4,120 rows")
+}
+
+report <- function() {
+  log_step("Daily report")
+  connect()
+  query()
+}
+
+with_logging(report())
+logtree_summary()
+```
+
+The step closes green, but the digest still lists the error -- which is the
+right split. The run succeeded; something went wrong on the way, and whoever
+reads the log afterwards should know about the failover.
+
+## A CI build log
+
+A build runner strips ANSI, wraps lines, and greps the output. The `"ci"` preset
+is built for exactly that: bracketed word glyphs, pure-ASCII connectors, no
+colour anywhere.
+
+*Features shown:*
+[themes](https://IvanSortino.github.io/logtree/articles/logtree.html#themes-and-presets),
+[output sinks](https://IvanSortino.github.io/logtree/articles/logtree.html#output-sinks)
+
+```{r}
+logtree_reset()
+logtree_theme("ci")
+
+build <- function() {
+  log_step("Build")
+  log_info("compiling 84 source files")
+  log_warn("3 deprecation warnings")
+  log_success("artifact 12.4 MB")
+}
+
+test <- function() {
+  log_step("Test")
+  log_info("running 312 tests")
+  log_error("2 failures in test-parser.R")
+}
+
+ci <- function() {
+  log_step("Pipeline")
+  build()
+  test()
+}
+
+with_logging(ci(), summary = FALSE)
+logtree_summary()
+
+logtree_theme("unicode")
+```
+
+A failure greps as `[fail]`, and the words are different lengths on purpose --
+each declares its true width, so the message column still lines up.
+
+To keep a copy on disk as well as on stdout, register a text file sink. Text
+sinks always render through the ascii preset, so the file is stable whatever
+the console is themed as:
+
+```{r}
+log_path <- tempfile(fileext = ".log")
+h <- logtree_sink_file(log_path, format = "text")
+
+logtree_reset()
+with_logging(ci(), summary = FALSE)
+
+writeLines(readLines(log_path))
+logtree_sink_remove(h)
+```
+
+## Structured NDJSON
+
+For anything that ends up in an aggregator rather than a terminal. One JSON
+record per line, with the fields a query needs.
+
+*Features shown:*
+[output sinks](https://IvanSortino.github.io/logtree/articles/logtree.html#output-sinks),
+[verbosity](https://IvanSortino.github.io/logtree/articles/logtree.html#verbosity)
+
+```{r}
+json_path <- tempfile(fileext = ".ndjson")
+h <- logtree_sink_file(json_path, format = "json", threshold = "debug")
+
+logtree_reset()
+
+job <- function() {
+  log_step("Sync accounts")
+  log_debug("page size 500")
+  log_info("1,204 accounts fetched")
+  log_warn("12 accounts missing an email")
+}
+
+with_logging(job(), summary = FALSE)
+
+writeLines(readLines(json_path))
+logtree_sink_remove(h)
+```
+
+The console above shows no debug line -- the global threshold is still
+`"info"` -- but the file has it, because this sink pinned `threshold =
+"debug"` for itself. That is the point of per-sink thresholds: a verbose log
+file does not force a verbose terminal.
+
+Every record carries a `run_id`, so one run's lines can be picked out of a file
+that many runs have appended to, and `ts` is ISO-8601 to the millisecond rather
+than a bare epoch number:
+
+```{r, eval = rlang::is_installed("jsonlite")}
+records <- lapply(readLines(json_path), jsonlite::fromJSON)
+str(records[[3]])
+```
+
+## Asserting in tests
+
+If your package logs with logtree, test the *events*, not the rendered output.
+Pattern-matching glyphs and connectors tests logtree's renderer; the memory sink
+tests your code.
+
+*Features shown:*
+[testing your logging](https://IvanSortino.github.io/logtree/articles/logtree.html#testing-your-logging)
+
+```{r}
+logtree_reset()
+h <- logtree_sink_memory()
+
+import_all()
+
+events <- logtree_sink_memory_events(h)
+events[, c("level", "depth", "label", "status")]
+```
+
+`level` is the kind of event -- `"open"`, `"leaf"`, `"close"`, `"group"`,
+`"group_close"` -- and `status` is its outcome.
+
+From there the assertions are ordinary data frame work. Inside `testthat` that
+looks like:
+
+```r
+test_that("a schema mismatch is logged as an error under its own file", {
+  logtree_reset()
+  h <- logtree_sink_memory()
+  withr::defer(logtree_sink_remove(h))
+
+  import_all()
+  events <- logtree_sink_memory_events(h)
+
+  errors <- events[events$level == "leaf" & events$status == "error", ]
+  expect_equal(nrow(errors), 1L)
+  expect_match(errors$label, "schema mismatch")
+})
+```
+
+```{r}
+# what that assertion is looking at
+subset(events, level == "leaf" & status == "error",
+       select = c("depth", "label"))
+
+logtree_sink_remove(h)
+```
+
+The buffer is capped (`max = 1000` by default), so a runaway loop cannot eat
+the session's memory.
+
+## Bridging logger
+
+An existing codebase that already calls
+[logger](https://daroczig.github.io/logger/), rendered as a logtree tree without
+touching any of the call sites.
+
+*Features shown:*
+[logger integration](https://IvanSortino.github.io/logtree/articles/logtree.html#logger-integration)
+
+```{r, eval = rlang::is_installed("logger", version = "0.3.0")}
+logtree_reset()
+logtree_threshold("debug")
+
+ns <- "my_app"
+logtree_logger(namespace = ns)
+
+fetch_accounts <- function() {
+  log_step("Fetch accounts")
+  logger::log_debug("page size 500", namespace = ns)
+  logger::log_info("1,204 accounts fetched", namespace = ns)
+  logger::log_warn("12 accounts missing an email", namespace = ns)
+}
+
+sync <- function() {
+  log_step("Sync")
+  fetch_accounts()
+  logger::log_success("sync complete", namespace = ns)
+}
+
+with_logging(sync())
+logtree_summary()
+
+logtree_threshold("info")
+```
+
+```{r, echo = FALSE, eval = !rlang::is_installed("logger", version = "0.3.0")}
+cat("The `logger` package (>= 0.3.0) is not installed, so this example was not run.\n")
+```
+
+The `logger::log_warn()` call elevates its enclosing logtree step exactly as
+`log_warn()` would, and reaches the digest the same way -- once bridged, a
+logger call is an ordinary leaf.
