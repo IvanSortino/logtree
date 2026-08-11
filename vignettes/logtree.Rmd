@@ -557,20 +557,35 @@ logtree_theme("unicode")
 marks every line that can carry one. An ordinary close line never carries a
 call site whatever you name, since its site is its own open line's, two rows up.
 
-`format` is a template over `{fn}`, `{file}` and `{line}`, defaulting to
-`"{file}:{line} {fn}()"`. The example pins `"{fn}()"` because `{file}` and
-`{line}` come from R's source references, which exist only when code was parsed
-with `keep.source = TRUE` -- true interactively and under
-`devtools::load_all()`, but not under plain `Rscript`, and not in this
-vignette's knitted chunks. Rather than print `NA`, the template drops any
-whitespace-separated run whose placeholders are all unavailable, so the default
-degrades to `flaky()` on its own. In a real script it reads:
+`format` is a template over three placeholders -- `{fn}` for the enclosing
+function's name, `{file}` and `{line}` for where the log call sits -- and
+defaults to `"{file}:{line} {fn}()"`.
+
+The example above pins `"{fn}()"` because the vignette cannot show the other
+two. `{file}` and `{line}` are read from R's source references, which only
+exist when the code was parsed with `keep.source = TRUE`: the default
+interactively and under `devtools::load_all()`, but not under plain `Rscript`,
+and not in a knitted chunk. Rather than print `NA`, the template is split on
+whitespace and any run whose placeholders are *all* unavailable is dropped
+whole -- so the default degrades to a bare `flaky()` here instead of
+`NA:NA flaky()`.
+
+Run from a sourced script, where the source references are there, the same
+default prints in full (`show = TRUE` here, to annotate every line):
 
 ```
-> Load data  R/pipeline.R:12 load_data()
-+- > Parse rows  R/pipeline.R:18 parse_rows()
-|  +- ! coerced 3 rows  R/pipeline.R:20 parse_rows()
+▶ Load data  R/pipeline.R:2 load_data()
+├─ ▶ Parse rows  R/pipeline.R:7 parse_rows()
+│  ├─ ℹ 1,200 rows  R/pipeline.R:8 parse_rows()
+│  ├─ ⚠ coerced 3 rows  R/pipeline.R:9 parse_rows()
+│  └─ ⚠ Done  0.00s
+└─ ✔ Done  0.01s
 ```
+
+Each `file:line` is one hyperlink rather than two pieces of text: the location
+is styled and linked as a unit, so clicking it opens that file at that line in
+a terminal that supports OSC 8 links, and is inert plain text in one that does
+not.
 
 **Capturing and printing are separate stages, and only printing can be decided
 afterwards** -- once a run is over its frame stack is gone. That is what

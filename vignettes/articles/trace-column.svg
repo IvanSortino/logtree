@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 914 159" width="914" height="159" role="img" aria-label="logtree console output with a call-site column showing file, line and function name">
+<title>logtree call-site column</title>
+<rect x="0.5" y="0.5" width="913" height="158" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<g stroke-linecap="round">
+<line x1="47.47" y1="73.00" x2="47.47" y2="120.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="35.00" x2="23.93" y2="139.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="44.50" x2="35.70" y2="44.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="63.50" x2="35.70" y2="63.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="82.50" x2="59.25" y2="82.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="101.50" x2="59.25" y2="101.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="47.47" y1="120.50" x2="59.25" y2="120.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="23.93" y1="139.50" x2="35.70" y2="139.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+</g>
+<g font-family="ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="13">
+<text x="20.00" y="29" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> Load data  </tspan><tspan fill="#c5cace">R/pipeline.R:2</tspan></text>
+<text x="43.55" y="48" xml:space="preserve"><tspan fill="#0969da">ℹ</tspan><tspan fill="#24292f"> reading warehouse.parquet  </tspan><tspan fill="#c5cace">R/pipeline.R:3</tspan></text>
+<text x="43.55" y="67" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> Parse rows  </tspan><tspan fill="#c5cace">R/pipeline.R:8</tspan><tspan fill="#8b949e"> </tspan><tspan fill="#8dbec1">parse_rows</tspan><tspan fill="#8b949e">()</tspan></text>
+<text x="67.10" y="86" xml:space="preserve"><tspan fill="#9a6700">⚠</tspan><tspan fill="#24292f"> coerced 3 rows to NA  </tspan><tspan fill="#c5cace">R/pipeline.R:9</tspan><tspan fill="#8b949e"> </tspan><tspan fill="#8dbec1">parse_rows</tspan><tspan fill="#8b949e">()</tspan></text>
+<text x="67.10" y="105" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> 1,200 rows  </tspan><tspan fill="#c5cace">R/pipeline.R:10</tspan><tspan fill="#8b949e"> </tspan><tspan fill="#8dbec1">parse_rows</tspan><tspan fill="#8b949e">()</tspan></text>
+<text x="67.10" y="124" xml:space="preserve"><tspan fill="#9a6700">⚠</tspan><tspan fill="#24292f"> Done  0.80s</tspan></text>
+<text x="43.55" y="143" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  6.50s</tspan></text>
+</g>
+<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="11">
+<line x1="239.95" y1="25.50" x2="518.00" y2="25.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="522.00" cy="25.50" r="2" fill="#8b949e"/>
+<text x="528.00" y="29.17" fill="#8b949e">the location: file and line styled and linked as one unit</text>
+<line x1="389.10" y1="44.50" x2="518.00" y2="44.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="522.00" cy="44.50" r="2" fill="#1b7c83"/>
+<text x="528.00" y="48.17" fill="#1b7c83">the function name is its own part, coloured apart from it</text>
+<line x1="475.45" y1="82.50" x2="518.00" y2="82.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="522.00" cy="82.50" r="2" fill="#9a6700"/>
+<text x="528.00" y="86.17" fill="#9a6700">show = "problems" marks these lines and leaves the rest bare</text>
+<line x1="177.15" y1="120.50" x2="518.00" y2="120.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="522.00" cy="120.50" r="2" fill="#8b949e"/>
+<text x="528.00" y="124.17" fill="#8b949e">an ordinary close carries none: its site is its open line's</text>
+</g>
+</svg>
+

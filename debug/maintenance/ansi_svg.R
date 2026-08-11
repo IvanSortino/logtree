@@ -129,6 +129,24 @@ nearest_palette <- function(r, g, b) {
   targets[[which.min(d)]]
 }
 
+# A faint *colored* run -- cli emits both codes for a style like
+# c("dim", "cyan"), which the trace column's per-part defaults are built from
+# -- is neither the connector gray nor the full accent: a terminal renders it
+# as that accent, dimmed. Mixing it toward the background reproduces that.
+# Without this, "faint wins" would flatten every part of the trace column to
+# one gray and the figure would contradict the text it illustrates.
+fade <- function(hex, weight = 0.5) {
+  v <- c(strtoi(substr(hex, 2, 3), 16L),
+         strtoi(substr(hex, 4, 5), 16L),
+         strtoi(substr(hex, 6, 7), 16L))
+  bg <- c(strtoi(substr(bg_color, 2, 3), 16L),
+          strtoi(substr(bg_color, 4, 5), 16L),
+          strtoi(substr(bg_color, 6, 7), 16L))
+  sprintf("#%02x%02x%02x", round(v[1] + (bg[1] - v[1]) * weight),
+          round(v[2] + (bg[2] - v[2]) * weight),
+          round(v[3] + (bg[3] - v[3]) * weight))
+}
+
 parse_ansi_line <- function(line) {
   m <- gregexpr(sgr_re, line)[[1]]
   if (m[1] == -1L) return(list(list(text = line, color = default_color)))
@@ -140,7 +158,10 @@ parse_ansi_line <- function(line) {
   flush <- function(end) {
     if (end >= pos) {
       txt <- substr(line, pos, end)
-      col <- if (faint) dim_color else if (!is.na(fg)) fg else default_color
+      col <- if (faint && !is.na(fg)) fade(fg)
+             else if (faint) dim_color
+             else if (!is.na(fg)) fg
+             else default_color
       segs[[length(segs) + 1L]] <<- list(text = txt, color = col)
     }
   }

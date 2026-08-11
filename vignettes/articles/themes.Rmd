@@ -174,6 +174,39 @@ demo()
 logtree_theme("unicode")
 ```
 
+Nothing in `demo()` runs long enough to trip that `slow = 1`, so every time
+above stayed silver. With a step that does, the time turns red -- and only the
+time, since `slow_color` replaces `color` on that one field and leaves the
+glyph and the close-line word alone:
+
+```{r}
+slow_demo <- function() {
+  build_index <- function() {
+    log_step("Build index")
+    Sys.sleep(0.4)
+    log_success("18,204 documents")
+  }
+  pipeline <- function() {
+    log_step("Pipeline")
+    log_info("reading config.yml")
+    build_index()
+  }
+  logtree_reset()
+  pipeline()
+}
+
+logtree_theme("unicode", overrides = list(
+  elapsed = list(min = 0.001, color = "silver", slow = 0.25, slow_color = "red")
+))
+slow_demo()
+logtree_theme("unicode")
+```
+
+Both close lines are flagged, because a step's elapsed time includes everything
+it called: a slow child makes its parents slow too. Reading down a tree for the
+deepest red line is how you find where the time actually went. `slow = NULL` --
+the default in every preset -- turns the comparison off entirely.
+
 `show = FALSE` drops the column outright. The `with_logging()` run summary line
 takes the slot's colouring but never its hiding rules, since `Run complete in
 <time>` would read as an unfinished sentence without its time.
@@ -221,24 +254,146 @@ Three properties worth knowing:
 A file sink pins its own column with `logtree_sink_file(timestamp = )`, and a
 `"json"` sink always carries an ISO-8601 `ts` regardless.
 
-## Styling the call-site column
+## The call-site column
+
+`trace` annotates a line with where the log call came from -- `file.R:line
+fn()`, in a column of its own after the message. It ships `show = FALSE` in
+every preset, since capturing a call site costs a frame walk per logged line.
+
+<p align="center">
+<img src="trace-column.svg" alt="A logtree tree with a call-site column showing each line's file, line number and enclosing function" width="900" />
+</p>
+
+That figure is a rendered capture rather than a live chunk, and the reason
+shapes every example below it: `{file}` and `{line}` are read from source
+references, which knitted chunks do not carry. Run from a script or an
+interactive session these examples would each print a location too; here they
+can only print `fn()`.
+
+### Choosing which lines are marked
+
+`show` names the statuses worth a location. Marking everything is rarely what
+you want -- a location on a line you were never going to investigate is a
+column of noise.
+
+| `show =` | Marks |
+| -------- | ----- |
+| `FALSE` (the default) | nothing -- and nothing is captured either, unless `capture` asks for it |
+| `TRUE` | every line that can carry one |
+| `"problems"` | shorthand for `c("warning", "error", "interrupted")` |
+| a status vector | exactly those, from `running`, `info`, `debug`, `success`, `warning`, `error`, `interrupted` |
+
+`"running"` is the odd one: it names a step's *open* line rather than a leaf,
+which is how you annotate where each step was started from.
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  trace = list(show = c("running", "warning"), format = "{fn}()")
+))
+demo()
+logtree_theme("unicode")
+```
+
+Two rules are not settings. An ordinary close line never carries a call site
+whatever you name -- its site is its own open line's, a few rows up, as the
+`Done` lines above show. A close line that *unwound* is the exception, under
+`"interrupted"`: there is no accompanying leaf to hang the location on, and it
+is the one line where you most want it.
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  trace = list(show = "problems", format = "{fn}()")
+))
+
+risky <- function() {
+  log_step("Risky")
+  stop("boom")
+}
+
+logtree_reset()
+try(risky(), silent = TRUE)
+logtree_theme("unicode")
+```
+
+### The template
+
+`format` is a template over `{fn}`, `{file}` and `{line}`, defaulting to
+`"{file}:{line} {fn}()"`. Literal text between the placeholders is kept, so the
+column can be made to read as a sentence rather than a coordinate:
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  trace = list(show = "problems", format = "logged in {fn}()")
+))
+demo()
+logtree_theme("unicode")
+```
+
+The template is split on whitespace, and a run whose placeholders are *all*
+unavailable is dropped whole rather than rendered as `NA`. That is what makes
+the default degrade cleanly to `pipeline()` in these chunks -- and it is worth
+knowing before writing a format like `"{file}:{line}"`, which has nothing left
+to fall back to and renders as an empty column wherever source references are
+missing.
+
+### Styling the parts
 
 `trace$color` takes either a character vector -- styling the whole column -- or
 a named list styling its parts separately: `location` for a `{file}`/`{line}`
 run, `fn` for the function name, and `base` for everything else, which in the
 default format is the `()`.
 
-```r
+```{r}
 logtree_theme("unicode", overrides = list(
   trace = list(show = "problems", color = list(fn = "magenta"))
 ))
+demo()
+logtree_theme("unicode")
 ```
 
-That split is why the coloured presets can keep the whole column dim while
-still letting the location and the function name read apart. A run mentioning
-`{file}`/`{line}` is treated as one unit -- separator included -- and carries a
-single terminal hyperlink, so a click anywhere on it opens the file at that
-line.
+The coloured presets ship exactly that shape -- `base = "dim"`, `location =
+c("dim", "silver")`, `fn = c("dim", "cyan")` -- which is how the whole column
+stays faint while its two halves still read apart, as in the figure above. A
+plain vector is shorthand for setting `base` alone.
+
+A run mentioning `{file}`/`{line}` is treated as one unit, separator included,
+and carries a single terminal hyperlink, so a click anywhere on it opens the
+file at that line. The escape has no printable width, and terminals without OSC
+8 support drop it, so nothing about the layout changes either way.
+
+### Recording without printing
+
+Capture and rendering are separate stages, and only rendering can be decided
+after the run: by the time a digest is printed the frame stack that answered
+"where?" is gone. `capture = TRUE` records a call site on every line whatever
+`show` prints, which is what a quiet console with an annotated digest -- or a
+JSON sink carrying locations the terminal never showed -- is built from.
+
+```{r}
+logtree_theme("unicode", overrides = list(
+  trace = list(show = FALSE, capture = TRUE, format = "{fn}()")
+))
+demo()
+logtree_summary(trace = TRUE)
+logtree_theme("unicode")
+```
+
+`logtree_summary(trace = )` swaps the slot's `show` for that one call, so a
+digest can name locations the tree kept quiet. It can only ever narrow what was
+captured, though: with `capture = FALSE` and `show = FALSE` for the run, no
+`trace =` here can invent what was never recorded.
+
+A sink asks in its own right, and registering one with `trace =` is itself
+enough to switch capture on -- a sink cannot render a column that was never
+populated:
+
+```r
+logtree_sink_file(path, format = "text", trace = TRUE)   # its own column
+logtree_sink_file(path, format = "json", trace = TRUE)   # fn/file/line fields
+```
+
+Neither disturbs the console: a run can print no call sites at all while the
+file beside it records every one.
 
 ## Density and spacing
 

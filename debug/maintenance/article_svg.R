@@ -138,3 +138,64 @@ ansi_svg_write(
   title = "R conditions routed into the logtree tree",
   label = "logtree console output with warning() and message() routed into the tree"
 )
+
+# --- 3. the call-site column -------------------------------------------------
+#
+# The one figure here that a chunk could not have produced even in principle.
+# `{file}` and `{line}` come from source references, which knitr's chunks do
+# not carry -- an article chunk can only ever show `fn()` -- and the printed
+# path is relative to the working directory. So the demo is written to a real
+# file inside a throwaway project and run from there, which is what makes the
+# figure read "R/pipeline.R:9": the same shape a reader sees from their own
+# package, rather than a tempdir path.
+trace_src <- c(
+  'load_data <- function() {',
+  '  log_step("Load data")',
+  '  log_info("reading warehouse.parquet")',
+  '  parse_rows()',
+  '}',
+  '',
+  'parse_rows <- function() {',
+  '  log_step("Parse rows")',
+  '  log_warn("coerced 3 rows to NA")',
+  '  log_success("1,200 rows")',
+  '}'
+)
+
+trace_lines <- local({
+  dir <- withr::local_tempdir()
+  dir.create(file.path(dir, "R"))
+  writeLines(trace_src, file.path(dir, "R", "pipeline.R"))
+  withr::local_dir(dir)
+  withr::local_options(keep.source = TRUE)
+
+  env <- new.env(parent = globalenv())
+  sys.source(file.path("R", "pipeline.R"), envir = env, keep.source = TRUE)
+
+  logtree_reset()
+  freeze_clocks()
+  logtree_theme("unicode", overrides = list(trace = list(show = TRUE)))
+  on.exit(logtree_theme("unicode"), add = TRUE)
+
+  # A location is also a terminal hyperlink. OSC 8 has no printable width but
+  # it is not an SGR sequence either, so it is stripped rather than handed to
+  # the parser -- the figure shows the styling, and the text says what the
+  # link does.
+  gsub("\033]8;;[^\a]*\a", "", capture.output(env$load_data()))
+})
+
+ansi_svg_write(
+  trace_lines, "vignettes/articles/trace-column.svg",
+  annotations = list(
+    list(match = "Load data", color = palette[["30"]],
+         text = "the location: file and line styled and linked as one unit"),
+    list(match = "warehouse", color = palette[["36"]],
+         text = "the function name is its own part, coloured apart from it"),
+    list(match = "coerced",   color = palette[["33"]],
+         text = "show = \"problems\" marks these lines and leaves the rest bare"),
+    list(match = "Done",      color = dim_color,
+         text = "an ordinary close carries none: its site is its open line's")
+  ),
+  title = "logtree call-site column",
+  label = "logtree console output with a call-site column showing file, line and function name"
+)
