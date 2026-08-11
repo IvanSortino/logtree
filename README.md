@@ -20,6 +20,7 @@ while keeping nesting depth correct even when a step errors partway
 through.
 
 <p align="center">
+
 <img src="man/figures/README-tree-color.svg" alt="Annotated logtree console output" width="760" />
 </p>
 
@@ -62,14 +63,14 @@ with_logging(pipeline())
 #> ├─ ▶ Load config
 #> │  ├─ ℹ reading config.yml
 #> │  ├─ ✔ validated 12 parameters
-#> │  └─ ✔ Done  0.16s
+#> │  └─ ✔ Done  0.00s
 #> ├─ ▶ Fetch rows
 #> │  ├─ ℹ requesting from API
 #> │  ├─ ⚠ rate limit at 80%
 #> │  ├─ ✔ fetched 1,204 rows
-#> │  └─ ⚠ Done  0.01s
-#> └─ ✔ Done  0.18s
-#> ✔ Run complete in 0.18s
+#> │  └─ ⚠ Done  0.00s
+#> └─ ✔ Done  0.01s
+#> ✔ Run complete in 0.01s
 logtree_summary()
 #> 
 #> ── Summary: 1 warning ──────────────────────────────────────────────────────────

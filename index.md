@@ -22,6 +22,7 @@ so the indentation can never drift out of sync with what is actually
 running.
 
 <p align="center">
+
 <img src="man/figures/README-tree-color.svg" alt="Annotated logtree console output: a nested ETL run with status glyphs, elapsed times and a run summary" width="760" />
 </p>
 
@@ -70,12 +71,11 @@ with_logging(pipeline())
 #> │  ├─ ⚠ rate limit at 80%
 #> │  ├─ ✔ fetched 1,204 rows
 #> │  └─ ⚠ Done  0.00s
-#> └─ ✔ Done  0.01s
-#> ✔ Run complete in 0.01s
+#> └─ ✔ Done  0.00s
+#> ✔ Run complete in 0.00s
 logtree_summary()
 #> 
-#> ── Summary: 2 warnings ─────────────────────────────────────────────────────────
-#> ⚠ Nightly pipeline › Fetch rows › rate limit at 80%
+#> ── Summary: 1 warning ──────────────────────────────────────────────────────────
 #> ⚠ Nightly pipeline › Fetch rows › rate limit at 80%
 ```
 
@@ -91,26 +91,26 @@ through.
 
 Every feature has a section in the guide and a reference page.
 
-| Feature             | What it does                                                                             | Guide                                                              | Reference                                                     |
-|---------------------|------------------------------------------------------------------------------------------|--------------------------------------------------------------------|---------------------------------------------------------------|
-| Self-closing steps  | A step closes when the function that opened it returns – normally, early, or on an error | [Steps](articles/logtree.html#steps-that-close-themselves)         | [`log_step()`](reference/log_step.html)                       |
-| Leaf levels         | Five message levels under the current step                                               | [Leaf lines](articles/logtree.html#leaf-lines-and-levels)          | [`log_info()`](reference/log_info.html)                       |
-| Status elevation    | A warning or error bumps its enclosing step’s glyph without throwing                     | [Status elevation](articles/logtree.html#status-elevation)         | [`log_warn()`](reference/log_warn.html)                       |
-| Error handling      | An uncaught error marks every open step and is logged, then rethrown                     | [Uncaught errors](articles/logtree.html#uncaught-errors)           | [`with_logging()`](reference/with_logging.html)               |
-| Routed R conditions | `warning()` and `message()` become leaves in the tree instead of stderr noise            | [Routing R conditions](articles/logtree.html#routing-r-conditions) | [`with_logging()`](reference/with_logging.html)               |
-| Manual control      | Open and close steps by hand, for top-level scripts and block structure                  | [Manual step control](articles/logtree.html#manual-step-control)   | [`log_open()`](reference/log_open.html)                       |
-| Grouping            | Adjacent steps sharing a value collapse under one header                                 | [Grouping](articles/logtree.html#grouping)                         | [`log_step()`](reference/log_step.html)                       |
-| Verbosity           | A minimum level to render, globally or per sink                                          | [Verbosity](articles/logtree.html#verbosity)                       | [`logtree_threshold()`](reference/logtree_threshold.html)     |
-| Run digest          | Every error, warning and pinned line since the last reset, with breadcrumbs              | [The run digest](articles/logtree.html#the-run-digest)             | [`logtree_summary()`](reference/logtree_summary.html)         |
-| Call sites          | Annotate lines with `file.R:line fn()`, as a clickable link                              | [Call sites](articles/logtree.html#call-sites)                     | [`logtree_theme()`](reference/logtree_theme.html)             |
-| Timestamps          | A fixed-width wall-clock column in front of every line                                   | [Timestamps](articles/logtree.html#timestamps)                     | [`logtree_theme()`](reference/logtree_theme.html)             |
-| Themes              | Five presets – unicode, ascii, emoji, minimal, ci – and every slot overridable           | [Themes](articles/logtree.html#themes-and-presets)                 | [`logtree_theme()`](reference/logtree_theme.html)             |
-| Layout              | Wrapping, indentation density, and the two glyph gaps                                    | [Layout and density](articles/logtree.html#layout-and-density)     | [`logtree_theme()`](reference/logtree_theme.html)             |
-| File sinks          | Mirror the run to a plain-text or NDJSON file                                            | [Output sinks](articles/logtree.html#output-sinks)                 | [`logtree_sink_file()`](reference/logtree_sink_file.html)     |
-| Custom sinks        | Register any function of one event; list and remove them                                 | [Output sinks](articles/logtree.html#output-sinks)                 | [`logtree_sink()`](reference/logtree_sink.html)               |
-| Memory sink         | Collect events in a buffer and read them back as a data frame                            | [Testing your logging](articles/logtree.html#testing-your-logging) | [`logtree_sink_memory()`](reference/logtree_sink_memory.html) |
-| Mute                | Silence every sink at once without unregistering any                                     | [Silence](articles/logtree.html#silence)                           | [`logtree_mute()`](reference/logtree_mute.html)               |
-| `logger` bridge     | Route an existing `logger` codebase through logtree in one call                          | [logger integration](articles/logtree.html#logger-integration)     | [`logtree_logger()`](reference/logtree_logger.html)           |
+| Feature | What it does | Guide | Reference |
+|----|----|----|----|
+| Self-closing steps | A step closes when the function that opened it returns – normally, early, or on an error | [Steps](articles/logtree.html#steps-that-close-themselves) | [`log_step()`](reference/log_step.html) |
+| Leaf levels | Five message levels under the current step | [Leaf lines](articles/logtree.html#leaf-lines-and-levels) | [`log_info()`](reference/log_info.html) |
+| Status elevation | A warning or error bumps its enclosing step’s glyph without throwing | [Status elevation](articles/logtree.html#status-elevation) | [`log_warn()`](reference/log_warn.html) |
+| Error handling | An uncaught error marks every open step and is logged, then rethrown | [Uncaught errors](articles/logtree.html#uncaught-errors) | [`with_logging()`](reference/with_logging.html) |
+| Routed R conditions | `warning()` and `message()` become leaves in the tree instead of stderr noise | [Routing R conditions](articles/logtree.html#routing-r-conditions) | [`with_logging()`](reference/with_logging.html) |
+| Manual control | Open and close steps by hand, for top-level scripts and block structure | [Manual step control](articles/logtree.html#manual-step-control) | [`log_open()`](reference/log_open.html) |
+| Grouping | Adjacent steps sharing a value collapse under one header | [Grouping](articles/logtree.html#grouping) | [`log_step()`](reference/log_step.html) |
+| Verbosity | A minimum level to render, globally or per sink | [Verbosity](articles/logtree.html#verbosity) | [`logtree_threshold()`](reference/logtree_threshold.html) |
+| Run digest | Every error, warning and pinned line since the last reset, with breadcrumbs | [The run digest](articles/logtree.html#the-run-digest) | [`logtree_summary()`](reference/logtree_summary.html) |
+| Call sites | Annotate lines with `file.R:line fn()`, as a clickable link | [Call sites](articles/logtree.html#call-sites) | [`logtree_theme()`](reference/logtree_theme.html) |
+| Timestamps | A fixed-width wall-clock column in front of every line | [Timestamps](articles/logtree.html#timestamps) | [`logtree_theme()`](reference/logtree_theme.html) |
+| Themes | Five presets – unicode, ascii, emoji, minimal, ci – and every slot overridable | [Themes](articles/logtree.html#themes-and-presets) | [`logtree_theme()`](reference/logtree_theme.html) |
+| Layout | Wrapping, indentation density, and the two glyph gaps | [Layout and density](articles/logtree.html#layout-and-density) | [`logtree_theme()`](reference/logtree_theme.html) |
+| File sinks | Mirror the run to a plain-text or NDJSON file | [Output sinks](articles/logtree.html#output-sinks) | [`logtree_sink_file()`](reference/logtree_sink_file.html) |
+| Custom sinks | Register any function of one event; list and remove them | [Output sinks](articles/logtree.html#output-sinks) | [`logtree_sink()`](reference/logtree_sink.html) |
+| Memory sink | Collect events in a buffer and read them back as a data frame | [Testing your logging](articles/logtree.html#testing-your-logging) | [`logtree_sink_memory()`](reference/logtree_sink_memory.html) |
+| Mute | Silence every sink at once without unregistering any | [Silence](articles/logtree.html#silence) | [`logtree_mute()`](reference/logtree_mute.html) |
+| `logger` bridge | Route an existing `logger` codebase through logtree in one call | [logger integration](articles/logtree.html#logger-integration) | [`logtree_logger()`](reference/logtree_logger.html) |
 
 ## Where to go next
 
