@@ -22,25 +22,94 @@ elevate_current_step <- function(new_status) {
 verbosity_rank      <- c(debug = 0L, info = 1L, warn = 2L, error = 3L)
 leaf_verbosity_rank <- c(debug = 0L, info = 1L, success = 1L, warning = 2L, error = 3L)
 
-should_emit_leaf <- function(status) {
-  leaf_verbosity_rank[[status]] >= verbosity_rank[[the$verbosity]]
+# Normalise a `threshold` argument to a level name, or NULL for "follow the
+# global one". Unlike the theme's defensively-checked fields this is a function
+# argument, so a typo is an error naming the valid levels rather than a silent
+# fallback.
+resolve_threshold <- function(threshold) {
+  if (is.null(threshold)) return(NULL)
+  if (!is.character(threshold) || length(threshold) != 1L || is.na(threshold)) {
+    stop('`threshold` must be NULL or one of "debug", "info", "warn", "error".',
+         call. = FALSE)
+  }
+  match.arg(tolower(threshold), c("debug", "info", "warn", "error"))
 }
 
-emit_leaf <- function(status, msg, close = FALSE, summary = NA) {
+# The level a sink gates on: its own threshold when it has one, the global
+# logtree_threshold() otherwise -- read afresh each time, so moving the global
+# level still moves every sink that did not pin its own.
+sink_threshold_rank <- function(threshold) {
+  verbosity_rank[[if (is.null(threshold)) the$verbosity else threshold]]
+}
+
+sink_admits_leaf <- function(status, threshold) {
+  leaf_verbosity_rank[[status]] >= sink_threshold_rank(threshold)
+}
+
+# Would this leaf reach *any* sink? Cheap: the registry is a handful of entries,
+# and the alternative is rendering a line nobody is listening for. A muted run
+# reaches none of them, which is what makes muting cheaper than it looks.
+any_sink_admits <- function(status) {
+  if (isTRUE(the$muted)) return(FALSE)
+  for (sink in the$sinks) {
+    if (sink_admits_leaf(status, sink$threshold)) return(TRUE)
+  }
+  FALSE
+}
+
+# Does anything at all want this leaf -- a sink, or the summary digest?
+#
+# Verbosity is a *rendering* gate: it decides what a sink prints, not what the
+# run remembers. So a warning suppressed by logtree_threshold("error") still
+# reaches the digest, exactly as it still elevates its step's close glyph. The
+# check lives here rather than in emit() for one reason beyond tidiness: a leaf
+# nobody wants must not pay for a call-site frame walk.
+leaf_wanted <- function(status, summary) {
+  summary_keeps(status, summary) || any_sink_admits(status)
+}
+
+# `trace` is supplied by the callers that already hold a call site --
+# log_error_at() below, and layout_logtree() -- and NULL everywhere else.
+#
+# `capture = FALSE` goes with those callers, and is not the same thing as
+# `trace = NULL`. They log from inside a frame of their own, so the frame walk
+# below would name the handler or the layout rather than the user's code. Their
+# call site can legitimately come out NULL -- a condition raised without a call,
+# say -- and if that fell through to the walk we would print exactly the wrong
+# answer instead of no answer. So the two are separate: `trace` is the value,
+# `capture` is permission to go looking.
+emit_leaf <- function(status, msg, close = FALSE, summary = NA, trace = NULL,
+                      capture = TRUE) {
   # A leaf at a group's level means that (member-less) group is done -- close
   # any lingering group before the leaf is placed or gated out.
   settle_groups()
   # Verbosity only gates whether this leaf line is rendered -- it never
   # affects elevate_current_step(), which callers run beforehand, so a
   # step's close glyph still reflects a suppressed warning/error.
-  if (should_emit_leaf(status)) {
+  #
+  # The gate here is "does anything want this leaf at all", not "does the
+  # console want it": each sink applies its own threshold inside emit(), so a
+  # debug-level log file no longer forces debug onto the console.
+  if (leaf_wanted(status, summary)) {
+    # Capture inside the gate, not above it: a leaf nobody is listening for
+    # then costs no frame walk at all.
+    #
+    # up = 2 because all five leaf wrappers below sit exactly one frame between
+    # the user's function and here -- log_warn()/log_error() call
+    # elevate_current_step() first, but that returns before we are entered, so it
+    # does not shift the count. test-trace.R pins this constant; a future wrapper
+    # at a different depth would silently mis-attribute every line.
+    if (isTRUE(capture) && is.null(trace) && trace_enabled()) {
+      this_call <- sys.call(-1L)
+      trace     <- capture_trace(this_call, up = 2L)
+    }
     id <- the$next_id
     the$next_id <- id + 1L
     # `terminal = TRUE` renders this leaf with the corner connector -- it is
     # the section's closing line (see close = below).
     emit(list(kind = "leaf", status = status, label = msg,
               depth = current_depth(), id = id, parent_id = current_parent_id(),
-              terminal = isTRUE(close), summary = summary))
+              terminal = isTRUE(close), summary = summary, trace = trace))
   }
   # The force-close is a structural request, independent of whether the leaf
   # line itself was verbosity-gated: close even if the line was suppressed.
@@ -159,4 +228,28 @@ log_error <- function(msg, close = FALSE, summary = NA) {
   elevate_current_step("error")
   emit_leaf("error", msg, close = close, summary = summary)
   invisible(NULL)
+}
+
+# A leaf logged for a condition caught by a handler.
+#
+# A handler logs from its own frame, so emit_leaf()'s frame walk would trace the
+# leaf to the handler rather than to the code that raised the condition -- the
+# least useful answer available. conditionCall() carries the raising call, so
+# hand that in instead. `call` may be NULL (conditions raised without one), in
+# which case the leaf simply carries no trace.
+#
+# Status elevation is status-driven here as it is in the leaf functions:
+# warnings and errors elevate the enclosing step, an `info` routed from an R
+# message does not.
+#
+# Used by with_logging()'s calling handlers and by global_error_action()
+# (R/run.R).
+log_condition_at <- function(status, msg, call) {
+  if (status %in% c("warning", "error")) elevate_current_step(status)
+  emit_leaf(status, msg, trace = trace_from_call(call), capture = FALSE)
+  invisible(NULL)
+}
+
+log_error_at <- function(msg, call) {
+  log_condition_at("error", msg, call)
 }

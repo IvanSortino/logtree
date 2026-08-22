@@ -89,10 +89,31 @@ Rendering follows a **corner-on-close, zero-buffer** strategy:
 - This is necessary because logtree is a **live streaming logger** that
   can't know in advance if a line is the last sibling
 
+### The trace column
+
+The `trace` slot renders a call site — `fn() file.R:line` — inline after the
+message rather than in a column of its own. That is a deliberate choice: a
+prefix column would have to be fixed-width (or the tree shears), would have to
+be added into every `cols` argument `compose_line()` receives, and would need
+blanking on wrapped continuation rows. Appending to the message instead leaves
+all of the layout arithmetic untouched and makes wrapping account for the trace
+for free. The cost is that a long line can wrap mid-trace, which is acceptable.
+
+Capture is gated: with the slot off — the default in every preset — no frame
+walk and no srcref lookup happens at all. `{file}` and `{line}` depend on
+`keep.source`, so they are routinely absent; a template run whose placeholders
+are all unavailable is dropped whole rather than rendering `NA`.
+
+Two condition-handling paths get their call site handed to them rather than
+walking for it, because they log from inside a frame of their own:
+`with_logging()`'s error handler uses `conditionCall()`, and
+`layout_logtree()` uses `logger`'s `.topcall`. A frame walk in either would
+name the handler or the layout instead of the user's code.
+
 ## Theming
 
-Three built-in presets (`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji`)
-are named lists keyed by status/connector. Each glyph entry declares its
+Five built-in presets (`glyphs_unicode`, `glyphs_ascii`, `glyphs_emoji`,
+`glyphs_minimal`, `glyphs_ci`) are named lists keyed by status/connector. Each glyph entry declares its
 own `width` explicitly — measured sizes (`nchar()`, `ansi_nchar()`) can't
 reliably size emoji cells.
 
@@ -104,18 +125,27 @@ never literal characters, for CRAN portability.
 
 ## Appenders & sinks
 
-`emit()` fans every event out to all registered `the$sinks`. The console
-sink is always on; `logtree_sink_file()` adds a text or JSON sink.
+`emit()` fans every event out to all registered `the$sinks`, a list keyed by
+sink id so a registration can be undone. The console sink is registered by
+default under the reserved id `"console"`; `logtree_sink_file()` adds a text or
+JSON sink, `logtree_sink_memory()` an in-memory buffer, and `logtree_sink()` any
+function of your own. Each carries its own verbosity threshold, defaulting to
+the global `logtree_threshold()`, and each call is wrapped so a sink that throws
+is skipped rather than allowed to break the fanout.
 
 Event kinds:
 
 - `open` — step opened
 - `close` — step closed
 - `group` — group header
+- `group_close` — a group's own corner/close line, rendered through the same
+  `format_close()` as a step's
 - `leaf` — message (info, success, warn, error, debug)
 
 JSON format is hand-rolled (no `jsonlite` dependency) because the event
-shape is fixed and small.
+shape is fixed and small. Its `fn` / `file` / `line` fields carry the call site
+whenever one was captured, independent of whether the console column is on — a
+structured log wants every field it can get.
 
 ## CRAN compliance
 

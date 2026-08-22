@@ -17,8 +17,12 @@ test_that(".onLoad seeds the default theme, verbosity, and console sink", {
 
   .onLoad("lib", "logtree")
 
-  expect_identical(the$theme, glyphs_unicode)
+  # The console theme is a preset plus the console-only wrap default.
+  expect_identical(the$theme, console_preset("unicode"))
+  expect_true(the$theme$wrap)
   expect_identical(the$verbosity, "info")
   expect_length(the$sinks, 1L)
-  expect_identical(the$sinks[[1]], console_sink)
+  # Keyed by the reserved id, so logtree_sink_remove("console") can target it.
+  expect_identical(names(the$sinks), "console")
+  expect_identical(the$sinks[["console"]]$fn, console_sink)
 })

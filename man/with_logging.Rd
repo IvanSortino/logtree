@@ -4,7 +4,7 @@
 \alias{with_logging}
 \title{Run an expression with top-level error handling and a run summary}
 \usage{
-with_logging(expr, summary = TRUE, global = FALSE)
+with_logging(expr, summary = TRUE, global = FALSE, warnings = FALSE)
 }
 \arguments{
 \item{expr}{Code to run. Omitted when \code{global = TRUE}.}
@@ -24,6 +24,26 @@ persists until \code{\link[=logtree_reset]{logtree_reset()}}. Must be called fro
 the first line of a script: calling it where condition handlers are active
 (inside \code{tryCatch()}, or a function running under one) errors, by design.
 Requires R (>= 4.0).}
+
+\item{warnings}{Route R's own conditions into the tree as leaf lines?
+\code{FALSE} (the default) leaves \code{warning()} and \code{message()} exactly as they
+are. \code{TRUE} routes both; a subset such as \code{"warning"} or \code{"message"} routes
+only those.
+
+Two consequences to weigh before switching it on:
+\itemize{
+\item \strong{Routed conditions are muffled.} A routed \code{warning()} becomes a leaf
+and stops there: it no longer reaches \code{warnings()}, the caller's own
+handlers, or stderr. That is the point -- one record of the run rather
+than two halves -- but it means the tree is now the only place that
+warning appears.
+\item \strong{A routed warning elevates its step}, exactly as \code{\link[=log_warn]{log_warn()}} does. So
+wrapping third-party code that warns freely will turn the enclosing steps
+yellow, which may be more honesty than you wanted.
+}
+
+In global mode the routing applies only while logtree steps are open, so a
+session-persistent handler cannot swallow warnings from unrelated code.}
 }
 \value{
 In block mode, the value of \code{expr}, invisibly. In global mode,
@@ -54,6 +74,13 @@ error that reaches top level:
 log_open("Load data")
 stop("EOF")   # marks the open step failed + logs "EOF" before R exits
 }\if{html}{\out{</div>}}
+
+\code{warnings = TRUE} additionally routes R's \emph{own} conditions into the tree:
+a \code{warning()} raised by wrapped code becomes a \code{\link[=log_warn]{log_warn()}} leaf and a
+\code{message()} becomes a \code{\link[=log_info]{log_info()}} leaf, in place rather than on stderr, so
+the tree is a complete record of the run rather than half of one. It is
+opt-in because routing means \strong{muffling} -- see the argument's own
+documentation below for what that costs.
 }
 \examples{
 logtree_reset()
@@ -61,4 +88,12 @@ with_logging({
   log_step("Step one")
   log_success("done")
 })
+
+# R's own conditions routed into the tree instead of onto stderr.
+logtree_reset()
+with_logging({
+  log_step("Load data")
+  warning("3 rows coerced to NA")
+  message("using cached manifest")
+}, warnings = TRUE)
 }

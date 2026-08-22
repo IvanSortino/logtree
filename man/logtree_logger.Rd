@@ -36,9 +36,14 @@ Bridge only: it does not install error handling. Wrap the run body in
 \code{\link[=with_logging]{with_logging()}} as well when you want failed-run elevation and a summary
 line. The change is persistent for the session (matching \code{logger}'s own
 global configuration style); there is no automatic teardown.
+
+Needs \code{logger} >= 0.3.0, the release that added \code{appender_void} -- the no-op
+appender this pairs the layout with, so that logtree's rendering is the only
+visible output. An older \code{logger} is refused with a message saying so rather
+than failing later on a missing object.
 }
 \examples{
-if (requireNamespace("logger", quietly = TRUE)) {
+if (rlang::is_installed("logger", version = "0.3.0")) {
   logtree_reset()
   logtree_logger(namespace = "logtree_demo")
   log_step("Demo step")

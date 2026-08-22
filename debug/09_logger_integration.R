@@ -6,8 +6,11 @@
 #   source("debug/09_logger_integration.R")
 devtools::load_all()
 
-if (!requireNamespace("logger", quietly = TRUE)) {
-  stop("This demo needs the 'logger' package: install.packages('logger')")
+# 0.3.0 is where logger gained `appender_void`, the no-op appender
+# logtree_logger() pairs the layout with -- so that is the bound logtree
+# declares in Suggests, and the one to check here.
+if (!rlang::is_installed("logger", version = "0.3.0")) {
+  stop("This demo needs 'logger' >= 0.3.0: install.packages('logger')")
 }
 
 section <- function(title) cat("\n\033[1m== ", title, " ==\033[0m\n")

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 744 178" width="744" height="178" role="img" aria-label="logtree console output with a silver wall-clock timestamp column">
+<title>logtree timestamp column</title>
+<rect x="0.5" y="0.5" width="743" height="177" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<g stroke-linecap="round">
+<line x1="118.12" y1="73.00" x2="118.12" y2="120.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="94.57" y1="35.00" x2="94.57" y2="139.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="94.57" y1="44.50" x2="106.35" y2="44.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="94.57" y1="63.50" x2="106.35" y2="63.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="118.12" y1="82.50" x2="129.90" y2="82.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="118.12" y1="101.50" x2="129.90" y2="101.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="118.12" y1="120.50" x2="129.90" y2="120.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="94.57" y1="139.50" x2="106.35" y2="139.50" stroke="#8b949e" stroke-width="1.5" stroke-linecap="round"/>
+</g>
+<g font-family="ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, monospace" font-size="13">
+<text x="20.00" y="29" xml:space="preserve"><tspan fill="#8b949e">02:14:10</tspan><tspan fill="#24292f"> </tspan></text>
+<text x="90.65" y="29" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> Nightly ETL</tspan></text>
+<text x="20.00" y="48" xml:space="preserve"><tspan fill="#8b949e">02:14:10</tspan><tspan fill="#24292f"> </tspan></text>
+<text x="114.20" y="48" xml:space="preserve"><tspan fill="#0969da">ℹ</tspan><tspan fill="#24292f"> config loaded from etl.yml</tspan></text>
+<text x="20.00" y="67" xml:space="preserve"><tspan fill="#8b949e">02:14:11</tspan><tspan fill="#24292f"> </tspan></text>
+<text x="114.20" y="67" xml:space="preserve"><tspan fill="#1b7c83">▶</tspan><tspan fill="#24292f"> Extract</tspan></text>
+<text x="20.00" y="86" xml:space="preserve"><tspan fill="#8b949e">02:14:11</tspan><tspan fill="#24292f"> </tspan></text>
+<text x="137.75" y="86" xml:space="preserve"><tspan fill="#0969da">ℹ</tspan><tspan fill="#24292f"> 24,318 rows pulled</tspan></text>
+<text x="20.00" y="105" xml:space="preserve"><tspan fill="#8b949e">02:14:11</tspan><tspan fill="#24292f"> </tspan></text>
+<text x="137.75" y="105" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> staged to warehouse</tspan></text>
+<text x="20.00" y="124" xml:space="preserve"><tspan fill="#8b949e">02:14:14</tspan><tspan fill="#24292f"> </tspan></text>
+<text x="137.75" y="124" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  3.60s</tspan></text>
+<text x="20.00" y="143" xml:space="preserve"><tspan fill="#8b949e">02:14:16</tspan><tspan fill="#24292f"> </tspan></text>
+<text x="114.20" y="143" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Done  5.60s</tspan></text>
+<text x="20.00" y="162" xml:space="preserve"><tspan fill="#8b949e">02:14:16</tspan><tspan fill="#24292f"> </tspan></text>
+<text x="90.65" y="162" xml:space="preserve"><tspan fill="#1a7f37">✔</tspan><tspan fill="#24292f"> Run complete in 9.10s</tspan></text>
+</g>
+<g font-family="-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif" font-size="11">
+<line x1="200.70" y1="25.50" x2="384.00" y2="25.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="388.00" cy="25.50" r="2" fill="#8b949e"/>
+<text x="394.00" y="29.17" fill="#8b949e">the timestamp column, silver by default</text>
+<line x1="302.75" y1="82.50" x2="384.00" y2="82.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="388.00" cy="82.50" r="2" fill="#8b949e"/>
+<text x="394.00" y="86.17" fill="#8b949e">every line kind carries it, at one fixed left edge</text>
+<line x1="310.60" y1="101.50" x2="384.00" y2="101.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="388.00" cy="101.50" r="2" fill="#1a7f37"/>
+<text x="394.00" y="105.17" fill="#1a7f37">the stamp says when — the elapsed column says how long</text>
+<line x1="279.20" y1="158.50" x2="384.00" y2="158.50" stroke="#d0d7de" stroke-width="1" stroke-dasharray="1 3"/>
+<circle cx="388.00" cy="158.50" r="2" fill="#1a7f37"/>
+<text x="394.00" y="162.17" fill="#1a7f37">the run summary line is stamped too</text>
+</g>
+</svg>
+

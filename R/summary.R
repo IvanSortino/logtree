@@ -19,15 +19,21 @@ covers <- function(anc, desc) {
 #     already-buffered entry sits at or below its path (dedup: keeps one entry
 #     per failure at its deepest point). Closes fire deepest-first, so the
 #     deeper entry is always buffered before the shallower ancestor arrives.
+
+# Does the digest want a leaf of this status, logged with this `summary`
+# argument? `TRUE` pins it, `FALSE` excludes it, `NA` (the default) records only
+# warnings and errors. Shared with emit_leaf() (R/leaves.R), which asks the same
+# question one step earlier to decide whether the leaf is worth building at all.
+summary_keeps <- function(status, summary) {
+  isTRUE(summary) || (is.na(summary) && status %in% c("warning", "error"))
+}
+
 record_summary <- function(event) {
   if (identical(event$kind, "leaf")) {
-    sm <- event$summary
-    keep <- isTRUE(sm) ||
-      (is.na(sm) && event$status %in% c("warning", "error"))
-    if (!keep) return(invisible(NULL))
+    if (!summary_keeps(event$status, event$summary)) return(invisible(NULL))
     the$summary[[length(the$summary) + 1L]] <- list(
       kind = "leaf", status = event$status, msg = event$label,
-      path = current_path(), elapsed = NA_real_
+      path = current_path(), elapsed = NA_real_, trace = event$trace
     )
     return(invisible(NULL))
   }
@@ -43,9 +49,89 @@ record_summary <- function(event) {
     if (covered) return(invisible(NULL))
     the$summary[[length(the$summary) + 1L]] <- list(
       kind = "step", status = st, msg = NULL,
-      path = this_path, elapsed = event$entry$elapsed
+      path = this_path, elapsed = event$entry$elapsed,
+      trace = event$entry$trace
     )
   }
+  invisible(NULL)
+}
+
+# --- Divider ---------------------------------------------------------------
+# The digest is printed straight after the last log line, which makes it read
+# as one more branch of the tree. A blank gap plus a cli rule sets it apart as
+# its own block. The defaults live in the active theme's `summary` slot
+# (gap / rule / line), read through theme_field() (R/theme.R), so appearance is
+# customised in one place -- logtree_theme() -- and logtree_summary()'s own
+# `gap` / `rule` arguments are per-call overrides of it.
+
+resolve_gap <- function(gap, theme = the$theme) {
+  if (is.null(gap)) gap <- theme_field("summary", "gap", 1L, theme)
+  if (!is.numeric(gap) || length(gap) != 1L || is.na(gap) ||
+      gap < 0 || gap != as.integer(gap)) {
+    stop("`gap` must be a non-negative whole number.", call. = FALSE)
+  }
+  as.integer(gap)
+}
+
+# The theme a digest renders through: the active one, unless the call pins the
+# trace column itself, in which case only that slot is swapped. The same shape
+# as text_sink_theme() (R/appenders.R), and the same reason -- one view wanting
+# a different answer about call sites than the console gave.
+#
+# Note what this cannot do: capture is decided while the run is happening, so a
+# digest can only ever narrow or reshape what was already captured. With the
+# theme's slot off for the run, nothing was captured and no `trace =` here can
+# invent it.
+digest_theme <- function(trace) {
+  if (is.null(trace)) return(the$theme)
+  theme <- the$theme
+  theme$trace$show <- trace
+  theme
+}
+
+resolve_rule <- function(rule, theme = the$theme) {
+  if (is.null(rule)) rule <- theme_field("summary", "rule", TRUE, theme)
+  ok <- (is.logical(rule) && length(rule) == 1L && !is.na(rule)) ||
+    (is.character(rule) && length(rule) == 1L && !is.na(rule))
+  if (!ok) {
+    stop("`rule` must be TRUE, FALSE, or a single title string.", call. = FALSE)
+  }
+  rule
+}
+
+# Join breadcrumb nodes with the theme's separator. The path nodes carry the
+# `crumb$path_color` emphasis and the separators their own (dimmer) style, so
+# the trail reads as context; `plain_last` leaves a leaf's message -- the
+# terminal node -- unstyled, since that is content, not path.
+format_crumb <- function(nodes, plain_last = FALSE, theme = the$theme,
+                         color = TRUE) {
+  n <- length(nodes)
+  if (n == 0L) return("")
+  path_color <- theme[["crumb"]][["path_color"]]
+  styled <- vapply(seq_len(n), function(i) {
+    if (plain_last && i == n) nodes[[i]] else colorize(nodes[[i]], path_color, color)
+  }, character(1))
+  sep <- colorize(
+    theme_field("crumb", "glyph", " > ", theme),
+    theme[["crumb"]][["color"]], color
+  )
+  paste(styled, collapse = sep)
+}
+
+# Prints the gap, then the rule and/or the plain header line:
+#   rule = TRUE    -- header becomes the rule's label (no separate line)
+#   rule = FALSE   -- plain header line, no rule
+#   rule = "title" -- rule labelled "title", header line below it
+print_summary_header <- function(header, gap, rule) {
+  if (gap > 0L) cat(strrep("\n", gap))
+  if (isFALSE(rule)) {
+    cat(header, "\n", sep = "")
+    return(invisible(NULL))
+  }
+  label <- if (isTRUE(rule)) header else rule
+  line <- theme_field("summary", "line", 1L)
+  cat(cli::rule(left = label, line = line), "\n", sep = "")
+  if (!isTRUE(rule)) cat(header, "\n", sep = "")
   invisible(NULL)
 }
 
@@ -63,6 +149,12 @@ record_summary <- function(event) {
 #' logged with `summary = TRUE`; a warning or error can be excluded with
 #' `summary = FALSE`.
 #'
+#' The digest's appearance comes from the active theme, so it is customised
+#' through [logtree_theme()] like everything else: the `crumb` slot sets the
+#' breadcrumb separator and the emphasis on the path nodes, the `summary` slot
+#' the divider (`gap`, `rule`, `line`). `gap`, `rule` and `trace` below override
+#' the theme for a single call.
+#'
 #' @param filter Optional character vector of statuses to include, e.g.
 #'   `"error"` or `c("warning", "interrupted")`. Only entries whose status
 #'   matches are printed and returned; recognised statuses are `"error"`,
@@ -74,8 +166,31 @@ record_summary <- function(event) {
 #'   step), `depth = 2` the message plus its immediate parent, and so on.
 #'   `NULL` (the default) prints the full breadcrumb. Affects printing only; the
 #'   returned entries always carry the full `path`.
+#' @param gap Number of blank lines printed between the last log line and the
+#'   digest; `0` prints the digest flush against the tree. `NULL` (the default)
+#'   takes the active theme's `summary$gap` (`1` in every built-in preset).
+#' @param rule Divider drawn above the digest. `TRUE` draws a [cli::rule()]
+#'   labelled with the digest header, so the counts become the rule's title
+#'   instead of a separate line; `FALSE` draws no rule and keeps the plain
+#'   header line; a character string draws the rule with that title and prints
+#'   the header line below it. `NULL` (the default) takes the active theme's
+#'   `summary$rule` (`TRUE` in every built-in preset).
+#' @param trace Pins the digest's call-site column for this call, overriding the
+#'   theme's `trace$show`. Takes the same values: `FALSE` for no call sites,
+#'   `TRUE` for all of them, `"problems"`, or a vector of statuses such as
+#'   `"error"` -- see [logtree_theme()]. `NULL` (the default) follows the theme,
+#'   so the digest agrees with the tree. Useful when the tree was quiet and the
+#'   digest is where you want the locations, or the reverse. Note this can only
+#'   narrow or reshape what was *captured*: capture is decided while the run
+#'   happens, so with the theme's slot off for the run there is nothing for
+#'   `trace = TRUE` here to print. To get the quiet-tree-annotated-digest
+#'   combination, ask for capture during the run and print nothing:
+#'   `logtree_theme(list(trace = list(show = FALSE, capture = TRUE)))`, then
+#'   `logtree_summary(trace = TRUE)`.
 #' @return The recorded entries, invisibly: a list of records, each a list with
-#'   `kind`, `status`, `msg`, `path` (character vector), and `elapsed`.
+#'   `kind`, `status`, `msg`, `path` (character vector), `elapsed`, and `trace`
+#'   (the call site: a list of `fn`, `file` and `line`, or `NULL` when the
+#'   `trace` theme slot was off and nothing was captured).
 #' @seealso [with_logging()], [logtree_reset()]
 #' @export
 #' @examples
@@ -86,7 +201,28 @@ record_summary <- function(event) {
 #' }
 #' f()
 #' logtree_summary()
-logtree_summary <- function(filter = NULL, depth = NULL) {
+#'
+#' # Flush against the tree, with a titled divider.
+#' logtree_summary(gap = 0, rule = "Run report")
+#'
+#' # Call sites in the digest only: the tree above stays as it was rendered.
+#' logtree_theme(list(trace = list(show = TRUE)))
+#' f()
+#' logtree_summary(trace = "error")
+#' logtree_theme("unicode")
+#'
+#' # Set the layout and the breadcrumb symbol once, on the theme.
+#' logtree_theme(list(
+#'   summary = list(gap = 2, rule = FALSE),
+#'   crumb   = list(glyph = " / ")
+#' ))
+#' logtree_summary()
+#' logtree_theme("unicode")
+logtree_summary <- function(filter = NULL, depth = NULL,
+                            gap = NULL, rule = NULL, trace = NULL) {
+  gap   <- resolve_gap(gap)
+  rule  <- resolve_rule(rule)
+  theme <- digest_theme(trace)
   if (!is.null(depth)) {
     if (!is.numeric(depth) || length(depth) != 1L || is.na(depth) ||
         depth < 1 || depth != as.integer(depth)) {
@@ -100,7 +236,7 @@ logtree_summary <- function(filter = NULL, depth = NULL) {
     entries <- entries[keep]
   }
   if (length(entries) == 0L) {
-    cat("Summary: nothing to report\n")
+    print_summary_header("Summary: nothing to report", gap, rule)
     return(invisible(entries))
   }
   statuses <- vapply(entries, function(e) e$status, character(1))
@@ -117,26 +253,36 @@ logtree_summary <- function(filter = NULL, depth = NULL) {
     if (n_interrupted > 0L) sprintf("%d interrupted", n_interrupted),
     if (n_pinned      > 0L) sprintf("%d pinned", n_pinned)
   )
-  cat("Summary: ", paste(parts, collapse = ", "), "\n", sep = "")
+  print_summary_header(
+    paste0("Summary: ", paste(parts, collapse = ", ")), gap, rule
+  )
   # depth (when set) keeps only the trailing `depth` breadcrumb nodes.
   clip <- function(nodes) if (is.null(depth)) nodes else utils::tail(nodes, depth)
   for (e in entries) {
     if (identical(e$kind, "leaf")) {
       # The leaf's message is the terminal node of its breadcrumb, so join it to
-      # the ancestor path with the same " > " separator.
-      crumb <- paste(clip(c(e$path, e$msg)), collapse = " > ")
-      cat(theme_glyph(e$status), " ", crumb, "\n", sep = "")
+      # the ancestor path with the same separator -- but unstyled, so the
+      # emphasised path reads as the trail leading to it.
+      crumb <- with_trace(
+        format_crumb(clip(c(e$path, e$msg)), plain_last = TRUE),
+        format_trace_digest(e$trace, e$status, theme = theme)
+      )
+      cat(compose_flat_line(theme_glyph(e$status), crumb), "\n", sep = "")
     } else {
       # Step entries carry no message; render the switch()-mapped outcome word
       # after the path, set off by two spaces (a description, not a path node).
-      path   <- paste(clip(e$path), collapse = " > ")
+      path   <- format_crumb(clip(e$path))
       detail <- switch(e$status,
         error       = "failed",
         warning     = "completed with warning",
         interrupted = "did not complete",
         e$status
       )
-      cat(theme_glyph(e$status), " ", path, "  ", detail, "\n", sep = "")
+      cat(compose_flat_line(
+            theme_glyph(e$status),
+            with_trace(paste0(path, "  ", detail),
+                       format_trace_digest(e$trace, e$status, theme = theme))
+          ), "\n", sep = "")
     }
   }
   invisible(entries)

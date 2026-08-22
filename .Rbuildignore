@@ -1,6 +1,8 @@
 ^LICENSE\.md$
 ^logtree-design-doc\.md$
 ^README\.Rmd$
+^index\.Rmd$
+^index\.md$
 ^\.github$
 ^_pkgdown\.yml$
 ^docs$
@@ -14,3 +16,5 @@
 ^dev$
 ^graphify-out$
 ^CRAN-SUBMISSION$
+^index\.html$
+^README\.html$

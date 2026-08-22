@@ -17,9 +17,21 @@ Leaf lines below this level are silently skipped: \code{log_debug()} counts as
 \code{"debug"}, \code{log_info()} and \code{log_success()} count as \code{"info"}, \code{log_warn()}
 as \code{"warn"}, \code{log_error()} as \code{"error"}. Step open/close lines always
 render regardless of verbosity, since hiding them would break the tree
-structure. Suppressed \code{log_warn()}/\code{log_error()} calls still elevate the
-enclosing step's close glyph -- verbosity only hides the leaf line's own text.
+structure.
+}
+\details{
+This is the \emph{default} for every sink; a sink registered with its own
+\code{threshold} ignores it (see \code{\link[=logtree_sink_file]{logtree_sink_file()}} and \code{\link[=logtree_sink]{logtree_sink()}}), which
+is what lets a debug-level log file coexist with an ordinary console.
+
+Verbosity governs rendering only, never what the run remembers. A suppressed
+\code{log_warn()}/\code{log_error()} still elevates the enclosing step's close glyph,
+and still reaches the \code{\link[=logtree_summary]{logtree_summary()}} digest -- what is hidden is the leaf
+line's own text, not the fact that it happened.
 }
 \examples{
 logtree_threshold("info")
+}
+\seealso{
+\code{\link[=logtree_sink_file]{logtree_sink_file()}} and \code{\link[=logtree_sink]{logtree_sink()}} for per-sink thresholds.
 }

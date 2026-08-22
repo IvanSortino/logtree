@@ -111,7 +111,7 @@ test_that("logtree_summary() prints a header with counts and returns entries inv
   }
   capture.output(f())
 
-  out <- capture.output(res <- logtree_summary())
+  out <- capture.output(res <- logtree_summary(gap = 0, rule = FALSE))
   expect_match(out[[1]], "^Summary: ")
   expect_match(out[[1]], "1 error")
   expect_match(out[[1]], "1 warning")
@@ -221,7 +221,7 @@ test_that("an empty summary prints nothing-to-report", {
   }
   capture.output(f())
 
-  out <- capture.output(res <- logtree_summary())
+  out <- capture.output(res <- logtree_summary(gap = 0, rule = FALSE))
   expect_match(out, "nothing to report")
   expect_length(res, 0L)
 })
@@ -253,7 +253,7 @@ test_that("filter filters the digest to a single status", {
   }
   capture.output(f())
 
-  out <- capture.output(res <- logtree_summary(filter = "error"))
+  out <- capture.output(res <- logtree_summary(filter = "error", gap = 0, rule = FALSE))
   expect_match(out[[1]], "1 error")
   expect_false(any(grepl("warning", out)))
   expect_length(res, 1L)
@@ -296,7 +296,7 @@ test_that("filter with no matching status reports nothing", {
   }
   capture.output(f())
 
-  out <- capture.output(res <- logtree_summary(filter = "error"))
+  out <- capture.output(res <- logtree_summary(filter = "error", gap = 0, rule = FALSE))
   expect_match(out, "nothing to report")
   expect_length(res, 0L)
 })
@@ -322,6 +322,200 @@ test_that("logtree_summary() prints outcome words for non-leaf step entries", {
   out <- capture.output(logtree_summary())
   expect_true(any(grepl("Warned  completed with warning", out)))
   expect_true(any(grepl("Failed  failed", out)))
+})
+
+# --- Divider layout --------------------------------------------------------
+
+# One warning, so every divider test below has a digest to print.
+local_warned_run <- function() {
+  f <- function() {
+    log_step("Task")
+    log_warn("careful")
+  }
+  capture.output(f())
+  invisible(NULL)
+}
+
+test_that("the digest is set off by a blank gap and a rule carrying the header", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out <- cli::ansi_strip(capture.output(logtree_summary()))
+  expect_identical(out[[1]], "")
+  expect_match(out[[2]], "Summary: 1 warning")
+  # The header is the rule's label, not a line of its own.
+  expect_length(grep("^Summary: ", out), 0L)
+})
+
+test_that("gap sets the number of blank lines above the digest", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out0 <- cli::ansi_strip(capture.output(logtree_summary(gap = 0)))
+  expect_false(identical(out0[[1]], ""))
+
+  out2 <- cli::ansi_strip(capture.output(logtree_summary(gap = 2)))
+  expect_identical(out2[1:2], c("", ""))
+  expect_match(out2[[3]], "Summary: 1 warning")
+})
+
+test_that("rule = FALSE keeps the plain header line, gap still applies", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out <- cli::ansi_strip(capture.output(logtree_summary(rule = FALSE)))
+  expect_identical(out[[1]], "")
+  expect_identical(out[[2]], "Summary: 1 warning")
+})
+
+test_that("NULL means 'take the theme's value', not 'off'", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out <- cli::ansi_strip(capture.output(logtree_summary(gap = NULL, rule = NULL)))
+  expect_identical(out[[1]], "")
+  expect_match(out[[2]], "Summary: 1 warning")
+})
+
+test_that("a character rule titles the divider and keeps the header below it", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  out <- cli::ansi_strip(capture.output(
+    logtree_summary(gap = 0, rule = "Run report")
+  ))
+  expect_match(out[[1]], "Run report")
+  expect_identical(out[[2]], "Summary: 1 warning")
+})
+
+test_that("the divider defaults come from the theme's summary slot", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  logtree_theme(list(summary = list(gap = 0, rule = FALSE)))
+  out <- cli::ansi_strip(capture.output(logtree_summary()))
+  expect_identical(out[[1]], "Summary: 1 warning")
+
+  # An explicit argument overrides the theme for that one call.
+  out2 <- cli::ansi_strip(capture.output(logtree_summary(gap = 1, rule = TRUE)))
+  expect_identical(out2[[1]], "")
+  expect_match(out2[[2]], "-- Summary: 1 warning --")
+})
+
+test_that("a theme with no summary/crumb slots falls back to the defaults", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  # A hand-rolled preset predating these slots must still render.
+  the$theme[["summary"]] <- NULL
+  the$theme[["crumb"]]   <- NULL
+  out <- cli::ansi_strip(capture.output(logtree_summary()))
+  expect_identical(out[[1]], "")
+  expect_match(out[[2]], "Summary: 1 warning")
+  expect_identical(out[[3]], "! Task > careful")
+})
+
+test_that("the rule's line character comes from the theme", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+  local_warned_run()
+
+  expect_identical(glyphs_ascii$summary$line, "-")
+  expect_identical(glyphs_unicode$summary$line, 1L)
+
+  out <- cli::ansi_strip(capture.output(logtree_summary(gap = 0)))
+  expect_match(out[[1]], "---")
+
+  logtree_theme(list(summary = list(line = "=")))
+  out2 <- cli::ansi_strip(capture.output(logtree_summary(gap = 0)))
+  expect_match(out2[[1]], "===")
+})
+
+# --- Breadcrumb ------------------------------------------------------------
+
+test_that("format_crumb joins nodes with the theme's separator", {
+  theme <- list(crumb = list(glyph = " / ", color = NULL, path_color = NULL))
+  expect_identical(
+    format_crumb(c("A", "B", "msg"), plain_last = TRUE, theme = theme),
+    "A / B / msg"
+  )
+  expect_identical(format_crumb(character(0), theme = theme), "")
+  expect_identical(format_crumb("solo", theme = theme), "solo")
+})
+
+test_that("format_crumb emphasises the path but not a leaf's message", {
+  testthat::local_reproducible_output(crayon = TRUE)
+  theme <- list(crumb = list(glyph = " > ", color = "dim", path_color = "bold"))
+
+  styled <- format_crumb(c("A", "msg"), plain_last = TRUE, theme = theme)
+  expect_identical(cli::ansi_strip(styled), "A > msg")
+  expect_true(cli::ansi_has_any(styled))
+  # The path node is styled, the terminal message is left bare.
+  expect_true(endsWith(styled, "msg"))
+  # Step entries have no message, so every node is emphasised.
+  expect_false(endsWith(format_crumb(c("A", "B"), theme = theme), "B"))
+
+  # color = FALSE strips all of it.
+  expect_identical(
+    format_crumb(c("A", "msg"), plain_last = TRUE, theme = theme, color = FALSE),
+    "A > msg"
+  )
+})
+
+test_that("the breadcrumb separator is customisable through the theme", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  pipeline <- function() {
+    log_step("Extract")
+    log_step("Transform")
+    log_error("schema mismatch")
+  }
+  capture.output(pipeline())
+
+  logtree_theme(list(crumb = list(glyph = " -> ")))
+  out <- cli::ansi_strip(capture.output(logtree_summary(gap = 0, rule = FALSE)))
+  expect_true(any(grepl("Extract -> Transform -> schema mismatch", out, fixed = TRUE)))
+})
+
+test_that("the built-in presets carry crumb and summary slots", {
+  for (preset in list(glyphs_unicode, glyphs_ascii, glyphs_emoji)) {
+    expect_named(preset$crumb, c("glyph", "color", "path_color"))
+    expect_named(preset$summary, c("gap", "rule", "line"))
+  }
+  # The unicode/emoji presets emphasise the path; ascii stays colorless like
+  # every other slot of that preset.
+  expect_identical(glyphs_unicode$crumb$path_color, "bold")
+  expect_null(glyphs_ascii$crumb$path_color)
+})
+
+test_that("gap and rule reject malformed values", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+
+  expect_error(logtree_summary(gap = -1), "non-negative whole number")
+  expect_error(logtree_summary(gap = 1.5), "non-negative whole number")
+  expect_error(logtree_summary(gap = "1"), "non-negative whole number")
+  expect_error(logtree_summary(gap = NA), "non-negative whole number")
+  expect_error(logtree_summary(rule = NA), "TRUE, FALSE, or a single title")
+  expect_error(logtree_summary(rule = c("a", "b")), "TRUE, FALSE, or a single title")
+  expect_error(logtree_summary(rule = 1), "TRUE, FALSE, or a single title")
 })
 
 test_that("logtree_summary() reports an interrupted step as 'did not complete'", {

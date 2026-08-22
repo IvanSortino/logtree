@@ -30,6 +30,64 @@ test_that("logtree_theme(theme=, overrides=) applies overrides after a preset sw
   expect_equal(the$theme$success$glyph, glyphs_unicode$success$glyph)
 })
 
+test_that("a call naming no preset merges onto the active theme", {
+  withr::defer(logtree_theme("unicode"))
+
+  # The trap this replaced: `overrides =` used to re-resolve `theme` to its
+  # default and swap the whole preset back to unicode.
+  logtree_theme("ascii")
+  logtree_theme(overrides = list(crumb = list(glyph = " / ")))
+  expect_equal(the$theme$step$glyph, ">")
+  expect_equal(the$theme$crumb$glyph, " / ")
+
+  # Same for a compact-only call.
+  logtree_theme(compact = "tight")
+  expect_equal(the$theme$step$glyph, ">")
+  expect_equal(the$theme$col_gap, 0L)
+
+  # And a bare call changes nothing at all.
+  logtree_theme()
+  expect_equal(the$theme$step$glyph, ">")
+  expect_equal(the$theme$crumb$glyph, " / ")
+})
+
+test_that("naming a preset swaps it, clearing earlier overrides", {
+  withr::defer(logtree_theme("unicode"))
+
+  logtree_theme("ascii")
+  logtree_theme(list(crumb = list(glyph = " / ")))
+  logtree_theme("ascii")
+  expect_equal(the$theme$crumb$glyph, glyphs_ascii$crumb$glyph)
+})
+
+test_that("an unknown override slot errors, naming it and the valid slots", {
+  withr::defer(logtree_theme("unicode"))
+
+  expect_error(
+    logtree_theme(list(crumbs = list(glyph = " / "))),
+    "Unknown theme slot: `crumbs`",
+    fixed = TRUE
+  )
+  expect_error(logtree_theme(list(crumbs = list())), "Valid slots: ")
+  expect_error(
+    logtree_theme(list(nope = list(), alsono = list())),
+    "Unknown theme slots: `nope`, `alsono`",
+    fixed = TRUE
+  )
+  # col_gap is a theme internal (set through `compact`), not an override slot,
+  # even once compact has put it on the theme.
+  logtree_theme("unicode", compact = "medium")
+  expect_equal(the$theme$col_gap, 0L)
+  expect_error(logtree_theme(list(col_gap = 1L)), "Unknown theme slot")
+  # A slot the user forgot to name at all.
+  expect_error(logtree_theme(list(list(glyph = "*"))), "must be a named list")
+
+  # The active theme is left untouched by a rejected call.
+  logtree_theme("ascii")
+  try(logtree_theme(list(crumbs = list(glyph = "!"))), silent = TRUE)
+  expect_equal(the$theme$step$glyph, ">")
+})
+
 test_that("logtree_theme rejects an invalid theme argument", {
   withr::defer(logtree_theme("unicode"))
   expect_error(logtree_theme(42))
@@ -97,6 +155,84 @@ test_that("each theme preset defines a distinct debug glyph", {
 
   logtree_theme("emoji")
   expect_equal(the$theme$debug$glyph, "\U0001f41b")
+})
+
+test_that("the done slot styles the close line without touching success leaves", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  # List form: merge onto the active (ascii) theme rather than re-resolving
+  # to the unicode preset, as `overrides =` with no `theme` would.
+  logtree_theme(list(done = list(glyph = "=")))
+
+  f <- function() {
+    log_step("Work")
+    log_success("all good")
+  }
+  out <- capture.output(invisible(f()))
+
+  # The log_success() leaf keeps the ascii success glyph ...
+  expect_match(out[2], "^\\|- \\+ all good$")
+  # ... while the step's own Done line now uses the done glyph.
+  expect_match(out[3], "^\\|- = Done")
+  # The success slot itself is untouched by a done override.
+  expect_equal(the$theme$success$glyph, "+")
+})
+
+test_that("a success override leaves the Done line's glyph alone", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  logtree_theme(list(success = list(glyph = "*")))
+
+  f <- function() {
+    log_step("Work")
+    log_success("all good")
+  }
+  out <- capture.output(invisible(f()))
+
+  expect_match(out[2], "^\\|- \\* all good$")
+  expect_match(out[3], "^\\|- \\+ Done")
+})
+
+test_that("done only governs a clean close: elevated statuses keep their slot", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  logtree_theme(list(done = list(glyph = "=")))
+
+  f <- function() {
+    log_step("Work")
+    log_warn("something odd")
+  }
+  out <- capture.output(invisible(f()))
+
+  expect_match(out[3], "^\\|- ! Done")
+})
+
+test_that("every preset ships a done slot matching its success glyph", {
+  withr::defer(logtree_theme("unicode"))
+
+  for (preset in list(glyphs_unicode, glyphs_ascii, glyphs_emoji)) {
+    expect_equal(preset$done$glyph, preset$success$glyph)
+    expect_equal(preset$done$width, preset$success$width)
+  }
+})
+
+test_that("a theme with no done slot falls back to the success glyph", {
+  # Themes built before the `done` slot existed (or hand-assembled ones) must
+  # keep rendering their close lines with `success`.
+  legacy <- glyphs_ascii
+  legacy$done <- NULL
+  entry <- list(depth = 1L, status = "running", elapsed = 0)
+
+  expect_equal(close_glyph_key("success", legacy), "success")
+  expect_match(format_close(entry, theme = legacy, color = FALSE), "^\\|- \\+ Done")
+  # And the missing slot does not break column alignment for the others.
+  expect_equal(theme_slot_width(legacy), 1L)
 })
 
 test_that("theme_preset() errors on an unknown preset name", {

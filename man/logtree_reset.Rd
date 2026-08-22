@@ -15,6 +15,11 @@ useful for tests and interactive/knitr re-runs where a previous run may
 have left the stack non-empty (e.g. after an uncaught error with no
 \code{with_logging()} wrapper).
 }
+\details{
+Registered sinks are deliberately \emph{not} cleared: they are configuration
+rather than run state, so a file sink set up once keeps recording across
+resets. Take one off with \code{\link[=logtree_sink_remove]{logtree_sink_remove()}}.
+}
 \examples{
 logtree_reset()
 }
