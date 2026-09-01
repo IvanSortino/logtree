@@ -3,8 +3,6 @@ name: pkgdown
 on:
   push:
     branches: [master, development]
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions: read-all
