@@ -88,8 +88,8 @@ test_that("with_logging prints a summary line by default, suppressible via summa
 # stack is empty, which is never the case inside test_that() (testthat keeps
 # handlers on the stack). So the successful install + real firing is exercised
 # by debug/15_with_logging_global.R at true top level, not here. These tests
-# cover the argument guard, the graceful skip, and the handler action itself
-# (global_error_action(), which needs no install).
+# cover the argument guard, the fallback taken under handlers, and the handler
+# and exit actions themselves (global_error_action(), global_exit_action()).
 
 test_that("global_error_action marks open steps failed and logs the message leaf", {
   logtree_reset()
@@ -121,17 +121,66 @@ test_that("with_logging(global = TRUE) rejects an expr argument", {
   expect_error(with_logging(log_info("x"), global = TRUE), "takes no")
 })
 
-test_that("with_logging(global = TRUE) errors (fail-fast) when handlers are on the stack", {
+test_that("with_logging(global = TRUE) falls back with a warning when handlers are on the stack", {
   logtree_reset()
   withr::defer(logtree_reset())
 
-  # test_that() keeps condition handlers on the stack, so the (unguarded) global
-  # establish is illegal here and must surface R's native error rather than
-  # installing. The establish cannot be softened (a tryCatch wrapper is itself a
-  # handler and would block it even at a clean top level), so global = TRUE is
-  # documented as top-level-only.
-  expect_error(with_logging(global = TRUE), "should not be called with handlers")
+  # The plugin-runner case: the script runs inside the caller's own handlers, so
+  # no global handler can be installed. That must not take the run down.
+  res <- tryCatch(
+    expect_warning(with_logging(global = TRUE),
+                   class = "logtree_global_unavailable"),
+    error = function(e) e
+  )
+  expect_false(inherits(res, "error"))
+  expect_true(the$global_installed)
+  expect_true(is.environment(the$global_fallback))
+
+  # Idempotent: a second call neither warns nor re-arms.
+  token <- the$global_fallback
+  expect_no_warning(withCallingHandlers(with_logging(global = TRUE),
+                                        message = function(cnd) NULL))
+  expect_identical(the$global_fallback, token)
+})
+
+test_that("logtree_reset() disarms the global fallback", {
+  logtree_reset()
+  suppressWarnings(with_logging(global = TRUE))
+  logtree_reset()
+
   expect_false(the$global_installed)
+  expect_null(the$global_fallback)
+})
+
+test_that("global_exit_action marks open steps failed and prints 'Run failed'", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  token <- new.env()
+  the$global_fallback <- token
+  the$global_start    <- now()
+  log_open("Load data")
+  out <- capture.output(global_exit_action(token, summary = TRUE))
+
+  expect_equal(the$stack[[1]]$status, "error")
+  expect_true(any(grepl("Run failed", out)))
+})
+
+test_that("global_exit_action is a no-op for a stale token or no open steps", {
+  logtree_reset()
+  withr::defer(logtree_reset())
+  local_ascii_theme()
+
+  token <- new.env()
+  the$global_fallback <- token
+  the$global_start    <- now()
+  expect_length(capture.output(global_exit_action(token, summary = TRUE)), 0)
+
+  log_open("Load data")
+  out <- capture.output(global_exit_action(new.env(), summary = TRUE))
+  expect_length(out, 0)
+  expect_false(identical(the$stack[[1]]$status, "error"))
 })
 
 test_that("global_error_action prints a 'Run failed' summary when summary = TRUE", {

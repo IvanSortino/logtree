@@ -20,9 +20,14 @@ are open, it marks those steps failed and logs the error message as a leaf
 -- the same result as the block form, but without wrapping the body. It
 fires only for genuinely uncaught top-level errors (an inner \code{tryCatch()}
 that catches first pre-empts it) and only when steps are open. The handler
-persists until \code{\link[=logtree_reset]{logtree_reset()}}. Must be called from a clean top level --
-the first line of a script: calling it where condition handlers are active
-(inside \code{tryCatch()}, or a function running under one) errors, by design.
+persists until \code{\link[=logtree_reset]{logtree_reset()}}. Meant for a clean top level -- the first
+line of a script. R cannot install a global handler while condition
+handlers are active (inside \code{tryCatch()}, or a script that a runner
+evaluates under its own handlers), so there it falls back instead of
+erroring: it warns once (class \code{logtree_global_unavailable}) and arms an
+exit-time check that, if steps are still open when R exits, marks them
+failed and prints the "Run failed" line. The fallback never sees the error,
+so it cannot log the error message, and \code{warnings} routing is not applied.
 Requires R (>= 4.0).}
 
 \item{warnings}{Route R's own conditions into the tree as leaf lines?

@@ -50,10 +50,12 @@ new_run_id <- function() {
 # with_logging(global = TRUE) installs a session-persistent global calling
 # handler. These track whether it is installed, the global handlers that were
 # in force before (restored on reset), and when it was installed (for the
-# "Run failed" elapsed time).
+# "Run failed" elapsed time). `global_fallback` holds the finalizer token when
+# handlers were on the stack and only the exit-time fallback could be armed.
 the$global_installed <- FALSE
 the$global_prev      <- NULL
 the$global_start     <- NA_real_
+the$global_fallback  <- NULL
 
 now <- function() {
   proc.time()[["elapsed"]]
@@ -188,8 +190,10 @@ logtree_reset <- function() {
   # globalCallingHandlers() errors if condition handlers are on the stack
   # (e.g. reset called from inside a tryCatch), so if we cannot tear down now
   # we leave it installed for a later top-level reset rather than throwing.
+  # The fallback (no handler was installed) has nothing to tear down: dropping
+  # its token disarms the exit finalizer (global_exit_action()).
   if (isTRUE(the$global_installed)) {
-    cleared <- tryCatch({
+    cleared <- !is.null(the$global_fallback) || tryCatch({
       globalCallingHandlers(NULL)
       if (length(the$global_prev)) do.call(globalCallingHandlers, the$global_prev)
       TRUE
@@ -198,6 +202,7 @@ logtree_reset <- function() {
       the$global_installed <- FALSE
       the$global_prev      <- NULL
       the$global_start     <- NA_real_
+      the$global_fallback  <- NULL
     }
   }
   invisible(NULL)

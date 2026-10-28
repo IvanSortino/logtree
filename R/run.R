@@ -108,21 +108,65 @@ global_error_action <- function(cnd, summary) {
   invisible(NULL)
 }
 
+# The action run at R exit in fallback mode (see install_global_logging()), when
+# no global handler could be installed. Factored out like global_error_action()
+# so it is unit-testable without exiting R. `token` is the environment the
+# finalizer was registered on: a stale finalizer (left by a run that
+# logtree_reset() has since torn down) no longer matches the$global_fallback and
+# does nothing. The error itself never reached us, so there is no leaf to log --
+# only the open steps and the summary line say the run failed.
+global_exit_action <- function(token, summary) {
+  if (!identical(the$global_fallback, token)) return(invisible(NULL))
+  if (length(the$stack) == 0L) return(invisible(NULL))
+  mark_open_steps("error")
+  if (summary) print_run_summary("error", now() - the$global_start)
+  invisible(NULL)
+}
+
+# Are condition handlers on the stack? globalCallingHandlers(error = ) refuses to
+# establish if so, and that refusal cannot be caught: a tryCatch() around it is
+# itself a handler and blocks the establish even at a clean top level. So look
+# first instead -- every R-level handler (withCallingHandlers(), tryCatch(),
+# try(), rlang) is established by a frame whose function calls .addCondHands.
+# shortcut: a tryCatch() frame with only `finally` reads as a handler (fallback
+# where a real install would have worked), and a handler established from C is
+# missed (R's native error surfaces, as before); upgrade if either shows up.
+handlers_on_stack <- function() {
+  any(vapply(seq_len(sys.nframe()), function(i) {
+    ".addCondHands" %in% all.names(body(sys.function(i)))
+  }, logical(1)))
+}
+
 # Install the session-persistent global calling handler for
 # with_logging(global = TRUE). Idempotent; snapshots any prior global handlers
 # (restored by logtree_reset()).
 #
-# The establish is deliberately UNGUARDED: globalCallingHandlers(error = ) errors
-# ("should not be called with handlers on the stack") if any condition handler is
-# active, and that call *cannot* be wrapped in tryCatch() to soften it -- the
-# wrapper is itself a handler and would block the establish even at a clean top
-# level. So global = TRUE must be called from a clean top level (the first line of
-# a script); calling it where handlers are active (inside tryCatch(), or a
-# function running under one) surfaces R's native error, by design. The no-arg
-# query form used for the snapshot is always safe.
+# With condition handlers on the stack (a runner that evaluates the script
+# inside its own tryCatch()), globalCallingHandlers() would error and take the
+# run down on its first line. Instead: warn once, and register an exit-time
+# finalizer that marks still-open steps failed and prints the summary. Weaker --
+# it cannot see the error, so neither logs its message nor routes warnings --
+# but the tree still ends honestly.
 install_global_logging <- function(summary, routes = character(0)) {
   if (isTRUE(the$global_installed)) return(invisible(NULL))
   the$run_id <- new_run_id()
+  if (handlers_on_stack()) {
+    token <- new.env(parent = emptyenv())
+    reg.finalizer(token, function(e) global_exit_action(e, summary),
+                  onexit = TRUE)
+    # State first: a caller whose handler turns the warning into an exit must
+    # still leave the fallback armed and repeat calls no-ops.
+    the$global_installed <- TRUE
+    the$global_fallback  <- token
+    the$global_start     <- now()
+    warning(warningCondition(paste0(
+      "`with_logging(global = TRUE)` was called with condition handlers on ",
+      "the stack, so no global error handler can be installed. Falling back ",
+      "to an exit-time check: steps still open when R exits are marked failed, ",
+      "but the error message is not logged and conditions are not routed."
+    ), class = "logtree_global_unavailable"))
+    return(invisible(NULL))
+  }
   prev <- globalCallingHandlers()
   handlers <- list(error = function(cnd) global_error_action(cnd, summary))
   # guard = TRUE: a session-persistent handler must not swallow warnings from
@@ -204,9 +248,14 @@ install_global_logging <- function(summary, routes = character(0)) {
 #'   -- the same result as the block form, but without wrapping the body. It
 #'   fires only for genuinely uncaught top-level errors (an inner `tryCatch()`
 #'   that catches first pre-empts it) and only when steps are open. The handler
-#'   persists until [logtree_reset()]. Must be called from a clean top level --
-#'   the first line of a script: calling it where condition handlers are active
-#'   (inside `tryCatch()`, or a function running under one) errors, by design.
+#'   persists until [logtree_reset()]. Meant for a clean top level -- the first
+#'   line of a script. R cannot install a global handler while condition
+#'   handlers are active (inside `tryCatch()`, or a script that a runner
+#'   evaluates under its own handlers), so there it falls back instead of
+#'   erroring: it warns once (class `logtree_global_unavailable`) and arms an
+#'   exit-time check that, if steps are still open when R exits, marks them
+#'   failed and prints the "Run failed" line. The fallback never sees the error,
+#'   so it cannot log the error message, and `warnings` routing is not applied.
 #'   Requires R (>= 4.0).
 #' @return In block mode, the value of `expr`, invisibly. In global mode,
 #'   `NULL`, invisibly.
