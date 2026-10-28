@@ -1,3 +1,5 @@
+# logtree (development version)
+
 # logtree 0.2.1
 
 * `with_logging(global = TRUE)` no longer errors with "should not be called with
