@@ -14,6 +14,7 @@ machine, not of the package:
 ## Test environments
 
 * local macOS 26.6.2 (aarch64), R 4.4.3 -- `R CMD check --as-cran`
+* win-builder R-devel and R-release -- submitted 2026-10-28; results pending at time of submission
 
 ## Submission notes
 
