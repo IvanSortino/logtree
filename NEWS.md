@@ -1,4 +1,13 @@
-# logtree (development version)
+# logtree 0.2.1
+
+* `with_logging(global = TRUE)` no longer errors with "should not be called with
+  handlers on the stack" when condition handlers are active -- e.g. a script
+  evaluated by a runner inside its own `tryCatch()`, where the error killed the
+  run on its first line. It now warns once (class `logtree_global_unavailable`)
+  and falls back to an exit-time check: steps still open when R exits are marked
+  failed and the "Run failed" summary is printed. The fallback cannot log the
+  error message itself, and `warnings` routing is not applied in it.
+  `logtree_reset()` disarms the fallback.
 
 # logtree 0.2.0
 

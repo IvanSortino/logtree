@@ -14,15 +14,14 @@ machine, not of the package:
 ## Test environments
 
 * local macOS 26.6.2 (aarch64), R 4.4.3 -- `R CMD check --as-cran`
-* win-builder, R-devel
-* macOS builder (CRAN), R-release
-* R-hub: linux (gcc), macos, windows
 
 ## Submission notes
 
-* This is an update of an existing package (logtree 0.1.0 is on CRAN). It adds a
-  sink registry, a memory sink, themeable call-site trace annotations, and
-  changes the NDJSON event schema; see NEWS.md for the full list.
+* This is a patch release of an existing package (logtree 0.2.0 is on CRAN).
+  It fixes one bug: `with_logging(global = TRUE)` errored when condition
+  handlers were on the stack (e.g. a script evaluated inside a runner's
+  `tryCatch()`); it now warns and falls back to an exit-time finalizer. See
+  NEWS.md.
 * There are no reverse dependencies on CRAN, so nothing downstream is affected.
 * There are no published references describing the methods in this package,
   so the Description field contains no doi/arXiv/ISBN citation.
